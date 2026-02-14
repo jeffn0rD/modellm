@@ -1,0 +1,175 @@
+
+define
+	
+	relation hierarchical @abstract,
+		relates parent,
+		relates child;
+		
+	relation containership sub hierarchical,
+		relates container as parent,
+		relates contained as child;
+		
+	relation filesystem sub containership,
+		relates folder as container,
+		relates entry as contained;
+	
+	relation outlining sub containership,
+		relates section as container,
+		relates subsection as contained;
+
+	relation membership sub containership,
+		relates member-of as container,
+		relates member as contained;
+
+	relation membership-seq sub membership,
+		owns order @card(1);
+	
+	relation categorization,
+		relates category,
+		relates object;
+	
+	relation anchoring,
+		relates anchor,
+		relates concept;
+
+	relation messaging,
+		relates producer,
+		relates consumer,
+		relates message;
+
+	relation requiring,
+		relates required-by,
+		relates conceptualized-as,
+		relates implemented-by;
+
+	relation constrained-by,
+		relates constraint,
+		relates object;
+		
+	relation message-payload,
+		relates message,
+		relates payload;
+
+	entity fs-folder,
+		owns foldername @card(1),
+		plays filesystem:folder,
+		plays filesystem:entry;
+	
+	attribute foldername, value string;
+	
+	entity fs-file,
+		owns filename @card(1),
+		plays filesystem:entry @card(1);
+	
+	attribute filename, value string;
+	
+	entity fs-root sub fs-folder;
+
+	entity document sub fs-file,
+		owns title @card(1),
+		owns version @card(1),
+		owns status @card(1),
+		owns description @card(1);
+
+	entity spec-document sub document,
+		owns spec-doc-id @key,
+		plays outlining:section;
+	
+	entity spec-section,
+		owns spec-section-id @key,
+		owns title @card(1),
+		owns id-label @card(1),
+		owns order @card(1),
+		plays outlining:section,
+		plays outlining:subsection;
+
+	entity text-block,
+		owns anchor-id @key,
+		owns order @card(1),
+		owns id-label @card(1),
+		owns text,
+		owns anchor-type,
+		plays outlining:subsection,
+		plays anchoring:anchor,
+		plays membership:member-of,
+		plays requiring:required-by;
+
+	entity design-concept @abstract,
+		owns id-label @key,
+		owns description @card(1),
+		owns justification,
+		plays membership:member,
+		plays anchoring:concept,
+		plays categorization:object,
+		plays requiring:conceptualized-as;
+		
+	entity concept sub design-concept,
+		owns concept-id @key;
+		
+	entity actor sub design-concept,
+		owns actor-id @key,
+		plays messaging:producer,
+		plays messaging:consumer;
+	
+	entity action sub design-concept,
+		owns action-id @key;
+
+	entity data-entity sub design-concept,
+		owns data-entity-id @key,
+		plays constrained-by:object,
+		plays message-payload:payload;
+
+	entity message sub design-concept,
+		owns message-id @key,
+		plays messaging:message,
+		plays constrained-by:object,
+		plays message-payload:message;
+
+	entity aggregation sub design-concept,
+		plays membership:member-of;
+	
+	entity action-aggregate sub aggregation,
+		owns action-agg-id @key;
+		
+	entity message-aggregate sub aggregation,
+		owns message-agg-id @key;
+		
+	entity category,
+		owns name @key,
+		plays categorization:category;
+
+	entity constraint,
+		owns constraint-id @key,
+		owns id-label @card(1),
+		owns description @card(1),
+		plays constrained-by:constraint;
+		
+	entity semantic-cue,
+		owns identifier @key,
+		plays membership:member;
+
+	attribute identifier value string @regex("^[a-zA-Z_][a-zA-Z0-9_.]*$");
+	attribute title value string;
+	attribute id-label value string @regex("^[A-Z_][a-zA-Z0-9_.]*$");
+	attribute order value integer;
+	attribute text value string;
+	attribute description, value string;
+	attribute version value string @regex("^[0-9.]+$");
+	attribute status value string @values("draft", "approved", "superseded", "deprecated");
+	attribute justification value string;
+	attribute name value string;
+	attribute artifact-id, value string;	
+	attribute anchor-type value string @values("goal", "capability", "constraint", "future-capability");
+	
+	attribute anchor-id sub artifact-id, value string @regex("^AN\d+$");
+	attribute spec-doc-id sub artifact-id, value string @regex("^SPEC\d+$");
+	attribute spec-section-id sub artifact-id, value string @regex("^S\d+$");
+	attribute concept-id sub artifact-id, value string @regex("^C\d+$");
+	attribute actor-id sub artifact-id, value string @regex("^A\d+$");
+	attribute action-id sub artifact-id, value string @regex("^ACT\d+$");
+	attribute data-entity-id sub artifact-id, value string @regex("^DE\d+$");
+	attribute message-id sub artifact-id, value string @regex("^M\d+$");
+	attribute action-agg-id sub artifact-id, value string @regex("^AG\d+$");
+	attribute message-agg-id sub artifact-id, value string @regex("^MAG\d+$");	
+	attribute constraint-id sub artifact-id, value string @regex("^C-[a-zA-Z0-9_.]*$");
+	
