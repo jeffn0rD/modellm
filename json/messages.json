@@ -1,0 +1,1114 @@
+[
+  {
+    "id": "MSG1",
+    "label": "CreateTaskCommand",
+    "category": "command",
+    "description": "EndUser requests creation of a new task with required and optional attributes.",
+    "producer": "A1",
+    "consumer": "A2",
+    "payload": [
+      {
+        "id": "DE1",
+        "label": "Task",
+        "refConceptId": "DE1",
+        "constraint": "Must include at least a non-empty title; description and due date are optional.",
+        "notes": "Represents the task fields provided in the creation UI before persistence.",
+        "isNew": false
+      }
+    ],
+    "constraints": [
+      {
+        "id": "C-MSG1-1",
+        "label": "Task title required on creation",
+        "constraint": "TodoApplication must reject CreateTaskCommand if the provided Task title is empty or whitespace.",
+        "notes": "",
+        "isNew": true
+      }
+    ],
+    "justification": "User needs to create simple to-do items with at least a title, and optionally a description and due date.",
+    "anchors": [
+      "AN3"
+    ]
+  },
+  {
+    "id": "MSG2",
+    "label": "TaskCreatedResponse",
+    "category": "response",
+    "description": "TodoApplication confirms that a new task has been created and persisted.",
+    "producer": "A2",
+    "consumer": "A1",
+    "payload": [
+      {
+        "id": "DE1",
+        "label": "CreatedTask",
+        "refConceptId": "DE1",
+        "constraint": "Includes any system-assigned identifiers and initial completion status.",
+        "notes": "Represents the task as stored in the LocalTaskStore after creation.",
+        "isNew": false
+      }
+    ],
+    "constraints": [],
+    "justification": "The user should see the newly created task appear in the main list view after creation.",
+    "anchors": [
+      "AN3",
+      "AN5"
+    ]
+  },
+  {
+    "id": "MSG3",
+    "label": "EditTaskCommand",
+    "category": "command",
+    "description": "EndUser requests modification of an existing task’s attributes.",
+    "producer": "A1",
+    "consumer": "A2",
+    "payload": [
+      {
+        "id": "DE1",
+        "label": "UpdatedTask",
+        "refConceptId": "DE1",
+        "constraint": "Must reference an existing task and specify one or more fields to change.",
+        "notes": "Includes updated title, description, due date, category, or other editable attributes.",
+        "isNew": false
+      }
+    ],
+    "constraints": [
+      {
+        "id": "C-MSG3-1",
+        "label": "Task must exist before edit",
+        "constraint": "TodoApplication must ensure the target Task exists in LocalTaskStore before applying edits.",
+        "notes": "",
+        "isNew": true
+      }
+    ],
+    "justification": "Users can edit tasks as part of managing their to-do items over time.",
+    "anchors": [
+      "AN6"
+    ]
+  },
+  {
+    "id": "MSG4",
+    "label": "TaskEditedEvent",
+    "category": "event",
+    "description": "TodoApplication notifies the EndUser that a task has been successfully updated.",
+    "producer": "A2",
+    "consumer": "A1",
+    "payload": [
+      {
+        "id": "DE1",
+        "label": "EditedTask",
+        "refConceptId": "DE1",
+        "constraint": "Reflects the latest persisted state of the task after editing.",
+        "notes": "",
+        "isNew": false
+      }
+    ],
+    "constraints": [],
+    "justification": "The main list view must reflect updated task attributes after edits.",
+    "anchors": [
+      "AN5",
+      "AN6"
+    ]
+  },
+  {
+    "id": "MSG5",
+    "label": "SetTaskCompletionStatusCommand",
+    "category": "command",
+    "description": "EndUser requests to mark a task complete or incomplete.",
+    "producer": "A1",
+    "consumer": "A2",
+    "payload": [
+      {
+        "id": "DE1",
+        "label": "TaskWithNewCompletionStatus",
+        "refConceptId": "DE1",
+        "constraint": "Identifies the target task and specifies the new completion status flag.",
+        "notes": "Other task attributes may be unchanged.",
+        "isNew": false
+      }
+    ],
+    "constraints": [
+      {
+        "id": "C-MSG5-1",
+        "label": "Completion status toggle validity",
+        "constraint": "TodoApplication must handle idempotent completion status changes (setting a status to its current value has no adverse effect).",
+        "notes": "",
+        "isNew": true
+      }
+    ],
+    "justification": "Users must be able to mark tasks complete or incomplete and see that reflected in filters.",
+    "anchors": [
+      "AN6",
+      "AN7"
+    ]
+  },
+  {
+    "id": "MSG6",
+    "label": "TaskCompletionStatusChangedEvent",
+    "category": "event",
+    "description": "TodoApplication notifies the EndUser that a task’s completion status has changed.",
+    "producer": "A2",
+    "consumer": "A1",
+    "payload": [
+      {
+        "id": "DE1",
+        "label": "TaskWithCompletionStatus",
+        "refConceptId": "DE1",
+        "constraint": "Includes the updated completion status and any related derived indicators in the view.",
+        "notes": "",
+        "isNew": false
+      }
+    ],
+    "constraints": [],
+    "justification": "Filtering by completion status relies on up-to-date completion information in the main list.",
+    "anchors": [
+      "AN5",
+      "AN6",
+      "AN7"
+    ]
+  },
+  {
+    "id": "MSG7",
+    "label": "DeleteTaskCommand",
+    "category": "command",
+    "description": "EndUser requests deletion of an existing task.",
+    "producer": "A1",
+    "consumer": "A2",
+    "payload": [
+      {
+        "id": "DE1",
+        "label": "TaskToDelete",
+        "refConceptId": "DE1",
+        "constraint": "Identifies the task to remove from LocalTaskStore.",
+        "notes": "May contain just the identifier in an implementation, but conceptually refers to the Task entity.",
+        "isNew": false
+      }
+    ],
+    "constraints": [
+      {
+        "id": "C-MSG7-1",
+        "label": "Task must exist before deletion",
+        "constraint": "TodoApplication must ensure the referenced task exists before deletion; deleting a non-existent task is a no-op or error.",
+        "notes": "",
+        "isNew": true
+      }
+    ],
+    "justification": "Deleting tasks is part of the task lifecycle described in the specification.",
+    "anchors": [
+      "AN6"
+    ]
+  },
+  {
+    "id": "MSG8",
+    "label": "TaskDeletedEvent",
+    "category": "event",
+    "description": "TodoApplication informs the EndUser that a task has been deleted and is no longer visible in the main list.",
+    "producer": "A2",
+    "consumer": "A1",
+    "payload": [
+      {
+        "id": "DE1",
+        "label": "DeletedTaskReference",
+        "refConceptId": "DE1",
+        "constraint": "Contains at least the identifier of the deleted task so the UI can remove it from display.",
+        "notes": "",
+        "isNew": false
+      }
+    ],
+    "constraints": [],
+    "justification": "The main list view should update to remove tasks when they are deleted.",
+    "anchors": [
+      "AN5",
+      "AN6"
+    ]
+  },
+  {
+    "id": "MSG9",
+    "label": "CreateCategoryCommand",
+    "category": "command",
+    "description": "EndUser requests creation of a new category for organizing tasks.",
+    "producer": "A1",
+    "consumer": "A2",
+    "payload": [
+      {
+        "id": "DE2",
+        "label": "CategoryToCreate",
+        "refConceptId": "DE2",
+        "constraint": "Includes a non-empty category name.",
+        "notes": "",
+        "isNew": false
+      }
+    ],
+    "constraints": [
+      {
+        "id": "C-MSG9-1",
+        "label": "Category name required",
+        "constraint": "TodoApplication must reject CreateCategoryCommand if the category name is empty or whitespace.",
+        "notes": "",
+        "isNew": true
+      }
+    ],
+    "justification": "Users can create simple lists or categories like Work and Personal.",
+    "anchors": [
+      "AN4"
+    ]
+  },
+  {
+    "id": "MSG10",
+    "label": "CategoryCreatedEvent",
+    "category": "event",
+    "description": "TodoApplication notifies the EndUser that a new category has been created and is available for assignment and filtering.",
+    "producer": "A2",
+    "consumer": "A1",
+    "payload": [
+      {
+        "id": "DE2",
+        "label": "CreatedCategory",
+        "refConceptId": "DE2",
+        "constraint": "Includes any system-assigned identifiers and the category name.",
+        "notes": "",
+        "isNew": false
+      }
+    ],
+    "constraints": [],
+    "justification": "New categories must appear in the UI so users can organize tasks into them.",
+    "anchors": [
+      "AN4",
+      "AN7"
+    ]
+  },
+  {
+    "id": "MSG11",
+    "label": "RenameCategoryCommand",
+    "category": "command",
+    "description": "EndUser requests to change the name of an existing category.",
+    "producer": "A1",
+    "consumer": "A2",
+    "payload": [
+      {
+        "id": "DE2",
+        "label": "CategoryRenameRequest",
+        "refConceptId": "DE2",
+        "constraint": "Includes the identifier of the category and the new non-empty name.",
+        "notes": "",
+        "isNew": false
+      }
+    ],
+    "constraints": [
+      {
+        "id": "C-MSG11-1",
+        "label": "Category must exist before rename",
+        "constraint": "TodoApplication must ensure the target category exists before applying a rename.",
+        "notes": "",
+        "isNew": true
+      }
+    ],
+    "justification": "Renaming categories is part of the basic category lifecycle.",
+    "anchors": [
+      "AN4"
+    ]
+  },
+  {
+    "id": "MSG12",
+    "label": "CategoryRenamedEvent",
+    "category": "event",
+    "description": "TodoApplication informs the EndUser that a category has been renamed.",
+    "producer": "A2",
+    "consumer": "A1",
+    "payload": [
+      {
+        "id": "DE2",
+        "label": "RenamedCategory",
+        "refConceptId": "DE2",
+        "constraint": "Reflects the updated category name and identifier.",
+        "notes": "",
+        "isNew": false
+      }
+    ],
+    "constraints": [],
+    "justification": "Category lists and filters in the UI need to show the new category name.",
+    "anchors": [
+      "AN4",
+      "AN7"
+    ]
+  },
+  {
+    "id": "MSG13",
+    "label": "DeleteCategoryCommand",
+    "category": "command",
+    "description": "EndUser requests deletion of an existing category.",
+    "producer": "A1",
+    "consumer": "A2",
+    "payload": [
+      {
+        "id": "DE2",
+        "label": "CategoryToDelete",
+        "refConceptId": "DE2",
+        "constraint": "Identifies the category to delete.",
+        "notes": "",
+        "isNew": false
+      }
+    ],
+    "constraints": [
+      {
+        "id": "C-MSG13-1",
+        "label": "Category deletion behavior with assigned tasks",
+        "constraint": "TodoApplication must define behavior for tasks assigned to a category being deleted (e.g., unassign tasks or prevent deletion while tasks are assigned).",
+        "notes": "The specification does not prescribe behavior; this captures the need to define it.",
+        "isNew": true
+      }
+    ],
+    "justification": "Users can delete categories as part of managing simple lists.",
+    "anchors": [
+      "AN4"
+    ]
+  },
+  {
+    "id": "MSG14",
+    "label": "CategoryDeletedEvent",
+    "category": "event",
+    "description": "TodoApplication informs the EndUser that a category has been deleted and is no longer available for filtering or assignment.",
+    "producer": "A2",
+    "consumer": "A1",
+    "payload": [
+      {
+        "id": "DE2",
+        "label": "DeletedCategoryReference",
+        "refConceptId": "DE2",
+        "constraint": "Contains at least the identifier (and possibly previous name) of the deleted category.",
+        "notes": "",
+        "isNew": false
+      }
+    ],
+    "constraints": [],
+    "justification": "The UI must stop offering deleted categories as organization or filter options.",
+    "anchors": [
+      "AN4",
+      "AN7"
+    ]
+  },
+  {
+    "id": "MSG15",
+    "label": "AssignTaskToCategoryCommand",
+    "category": "command",
+    "description": "EndUser requests to assign or move a task into a specific category.",
+    "producer": "A1",
+    "consumer": "A2",
+    "payload": [
+      {
+        "id": "TaskCategoryAssignment",
+        "label": "TaskCategoryAssignment",
+        "refConceptId": "DE1",
+        "constraint": "Identifies the task and target category.",
+        "notes": "Conceptually relates Task and Category; modeled using Task as the reference entity.",
+        "isNew": true
+      }
+    ],
+    "constraints": [
+      {
+        "id": "C-MSG15-1",
+        "label": "Task and category must exist for assignment",
+        "constraint": "TodoApplication must ensure both the task and category exist before assigning.",
+        "notes": "",
+        "isNew": true
+      }
+    ],
+    "justification": "Organizing tasks into simple lists or categories implies assigning tasks to categories.",
+    "anchors": [
+      "AN4"
+    ]
+  },
+  {
+    "id": "MSG16",
+    "label": "TaskAssignedToCategoryEvent",
+    "category": "event",
+    "description": "TodoApplication notifies the EndUser that a task has been assigned to or moved between categories.",
+    "producer": "A2",
+    "consumer": "A1",
+    "payload": [
+      {
+        "id": "TaskCategoryAssignmentResult",
+        "label": "TaskCategoryAssignmentResult",
+        "refConceptId": "DE1",
+        "constraint": "Indicates the task and its current category association.",
+        "notes": "",
+        "isNew": true
+      }
+    ],
+    "constraints": [],
+    "justification": "Category-based organization and filtering depend on tasks having visible category associations.",
+    "anchors": [
+      "AN4",
+      "AN7"
+    ]
+  },
+  {
+    "id": "MSG17",
+    "label": "ViewTaskListRequest",
+    "category": "request",
+    "description": "EndUser requests display of the main task list view.",
+    "producer": "A1",
+    "consumer": "A2",
+    "payload": [],
+    "constraints": [],
+    "justification": "The main list view is the central place where all tasks are shown and interacted with.",
+    "anchors": [
+      "AN5"
+    ]
+  },
+  {
+    "id": "MSG18",
+    "label": "TaskListViewResponse",
+    "category": "response",
+    "description": "TodoApplication returns the data needed to render the main task list view according to current filters and sorting.",
+    "producer": "A2",
+    "consumer": "A1",
+    "payload": [
+      {
+        "id": "DE3",
+        "label": "TaskListView",
+        "refConceptId": "DE3",
+        "constraint": "Represents the collection of visible tasks and their key fields, ordered and filtered per current settings.",
+        "notes": "",
+        "isNew": false
+      },
+      {
+        "id": "DE4",
+        "label": "ActiveFilterSettings",
+        "refConceptId": "DE4",
+        "constraint": "Indicates which filters are currently applied, including completion status and category if set.",
+        "notes": "",
+        "isNew": false
+      },
+      {
+        "id": "DE5",
+        "label": "ActiveSortSettings",
+        "refConceptId": "DE5",
+        "constraint": "Specifies the current primary sort criterion such as creation time, due date, or title.",
+        "notes": "",
+        "isNew": false
+      }
+    ],
+    "constraints": [],
+    "justification": "The main list view must present all tasks in an easy-to-scan layout honoring filters and sorting.",
+    "anchors": [
+      "AN5",
+      "AN7"
+    ]
+  },
+  {
+    "id": "MSG19",
+    "label": "FilterByCompletionStatusCommand",
+    "category": "command",
+    "description": "EndUser selects a completion status filter for the task list view.",
+    "producer": "A1",
+    "consumer": "A2",
+    "payload": [
+      {
+        "id": "DE4",
+        "label": "CompletionStatusFilterSettings",
+        "refConceptId": "DE4",
+        "constraint": "Indicates desired status filter: all, only incomplete, or only completed.",
+        "notes": "",
+        "isNew": false
+      }
+    ],
+    "constraints": [],
+    "justification": "Filtering by completion status is a core capability for the main list view.",
+    "anchors": [
+      "AN7"
+    ]
+  },
+  {
+    "id": "MSG20",
+    "label": "CompletionStatusFilterAppliedEvent",
+    "category": "event",
+    "description": "TodoApplication confirms the completion status filter has been applied and returns the updated task list view.",
+    "producer": "A2",
+    "consumer": "A1",
+    "payload": [
+      {
+        "id": "DE3",
+        "label": "FilteredTaskListViewByCompletion",
+        "refConceptId": "DE3",
+        "constraint": "Contains only tasks that satisfy the selected completion status filter.",
+        "notes": "",
+        "isNew": false
+      },
+      {
+        "id": "DE4",
+        "label": "AppliedCompletionStatusFilterSettings",
+        "refConceptId": "DE4",
+        "constraint": "Reflects the active completion status filter.",
+        "notes": "",
+        "isNew": false
+      }
+    ],
+    "constraints": [],
+    "justification": "Users need to see only incomplete or only completed tasks when such a filter is applied.",
+    "anchors": [
+      "AN5",
+      "AN7"
+    ]
+  },
+  {
+    "id": "MSG21",
+    "label": "FilterByCategoryCommand",
+    "category": "command",
+    "description": "EndUser selects a category filter for the task list view.",
+    "producer": "A1",
+    "consumer": "A2",
+    "payload": [
+      {
+        "id": "DE4",
+        "label": "CategoryFilterSettings",
+        "refConceptId": "DE4",
+        "constraint": "Indicates which category (or all) should be used to filter the visible tasks.",
+        "notes": "",
+        "isNew": false
+      }
+    ],
+    "constraints": [
+      {
+        "id": "C-MSG21-1",
+        "label": "Filter references existing category",
+        "constraint": "Any category identifier used in CategoryFilterSettings must reference an existing Category.",
+        "notes": "",
+        "isNew": true
+      }
+    ],
+    "justification": "Filtering tasks by category is a core capability to organize and view tasks by list.",
+    "anchors": [
+      "AN4",
+      "AN7"
+    ]
+  },
+  {
+    "id": "MSG22",
+    "label": "CategoryFilterAppliedEvent",
+    "category": "event",
+    "description": "TodoApplication confirms the category filter has been applied and returns the updated task list view.",
+    "producer": "A2",
+    "consumer": "A1",
+    "payload": [
+      {
+        "id": "DE3",
+        "label": "FilteredTaskListViewByCategory",
+        "refConceptId": "DE3",
+        "constraint": "Contains only tasks assigned to the selected category or all if no specific category is selected.",
+        "notes": "",
+        "isNew": false
+      },
+      {
+        "id": "DE4",
+        "label": "AppliedCategoryFilterSettings",
+        "refConceptId": "DE4",
+        "constraint": "Reflects the active category filter.",
+        "notes": "",
+        "isNew": false
+      }
+    ],
+    "constraints": [],
+    "justification": "Users need to see tasks relevant to a selected category in the main view.",
+    "anchors": [
+      "AN5",
+      "AN7"
+    ]
+  },
+  {
+    "id": "MSG23",
+    "label": "SortTasksCommand",
+    "category": "command",
+    "description": "EndUser selects a sort order for tasks in the main list view.",
+    "producer": "A1",
+    "consumer": "A2",
+    "payload": [
+      {
+        "id": "DE5",
+        "label": "RequestedSortSettings",
+        "refConceptId": "DE5",
+        "constraint": "Specifies a sort criterion such as creation time, due date, or title.",
+        "notes": "",
+        "isNew": false
+      }
+    ],
+    "constraints": [],
+    "justification": "Sorting by creation time, due date, or title is explicitly required for the task list.",
+    "anchors": [
+      "AN7"
+    ]
+  },
+  {
+    "id": "MSG24",
+    "label": "SortAppliedEvent",
+    "category": "event",
+    "description": "TodoApplication confirms the new sort order and returns the sorted task list view.",
+    "producer": "A2",
+    "consumer": "A1",
+    "payload": [
+      {
+        "id": "DE3",
+        "label": "SortedTaskListView",
+        "refConceptId": "DE3",
+        "constraint": "Tasks are ordered according to the applied sort criterion and any secondary rules.",
+        "notes": "",
+        "isNew": false
+      },
+      {
+        "id": "DE5",
+        "label": "AppliedSortSettings",
+        "refConceptId": "DE5",
+        "constraint": "Reflects the currently active sort setting.",
+        "notes": "",
+        "isNew": false
+      }
+    ],
+    "constraints": [],
+    "justification": "The list view must visually reflect the user’s chosen sort order.",
+    "anchors": [
+      "AN5",
+      "AN7"
+    ]
+  },
+  {
+    "id": "MSG25",
+    "label": "SaveFilterPreferencesCommand",
+    "category": "command",
+    "description": "EndUser indicates that the current filter settings should be remembered as part of their preferences.",
+    "producer": "A1",
+    "consumer": "A2",
+    "payload": [
+      {
+        "id": "DE4",
+        "label": "FilterSettingsToPersist",
+        "refConceptId": "DE4",
+        "constraint": "Captures the current filter configuration to persist between sessions.",
+        "notes": "",
+        "isNew": false
+      }
+    ],
+    "constraints": [],
+    "justification": "Filter preferences should be remembered so the app opens in a useful default view.",
+    "anchors": [
+      "AN8"
+    ]
+  },
+  {
+    "id": "MSG26",
+    "label": "FilterPreferencesPersistedEvent",
+    "category": "event",
+    "description": "TodoApplication confirms that filter preferences have been saved as part of the default view configuration.",
+    "producer": "A2",
+    "consumer": "A1",
+    "payload": [
+      {
+        "id": "DE6",
+        "label": "UpdatedDefaultViewConfigurationWithFilters",
+        "refConceptId": "DE6",
+        "constraint": "Includes the persisted filter settings used when opening the app.",
+        "notes": "",
+        "isNew": false
+      }
+    ],
+    "constraints": [],
+    "justification": "The app must remember filter settings for subsequent sessions.",
+    "anchors": [
+      "AN8",
+      "AN9"
+    ]
+  },
+  {
+    "id": "MSG27",
+    "label": "SaveSortPreferencesCommand",
+    "category": "command",
+    "description": "EndUser indicates that the current sort settings should be remembered as part of their preferences.",
+    "producer": "A1",
+    "consumer": "A2",
+    "payload": [
+      {
+        "id": "DE5",
+        "label": "SortSettingsToPersist",
+        "refConceptId": "DE5",
+        "constraint": "Captures the current sort configuration to persist between sessions.",
+        "notes": "",
+        "isNew": false
+      }
+    ],
+    "constraints": [],
+    "justification": "Sorting preferences should be remembered so the app opens in a useful default view.",
+    "anchors": [
+      "AN8"
+    ]
+  },
+  {
+    "id": "MSG28",
+    "label": "SortPreferencesPersistedEvent",
+    "category": "event",
+    "description": "TodoApplication confirms that sort preferences have been saved as part of the default view configuration.",
+    "producer": "A2",
+    "consumer": "A1",
+    "payload": [
+      {
+        "id": "DE6",
+        "label": "UpdatedDefaultViewConfigurationWithSorting",
+        "refConceptId": "DE6",
+        "constraint": "Includes the persisted sort settings used when opening the app.",
+        "notes": "",
+        "isNew": false
+      }
+    ],
+    "constraints": [],
+    "justification": "The app must remember sorting preferences when reopened.",
+    "anchors": [
+      "AN8",
+      "AN9"
+    ]
+  },
+  {
+    "id": "MSG29",
+    "label": "LoadDefaultViewConfigurationRequest",
+    "category": "request",
+    "description": "On startup, TodoApplication retrieves the saved default view configuration to restore filters and sorting.",
+    "producer": "A2",
+    "consumer": "A2",
+    "payload": [],
+    "constraints": [],
+    "justification": "The app should open in a useful default view based on remembered preferences.",
+    "anchors": [
+      "AN2",
+      "AN8"
+    ]
+  },
+  {
+    "id": "MSG30",
+    "label": "DefaultViewConfigurationLoadedEvent",
+    "category": "event",
+    "description": "TodoApplication indicates that default view configuration has been loaded and applied to the main list view.",
+    "producer": "A2",
+    "consumer": "A2",
+    "payload": [
+      {
+        "id": "DE6",
+        "label": "LoadedDefaultViewConfiguration",
+        "refConceptId": "DE6",
+        "constraint": "Includes any saved filter and sort settings applied as the startup view.",
+        "notes": "",
+        "isNew": false
+      }
+    ],
+    "constraints": [],
+    "justification": "Applying saved preferences defines the default view when the app opens.",
+    "anchors": [
+      "AN8",
+      "AN9"
+    ]
+  },
+  {
+    "id": "MSG31",
+    "label": "AutosaveChangesEvent",
+    "category": "event",
+    "description": "TodoApplication triggers automatic persistence of pending changes to tasks and preferences into the LocalTaskStore.",
+    "producer": "A2",
+    "consumer": "A2",
+    "payload": [
+      {
+        "id": "DE7",
+        "label": "LocalTaskStoreSnapshot",
+        "refConceptId": "DE7",
+        "constraint": "Represents the state to be saved, including tasks and relevant configuration.",
+        "notes": "",
+        "isNew": false
+      }
+    ],
+    "constraints": [
+      {
+        "id": "C-MSG31-1",
+        "label": "Autosave without explicit user action",
+        "constraint": "Autosave must occur without requiring the EndUser to click any Save button.",
+        "notes": "Aligns with the requirement that there is no explicit Save control.",
+        "isNew": true
+      }
+    ],
+    "justification": "Changes should be saved automatically without an explicit Save action, ensuring persistence between sessions.",
+    "anchors": [
+      "AN2",
+      "AN9"
+    ]
+  },
+  {
+    "id": "MSG32",
+    "label": "AutosaveCompletedEvent",
+    "category": "event",
+    "description": "TodoApplication confirms that autosave has successfully written the latest state to local storage.",
+    "producer": "A2",
+    "consumer": "A2",
+    "payload": [
+      {
+        "id": "DE7",
+        "label": "PersistedLocalTaskStoreState",
+        "refConceptId": "DE7",
+        "constraint": "Represents the confirmed persisted state after autosave.",
+        "notes": "",
+        "isNew": false
+      }
+    ],
+    "constraints": [],
+    "justification": "Ensures that tasks and preferences persist between browser sessions via local storage.",
+    "anchors": [
+      "AN2",
+      "AN9",
+      "AN10",
+      "AN13"
+    ]
+  },
+  {
+    "id": "MSG33",
+    "label": "OperateOfflineConstraintEvent",
+    "category": "event",
+    "description": "TodoApplication enforces that all core operations run without using the network after installation.",
+    "producer": "A2",
+    "consumer": "A2",
+    "payload": [],
+    "constraints": [
+      {
+        "id": "C-MSG33-1",
+        "label": "No network usage after installation",
+        "constraint": "TodoApplication must not issue network requests as part of task and preference management after installation.",
+        "notes": "",
+        "isNew": true
+      }
+    ],
+    "justification": "Everything must work offline with no background syncing or sending data over the network in the core app.",
+    "anchors": [
+      "AN1",
+      "AN10",
+      "AN13"
+    ]
+  },
+  {
+    "id": "MSG34",
+    "label": "SearchTasksRequest",
+    "category": "request",
+    "description": "EndUser initiates a free-text search across task titles and descriptions with optional filters.",
+    "producer": "A1",
+    "consumer": "A2",
+    "payload": [
+      {
+        "id": "DE16",
+        "label": "SearchQuery",
+        "refConceptId": "DE16",
+        "constraint": "Includes user-entered text and optional filters such as only incomplete tasks.",
+        "notes": "",
+        "isNew": false
+      }
+    ],
+    "constraints": [],
+    "justification": "Future search capability involves free-text search with optional filters.",
+    "anchors": [
+      "AN22"
+    ]
+  },
+  {
+    "id": "MSG35",
+    "label": "SearchResultsResponse",
+    "category": "response",
+    "description": "TodoApplication returns tasks matching the search query in a list view form.",
+    "producer": "A2",
+    "consumer": "A1",
+    "payload": [
+      {
+        "id": "DE3",
+        "label": "SearchResultTaskListView",
+        "refConceptId": "DE3",
+        "constraint": "Contains only tasks that satisfy the search query and any applied search filters.",
+        "notes": "",
+        "isNew": false
+      }
+    ],
+    "constraints": [],
+    "justification": "Search results should be shown similarly to the main list, filtered to matching tasks.",
+    "anchors": [
+      "AN5",
+      "AN22"
+    ]
+  },
+  {
+    "id": "MSG36",
+    "label": "EnableMultiDeviceSyncCommand",
+    "category": "command",
+    "description": "EndUser opts in to multi-device synchronization and configures sync options.",
+    "producer": "A1",
+    "consumer": "A2",
+    "payload": [
+      {
+        "id": "DE18",
+        "label": "SyncConfiguration",
+        "refConceptId": "DE18",
+        "constraint": "Specifies whether sync is enabled and any user-controlled privacy-related options.",
+        "notes": "",
+        "isNew": false
+      }
+    ],
+    "constraints": [
+      {
+        "id": "C-MSG36-1",
+        "label": "Sync is optional and opt-in",
+        "constraint": "SyncConfiguration must default to disabled, and sync must only be active when explicitly enabled by the EndUser.",
+        "notes": "",
+        "isNew": true
+      }
+    ],
+    "justification": "Multi-device sync is optional and must preserve privacy and local-first behavior.",
+    "anchors": [
+      "AN24"
+    ]
+  },
+  {
+    "id": "MSG37",
+    "label": "SyncConfigurationUpdatedEvent",
+    "category": "event",
+    "description": "TodoApplication confirms that sync configuration has been updated and communicates it to the SyncEngine.",
+    "producer": "A2",
+    "consumer": "A3",
+    "payload": [
+      {
+        "id": "DE18",
+        "label": "AppliedSyncConfiguration",
+        "refConceptId": "DE18",
+        "constraint": "Reflects the latest opt-in sync settings the SyncEngine must honor.",
+        "notes": "",
+        "isNew": false
+      }
+    ],
+    "constraints": [],
+    "justification": "Configuring sync options informs the SyncEngine how to handle multi-device synchronization.",
+    "anchors": [
+      "AN24"
+    ]
+  },
+  {
+    "id": "MSG38",
+    "label": "SynchronizeDataAcrossDevicesCommand",
+    "category": "command",
+    "description": "TodoApplication requests Synchronization of local task data with other devices via the SyncEngine.",
+    "producer": "A2",
+    "consumer": "A3",
+    "payload": [
+      {
+        "id": "DE7",
+        "label": "LocalTaskStoreForSync",
+        "refConceptId": "DE7",
+        "constraint": "Represents the subset of local data to be synchronized according to SyncConfiguration.",
+        "notes": "",
+        "isNew": false
+      },
+      {
+        "id": "DE18",
+        "label": "ActiveSyncConfiguration",
+        "refConceptId": "DE18",
+        "constraint": "Specifies constraints such as privacy and local-first rules for sync.",
+        "notes": "",
+        "isNew": false
+      }
+    ],
+    "constraints": [
+      {
+        "id": "C-MSG38-1",
+        "label": "Sync respects local-first and privacy",
+        "constraint": "SyncEngine must not violate privacy or local-first behavior; for example, only syncs data per opt-in settings.",
+        "notes": "",
+        "isNew": true
+      }
+    ],
+    "justification": "Synchronizing data across devices requires sending local task store content to the SyncEngine under configured constraints.",
+    "anchors": [
+      "AN24"
+    ]
+  },
+  {
+    "id": "MSG39",
+    "label": "SynchronizationCompletedEvent",
+    "category": "event",
+    "description": "SyncEngine informs TodoApplication that synchronization is complete and provides any updated task data.",
+    "producer": "A3",
+    "consumer": "A2",
+    "payload": [
+      {
+        "id": "DE7",
+        "label": "SynchronizedLocalTaskStoreState",
+        "refConceptId": "DE7",
+        "constraint": "Reflects reconciled task data after sync.",
+        "notes": "",
+        "isNew": false
+      }
+    ],
+    "constraints": [],
+    "justification": "After sync, the local application needs updated task data to present to the user.",
+    "anchors": [
+      "AN24"
+    ]
+  },
+  {
+    "id": "MSG40",
+    "label": "GenerateSmartSuggestionsRequest",
+    "category": "request",
+    "description": "TodoApplication requests suggested tasks to surface to the EndUser based on task data and behavior.",
+    "producer": "A2",
+    "consumer": "A4",
+    "payload": [
+      {
+        "id": "DE7",
+        "label": "LocalTaskStoreForSuggestions",
+        "refConceptId": "DE7",
+        "constraint": "Provides necessary task data and possibly history for generating suggestions.",
+        "notes": "",
+        "isNew": false
+      },
+      {
+        "id": "DE19",
+        "label": "SuggestionRule",
+        "refConceptId": "DE19",
+        "constraint": "Optionally captures criteria or rules such as due date and priority weightings.",
+        "notes": "",
+        "isNew": false
+      }
+    ],
+    "constraints": [],
+    "justification": "Smart suggestions require the SuggestionEngine to analyze task data and behavior.",
+    "anchors": [
+      "AN23",
+      "AN25"
+    ]
+  },
+  {
+    "id": "MSG41",
+    "label": "SmartSuggestionsResponse",
+    "category": "response",
+    "description": "SuggestionEngine returns recommended tasks for the EndUser to focus on next.",
+    "producer": "A4",
+    "consumer": "A2",
+    "payload": [
+      {
+        "id": "DE17",
+        "label": "AnalyticsSummaryForSuggestions",
+        "refConceptId": "DE17",
+        "constraint": "May include statistics that underpin the suggestions, such as overdue counts.",
+        "notes": "",
+        "isNew": false
+      },
+      {
+        "id": "DE1",
+        "label": "SuggestedTasks",
+        "refConceptId": "DE1",
+        "constraint": "Represents one or more tasks recommended as next actions.",
+        "notes": "In practice this is a collection; conceptually it is a set of Task entities.",
+        "isNew": false
+      }
+    ],
+    "constraints": [],
+    "justification": "The app must receive suggested tasks from the SuggestionEngine to present to the user.",
+    "anchors": [
+      "AN23",
+      "AN25"
+    ]
+  }
+]

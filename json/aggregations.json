@@ -1,0 +1,315 @@
+[
+  {
+    "id": "AG1",
+    "label": "TaskLifecycle",
+    "category": "lifecycle",
+    "members": [
+      "ACT1",
+      "ACT2",
+      "ACT4",
+      "ACT3"
+    ],
+    "description": "Lifecycle of an individual Task from creation through updates, completion state changes, and eventual deletion.",
+    "justification": "The specification emphasizes basic task management: creating tasks, editing them, marking them complete or incomplete, and deleting them as part of the core task lifecycle.",
+    "anchors": [
+      "AN3",
+      "AN6",
+      "AN7"
+    ]
+  },
+  {
+    "id": "AG2",
+    "label": "CategoryLifecycle",
+    "category": "lifecycle",
+    "members": [
+      "ACT5",
+      "ACT6",
+      "ACT7"
+    ],
+    "description": "Lifecycle of a Category including its creation, renaming, and deletion.",
+    "justification": "The spec describes categories (simple lists) that can be created, renamed, and deleted, forming a clear lifecycle for category management.",
+    "anchors": [
+      "AN4"
+    ]
+  },
+  {
+    "id": "AG3",
+    "label": "TaskOrganizationFlow",
+    "category": "feature",
+    "members": [
+      "DE1",
+      "DE2",
+      "ACT5",
+      "ACT6",
+      "ACT7",
+      "ACT8",
+      "ACT11"
+    ],
+    "description": "Grouping of concepts involved in organizing tasks into categories, managing category lifecycles, and viewing tasks by category.",
+    "justification": "Organization into simple lists or categories and filtering by category are described as core capabilities, along with creating, renaming, and deleting these categories.",
+    "anchors": [
+      "AN4",
+      "AN7"
+    ]
+  },
+  {
+    "id": "AG4",
+    "label": "MainListViewFlow",
+    "category": "view",
+    "members": [
+      "DE3",
+      "DE1",
+      "ACT9",
+      "ACT10",
+      "ACT11",
+      "ACT12",
+      "ACT13",
+      "ACT14"
+    ],
+    "description": "End-to-end flow for presenting and interacting with the main task list view: show tasks, then allow filtering and sorting by various criteria.",
+    "justification": "The main list view is a core capability where all tasks are shown and the user can filter by completion status and category and sort by creation time, due date, or title.",
+    "anchors": [
+      "AN5",
+      "AN7"
+    ]
+  },
+  {
+    "id": "AG5",
+    "label": "ViewPreferencePersistenceFlow",
+    "category": "view",
+    "members": [
+      "DE4",
+      "DE5",
+      "DE6",
+      "ACT15",
+      "ACT16",
+      "ACT17"
+    ],
+    "description": "Flow for configuring and persisting filter and sort preferences that define the user’s default view when opening the app.",
+    "justification": "The spec requires remembering filter and sorting preferences so the app opens in a useful default view, implying configuration and persistence of these settings.",
+    "anchors": [
+      "AN7",
+      "AN8"
+    ]
+  },
+  {
+    "id": "AG6",
+    "label": "PersistenceAndAutosaveService",
+    "category": "service",
+    "members": [
+      "A2",
+      "DE7",
+      "ACT18",
+      "ACT15",
+      "ACT16"
+    ],
+    "description": "Service-level grouping that covers automatic saving of tasks and view preferences into the local task store with no explicit Save button.",
+    "justification": "The app is local-first, must persist tasks and preferences between sessions, and must autosave changes without an explicit Save button, suggesting a persistence service centered on the LocalTaskStore.",
+    "anchors": [
+      "AN2",
+      "AN8",
+      "AN9",
+      "AN10",
+      "AN13"
+    ]
+  },
+  {
+    "id": "AG7",
+    "label": "CoreTaskAndViewDataModel",
+    "category": "data-model",
+    "members": [
+      "DE1",
+      "DE2",
+      "DE3",
+      "DE4",
+      "DE5",
+      "DE6",
+      "DE7"
+    ],
+    "description": "Core data model for the single-user app including tasks, categories, the main task list view, filter/sort settings, default view configuration, and the local task store.",
+    "justification": "These entities constitute the essential state the app manages to support the described core capabilities around tasks, categories, viewing, and persistence.",
+    "anchors": [
+      "AN2",
+      "AN3",
+      "AN4",
+      "AN5",
+      "AN7",
+      "AN8",
+      "AN9",
+      "AN13"
+    ]
+  },
+  {
+    "id": "AG8",
+    "label": "FutureTaskPriorityFeatureSet",
+    "category": "future",
+    "members": [
+      "DE8",
+      "ACT19",
+      "ACT20"
+    ],
+    "description": "Future feature set enabling simple task priority levels with corresponding visual cues.",
+    "justification": "Task priorities and visual cues are described as a nice-to-have feature, separate from the core capabilities.",
+    "anchors": [
+      "AN17"
+    ]
+  },
+  {
+    "id": "AG9",
+    "label": "FutureRemindersAndRecurrenceFeatureSet",
+    "category": "future",
+    "members": [
+      "DE9",
+      "DE10",
+      "DE11",
+      "DE12",
+      "ACT21",
+      "ACT22",
+      "ACT23",
+      "ACT24"
+    ],
+    "description": "Future capabilities for configuring local reminders and notifications as well as defining and applying recurrence patterns for tasks.",
+    "justification": "Reminders/notifications and recurring tasks are future capabilities that both extend how tasks behave over time and interact with due dates.",
+    "anchors": [
+      "AN18",
+      "AN19"
+    ]
+  },
+  {
+    "id": "AG10",
+    "label": "FutureRicherOrganizationAndSearch",
+    "category": "future",
+    "members": [
+      "DE13",
+      "DE14",
+      "DE16",
+      "ACT25",
+      "ACT26",
+      "ACT29"
+    ],
+    "description": "Future feature family providing richer organization via tags and saved views, plus free-text search across tasks with optional filters.",
+    "justification": "Richer organization (tags, saved views) and search are forward-looking enhancements that build on the core view and organization model.",
+    "anchors": [
+      "AN20",
+      "AN22"
+    ]
+  },
+  {
+    "id": "AG11",
+    "label": "FutureExportImportFeatureSet",
+    "category": "future",
+    "members": [
+      "DE15",
+      "ACT27",
+      "ACT28"
+    ],
+    "description": "Backup and portability feature set for exporting tasks to a simple file format and importing them back.",
+    "justification": "Data export and import are called out as a nice-to-have for backup and moving tasks between machines.",
+    "anchors": [
+      "AN21"
+    ]
+  },
+  {
+    "id": "AG12",
+    "label": "FutureAnalyticsAndSuggestionsFeatureSet",
+    "category": "future",
+    "members": [
+      "A4",
+      "DE17",
+      "DE19",
+      "ACT30",
+      "ACT31",
+      "ACT34"
+    ],
+    "description": "Feature set for computing analytics summaries, visualizing simple charts, and generating smart suggestions about which tasks to do next.",
+    "justification": "Analytics/insights and smart suggestions are closely related analytical capabilities and can be developed as one coherent future package with a suggestion engine.",
+    "anchors": [
+      "AN23",
+      "AN25"
+    ]
+  },
+  {
+    "id": "AG13",
+    "label": "FutureSyncFeatureSet",
+    "category": "future",
+    "members": [
+      "A3",
+      "DE18",
+      "ACT32",
+      "ACT33"
+    ],
+    "description": "Optional, opt-in multi-device synchronization feature set controlled by sync configuration and handled by a sync engine.",
+    "justification": "Multi-device sync is explicitly framed as an optional, privacy-preserving capability requiring configuration and an active synchronization mechanism.",
+    "anchors": [
+      "AN24"
+    ]
+  },
+  {
+    "id": "AG14",
+    "label": "FutureThemingAndCustomizationFeatureSet",
+    "category": "future",
+    "members": [
+      "DE20",
+      "DE21",
+      "DE3",
+      "ACT35",
+      "ACT36",
+      "ACT37"
+    ],
+    "description": "Theming and layout customization feature set covering theme settings, layout configuration, and actions to select themes, customize colors, and adjust the main view layout.",
+    "justification": "Theming and customization, including light/dark mode, custom colors, and user-defined main view layouts, are grouped as UI-oriented future enhancements.",
+    "anchors": [
+      "AN26"
+    ]
+  },
+  {
+    "id": "AG15",
+    "label": "CoreSingleUserLocalApp",
+    "category": "feature",
+    "members": [
+      "A1",
+      "A2",
+      "DE1",
+      "DE2",
+      "DE3",
+      "DE4",
+      "DE5",
+      "DE6",
+      "DE7",
+      "ACT1",
+      "ACT2",
+      "ACT3",
+      "ACT4",
+      "ACT5",
+      "ACT6",
+      "ACT7",
+      "ACT8",
+      "ACT9",
+      "ACT10",
+      "ACT11",
+      "ACT12",
+      "ACT13",
+      "ACT14",
+      "ACT15",
+      "ACT16",
+      "ACT17",
+      "ACT18",
+      "ACT38"
+    ],
+    "description": "High-level aggregate of the core single-user, local, browser-based to-do list application: main actors, core data entities, and essential actions (task and category management, main view usage, preferences, autosave, and offline operation).",
+    "justification": "The requirements emphasize a simple, single-user, offline-capable local app with no accounts, focusing on core task, category, view, and persistence behavior; this aggregation captures that core scope.",
+    "anchors": [
+      "AN1",
+      "AN2",
+      "AN3",
+      "AN4",
+      "AN5",
+      "AN6",
+      "AN7",
+      "AN8",
+      "AN9",
+      "AN10",
+      "AN13"
+    ]
+  }
+]

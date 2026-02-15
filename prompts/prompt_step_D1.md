@@ -48,9 +48,9 @@ Each requirement object:
 
 
 {
-  "id": "string",                // e.g., "FR-1", "NFR-1", "UI-1", "FR-FUT-1", "EX-1"
+  "id": "string",                // e.g., "REQ-1", "REQ-2"
   "type": "string",              // "functional" | "nonfunctional" | "ui" | "future-functional" | "excluded"
-  "status": "string",            // optional: "draft" | "proposed" | "validated" | "deprecated"
+  "status": "string",            // optional: "draft", "approved", "superseded", "deprecated"
   "label": "string",             // short, human-readable
   "category": "string",          // optional: "task" | "category" | "view" | "persistence" | "analytics" | "sync" | ...
   "description": "string",       // full requirement statement

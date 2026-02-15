@@ -1,0 +1,486 @@
+[
+  {
+    "id": "MAG1",
+    "label": "TaskLifecycleWorkflow",
+    "category": "lifecycle",
+    "description": "Workflow covering the lifecycle of a Task from creation, through edits and completion toggling, to eventual deletion and UI updates.",
+    "sequences": [
+      [
+        {
+          "id": "MSG1",
+          "label": "CreateTaskCommand",
+          "description": "EndUser creates a new task.",
+          "isNew": false
+        },
+        {
+          "id": "MSG2",
+          "label": "TaskCreatedResponse",
+          "description": "TodoApplication confirms creation and shows the new task.",
+          "isNew": false
+        },
+        {
+          "id": "MSG3",
+          "label": "EditTaskCommand",
+          "description": "EndUser edits the task’s attributes over time.",
+          "isNew": false
+        },
+        {
+          "id": "MSG4",
+          "label": "TaskEditedEvent",
+          "description": "TodoApplication updates the list view with edited details.",
+          "isNew": false
+        },
+        {
+          "id": "MSG5",
+          "label": "SetTaskCompletionStatusCommand",
+          "description": "EndUser marks the task complete or incomplete.",
+          "isNew": false
+        },
+        {
+          "id": "MSG6",
+          "label": "TaskCompletionStatusChangedEvent",
+          "description": "TodoApplication reflects new completion status in the UI.",
+          "isNew": false
+        },
+        {
+          "id": "MSG7",
+          "label": "DeleteTaskCommand",
+          "description": "EndUser deletes the task when no longer needed.",
+          "isNew": false
+        },
+        {
+          "id": "MSG8",
+          "label": "TaskDeletedEvent",
+          "description": "TodoApplication removes the task from the main list view.",
+          "isNew": false
+        }
+      ]
+    ],
+    "justification": "Implements AG1 TaskLifecycle by expressing user commands and application events for creating, editing, marking complete/incomplete, and deleting tasks.",
+    "anchors": [
+      "AN3",
+      "AN6",
+      "AN7"
+    ]
+  },
+  {
+    "id": "MAG2",
+    "label": "CategoryLifecycleWorkflow",
+    "category": "lifecycle",
+    "description": "Workflow for managing the lifecycle of categories, including creation, renaming, and deletion, with corresponding UI updates.",
+    "sequences": [
+      [
+        {
+          "id": "MSG9",
+          "label": "CreateCategoryCommand",
+          "description": "EndUser creates a new category such as Work or Personal.",
+          "isNew": false
+        },
+        {
+          "id": "MSG10",
+          "label": "CategoryCreatedEvent",
+          "description": "TodoApplication exposes the new category in the UI.",
+          "isNew": false
+        },
+        {
+          "id": "MSG11",
+          "label": "RenameCategoryCommand",
+          "description": "EndUser renames an existing category.",
+          "isNew": false
+        },
+        {
+          "id": "MSG12",
+          "label": "CategoryRenamedEvent",
+          "description": "TodoApplication shows the updated category name in lists and filters.",
+          "isNew": false
+        },
+        {
+          "id": "MSG13",
+          "label": "DeleteCategoryCommand",
+          "description": "EndUser deletes a category that is no longer needed.",
+          "isNew": false
+        },
+        {
+          "id": "MSG14",
+          "label": "CategoryDeletedEvent",
+          "description": "TodoApplication removes the category from UI and filters.",
+          "isNew": false
+        }
+      ]
+    ],
+    "justification": "Implements AG2 CategoryLifecycle by mapping creation, renaming, and deletion of categories to concrete messages.",
+    "anchors": [
+      "AN4"
+    ]
+  },
+  {
+    "id": "MAG3",
+    "label": "TaskOrganizationByCategoryWorkflow",
+    "category": "feature",
+    "description": "Workflow showing how tasks are organized into categories and how those associations affect viewing by category.",
+    "sequences": [
+      [
+        {
+          "id": "MSG9",
+          "label": "CreateCategoryCommand",
+          "description": "EndUser creates a category for organizing tasks.",
+          "isNew": false
+        },
+        {
+          "id": "MSG10",
+          "label": "CategoryCreatedEvent",
+          "description": "TodoApplication confirms the category is available.",
+          "isNew": false
+        },
+        {
+          "id": "MSG1",
+          "label": "CreateTaskCommand",
+          "description": "EndUser creates a new task.",
+          "isNew": false
+        },
+        {
+          "id": "MSG2",
+          "label": "TaskCreatedResponse",
+          "description": "TodoApplication shows the newly created task.",
+          "isNew": false
+        },
+        {
+          "id": "MSG15",
+          "label": "AssignTaskToCategoryCommand",
+          "description": "EndUser assigns the task to the created category.",
+          "isNew": false
+        },
+        {
+          "id": "MSG16",
+          "label": "TaskAssignedToCategoryEvent",
+          "description": "TodoApplication updates the task’s category association in the UI.",
+          "isNew": false
+        },
+        {
+          "id": "MSG21",
+          "label": "FilterByCategoryCommand",
+          "description": "EndUser filters the main list by that category.",
+          "isNew": false
+        },
+        {
+          "id": "MSG22",
+          "label": "CategoryFilterAppliedEvent",
+          "description": "TodoApplication shows only tasks in the selected category.",
+          "isNew": false
+        }
+      ]
+    ],
+    "justification": "Implements AG3 TaskOrganizationFlow by organizing tasks into categories and then viewing them through category filters.",
+    "anchors": [
+      "AN4",
+      "AN7"
+    ]
+  },
+  {
+    "id": "MAG4",
+    "label": "MainListViewInteractionWorkflow",
+    "category": "view",
+    "description": "End-to-end flow for using the main task list view: opening it, applying filters and sorting, and seeing results update.",
+    "sequences": [
+      [
+        {
+          "id": "MSG17",
+          "label": "ViewTaskListRequest",
+          "description": "EndUser opens the main task list view.",
+          "isNew": false
+        },
+        {
+          "id": "MSG18",
+          "label": "TaskListViewResponse",
+          "description": "TodoApplication returns an initial list according to current default filters and sorting.",
+          "isNew": false
+        },
+        {
+          "id": "MSG19",
+          "label": "FilterByCompletionStatusCommand",
+          "description": "EndUser filters tasks by completion status.",
+          "isNew": false
+        },
+        {
+          "id": "MSG20",
+          "label": "CompletionStatusFilterAppliedEvent",
+          "description": "TodoApplication shows tasks matching the completion filter.",
+          "isNew": false
+        },
+        {
+          "id": "MSG21",
+          "label": "FilterByCategoryCommand",
+          "description": "EndUser filters tasks by category.",
+          "isNew": false
+        },
+        {
+          "id": "MSG22",
+          "label": "CategoryFilterAppliedEvent",
+          "description": "TodoApplication shows tasks for the chosen category.",
+          "isNew": false
+        },
+        {
+          "id": "MSG23",
+          "label": "SortTasksCommand",
+          "description": "EndUser selects a sort order such as by due date.",
+          "isNew": false
+        },
+        {
+          "id": "MSG24",
+          "label": "SortAppliedEvent",
+          "description": "TodoApplication reorders tasks in the list view accordingly.",
+          "isNew": false
+        }
+      ]
+    ],
+    "justification": "Implements AG4 MainListViewFlow by connecting viewing, filtering, and sorting operations into a coherent interaction sequence.",
+    "anchors": [
+      "AN5",
+      "AN7"
+    ]
+  },
+  {
+    "id": "MAG5",
+    "label": "ViewPreferencePersistenceWorkflow",
+    "category": "view",
+    "description": "Workflow for configuring, persisting, and reusing filter and sort preferences as the default view.",
+    "sequences": [
+      [
+        {
+          "id": "MSG19",
+          "label": "FilterByCompletionStatusCommand",
+          "description": "EndUser configures filter settings (e.g., only incomplete).",
+          "isNew": false
+        },
+        {
+          "id": "MSG21",
+          "label": "FilterByCategoryCommand",
+          "description": "EndUser selects a category filter as part of their preferred view.",
+          "isNew": false
+        },
+        {
+          "id": "MSG23",
+          "label": "SortTasksCommand",
+          "description": "EndUser chooses a preferred sort order.",
+          "isNew": false
+        },
+        {
+          "id": "MSG25",
+          "label": "SaveFilterPreferencesCommand",
+          "description": "EndUser asks to remember current filter settings.",
+          "isNew": false
+        },
+        {
+          "id": "MSG26",
+          "label": "FilterPreferencesPersistedEvent",
+          "description": "TodoApplication saves filter preferences into default view configuration.",
+          "isNew": false
+        },
+        {
+          "id": "MSG27",
+          "label": "SaveSortPreferencesCommand",
+          "description": "EndUser asks to remember current sort settings.",
+          "isNew": false
+        },
+        {
+          "id": "MSG28",
+          "label": "SortPreferencesPersistedEvent",
+          "description": "TodoApplication saves sort preferences into default view configuration.",
+          "isNew": false
+        },
+        {
+          "id": "MSG29",
+          "label": "LoadDefaultViewConfigurationRequest",
+          "description": "On a later launch, TodoApplication loads the saved default view configuration.",
+          "isNew": false
+        },
+        {
+          "id": "MSG30",
+          "label": "DefaultViewConfigurationLoadedEvent",
+          "description": "TodoApplication applies saved preferences to the main list view.",
+          "isNew": false
+        }
+      ]
+    ],
+    "justification": "Implements AG5 ViewPreferencePersistenceFlow by showing how filter and sort preferences become the opening default view.",
+    "anchors": [
+      "AN7",
+      "AN8"
+    ]
+  },
+  {
+    "id": "MAG6",
+    "label": "PersistenceAndAutosaveServiceWorkflow",
+    "category": "service",
+    "description": "Workflow for transparently persisting tasks and view preferences into the local task store without explicit Save operations.",
+    "sequences": [
+      [
+        {
+          "id": "MSG1",
+          "label": "CreateTaskCommand",
+          "description": "EndUser creates or edits data (e.g., new task) that must be persisted.",
+          "isNew": false
+        },
+        {
+          "id": "MSG2",
+          "label": "TaskCreatedResponse",
+          "description": "TodoApplication updates in-memory and UI state for the new task.",
+          "isNew": false
+        },
+        {
+          "id": "MSG31",
+          "label": "AutosaveChangesEvent",
+          "description": "TodoApplication triggers automatic saving of updated tasks and preferences to the LocalTaskStore.",
+          "isNew": false
+        },
+        {
+          "id": "MSG32",
+          "label": "AutosaveCompletedEvent",
+          "description": "TodoApplication confirms that state has been persisted locally.",
+          "isNew": false
+        }
+      ]
+    ],
+    "justification": "Implements AG6 PersistenceAndAutosaveService by modeling autosave operations that persist tasks and preferences locally.",
+    "anchors": [
+      "AN2",
+      "AN8",
+      "AN9",
+      "AN10",
+      "AN13"
+    ]
+  },
+  {
+    "id": "MAG7",
+    "label": "OfflineCoreOperationWorkflow",
+    "category": "lifecycle",
+    "description": "Workflow emphasizing that core operations run offline and remain local-only.",
+    "sequences": [
+      [
+        {
+          "id": "MSG17",
+          "label": "ViewTaskListRequest",
+          "description": "EndUser performs core operations such as viewing and managing tasks.",
+          "isNew": false
+        },
+        {
+          "id": "MSG18",
+          "label": "TaskListViewResponse",
+          "description": "TodoApplication responds using only locally stored data.",
+          "isNew": false
+        },
+        {
+          "id": "MSG33",
+          "label": "OperateOfflineConstraintEvent",
+          "description": "TodoApplication enforces that no network calls are made for these operations.",
+          "isNew": false
+        }
+      ]
+    ],
+    "justification": "Relates to AG15 CoreSingleUserLocalApp and ACT38 OperateOffline by showing that core flows operate without network usage.",
+    "anchors": [
+      "AN1",
+      "AN2",
+      "AN10",
+      "AN13"
+    ]
+  },
+  {
+    "id": "MAG8",
+    "label": "FutureSearchAndRicherViewWorkflow",
+    "category": "future",
+    "description": "Future workflow for searching across tasks and presenting results in a list view.",
+    "sequences": [
+      [
+        {
+          "id": "MSG34",
+          "label": "SearchTasksRequest",
+          "description": "EndUser issues a free-text search for tasks with optional filters.",
+          "isNew": false
+        },
+        {
+          "id": "MSG35",
+          "label": "SearchResultsResponse",
+          "description": "TodoApplication shows matching tasks in a list-style view.",
+          "isNew": false
+        }
+      ]
+    ],
+    "justification": "Supports AG10 FutureRicherOrganizationAndSearch by modeling the search portion of the feature set.",
+    "anchors": [
+      "AN20",
+      "AN22"
+    ]
+  },
+  {
+    "id": "MAG9",
+    "label": "FutureSyncFeatureSetWorkflow",
+    "category": "future",
+    "description": "Future workflow for opting into multi-device sync and performing synchronization via the SyncEngine.",
+    "sequences": [
+      [
+        {
+          "id": "MSG36",
+          "label": "EnableMultiDeviceSyncCommand",
+          "description": "EndUser enables sync and configures options.",
+          "isNew": false
+        },
+        {
+          "id": "MSG37",
+          "label": "SyncConfigurationUpdatedEvent",
+          "description": "TodoApplication forwards sync configuration to the SyncEngine.",
+          "isNew": false
+        },
+        {
+          "id": "MSG38",
+          "label": "SynchronizeDataAcrossDevicesCommand",
+          "description": "TodoApplication asks the SyncEngine to synchronize local data with other devices.",
+          "isNew": false
+        },
+        {
+          "id": "MSG39",
+          "label": "SynchronizationCompletedEvent",
+          "description": "SyncEngine returns updated task data to TodoApplication after reconciliation.",
+          "isNew": false
+        }
+      ]
+    ],
+    "justification": "Implements AG13 FutureSyncFeatureSet by detailing how sync configuration and data exchange occur between TodoApplication and SyncEngine.",
+    "anchors": [
+      "AN24"
+    ]
+  },
+  {
+    "id": "MAG10",
+    "label": "FutureAnalyticsAndSmartSuggestionsWorkflow",
+    "category": "future",
+    "description": "Future workflow for computing analytics and generating smart suggestions via the SuggestionEngine.",
+    "sequences": [
+      [
+        {
+          "id": "MSG31",
+          "label": "AutosaveChangesEvent",
+          "description": "TodoApplication ensures task data and completion history are persisted for analysis.",
+          "isNew": false
+        },
+        {
+          "id": "MSG40",
+          "label": "GenerateSmartSuggestionsRequest",
+          "description": "TodoApplication sends local task and behavior data to the SuggestionEngine.",
+          "isNew": false
+        },
+        {
+          "id": "MSG41",
+          "label": "SmartSuggestionsResponse",
+          "description": "SuggestionEngine returns suggested tasks and supporting analytics summary.",
+          "isNew": false
+        }
+      ]
+    ],
+    "justification": "Implements AG12 FutureAnalyticsAndSuggestionsFeatureSet by sequencing analytics and suggestion generation interactions.",
+    "anchors": [
+      "AN23",
+      "AN25"
+    ]
+  }
+]

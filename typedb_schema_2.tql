@@ -148,6 +148,14 @@ define
 		owns identifier @key,
 		plays membership:member;
 
+	entity requirement sub design-concept,
+		owns requirement-id @key,
+		owns requirement-type,
+		owns status,
+		owns priority,
+		plays requiring:required-by;
+
+
 	attribute identifier value string @regex("^[a-zA-Z_][a-zA-Z0-9_.]*$");
 	attribute title value string;
 	attribute id-label value string @regex("^[A-Z_][a-zA-Z0-9_.]*$");
@@ -172,4 +180,8 @@ define
 	attribute action-agg-id sub artifact-id, value string @regex("^AG\d+$");
 	attribute message-agg-id sub artifact-id, value string @regex("^MAG\d+$");	
 	attribute constraint-id sub artifact-id, value string @regex("^C-[a-zA-Z0-9_.]*$");
-	
+	attribute requirement-id sub artifact-id, value string @regex("^REQ-[a-zA-Z0-9_.]*$");
+
+	attribute requirement-type value string @values("functional", "nonfunctional", "ui", "future-functional");
+	attribute priority value string @values("must", "should", "could");
+
