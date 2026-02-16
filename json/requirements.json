@@ -1,13 +1,12 @@
 [
   {
-    "id": "FR-1",
+    "id": "REQ-1",
     "type": "functional",
     "status": "draft",
-    "label": "Local single-user browser-based to-do app",
+    "label": "FR_1",
     "category": "category",
-    "description": "The system shall operate as a simple, single-user to-do list application that runs in a standard desktop or laptop web browser on the user’s local machine without relying on external online services or user accounts.",
+    "description": "The system shall operate as a simple, single-user to-do list application that runs in a standard desktop or laptop web browser on the user\u00e2\u20ac\u2122s local machine without relying on external online services or user accounts.",
     "priority": "must",
-    "sectionHint": "1.1",
     "anchors": [
       "AN1",
       "AN2"
@@ -20,17 +19,16 @@
       "DE25"
     ],
     "relatedMessages": [],
-    "notes": "Summarizes the overall deployment and single-user context; detailed privacy and offline aspects are captured in separate non-functional requirements."
+    "justification": "Summarizes the overall deployment and single-user context; detailed privacy and offline aspects are captured in separate non-functional requirements."
   },
   {
-    "id": "FR-2",
+    "id": "REQ-2",
     "type": "functional",
     "status": "draft",
-    "label": "Local persistence of tasks between sessions",
+    "label": "FR_2",
     "category": "persistence",
-    "description": "The system shall store all task data and relevant configuration locally on the user’s machine so that tasks and their attributes persist between browser sessions without requiring user accounts or remote storage.",
+    "description": "The system shall store all task data and relevant configuration locally on the user\u00e2\u20ac\u2122s machine so that tasks and their attributes persist between browser sessions without requiring user accounts or remote storage.",
     "priority": "must",
-    "sectionHint": "1.2",
     "anchors": [
       "AN2"
     ],
@@ -44,17 +42,16 @@
       "MSG31",
       "MSG32"
     ],
-    "notes": "Persistence mechanism details are implementation-specific but must ensure tasks remain available across sessions."
+    "justification": "Persistence mechanism details are implementation-specific but must ensure tasks remain available across sessions."
   },
   {
-    "id": "FR-3",
+    "id": "REQ-3",
     "type": "functional",
     "status": "draft",
-    "label": "Create tasks with basic attributes",
+    "label": "FR_3",
     "category": "task",
     "description": "The system shall allow the user to create new tasks with at least a non-empty title and optionally a description and due date, and shall persist each created task.",
     "priority": "must",
-    "sectionHint": "2.1",
     "anchors": [
       "AN3"
     ],
@@ -68,17 +65,16 @@
       "MSG1",
       "MSG2"
     ],
-    "notes": "Validation must reject creation when the title is empty or whitespace as per MSG1 constraint."
+    "justification": "Validation must reject creation when the title is empty or whitespace as per MSG1 constraint."
   },
   {
-    "id": "FR-4",
+    "id": "REQ-4",
     "type": "functional",
     "status": "draft",
-    "label": "Organize tasks into categories",
+    "label": "FR_4",
     "category": "category",
     "description": "The system shall allow the user to organize tasks into simple lists or categories (e.g., Work, Personal) by assigning tasks to categories.",
     "priority": "must",
-    "sectionHint": "2.2",
     "anchors": [
       "AN4"
     ],
@@ -93,17 +89,16 @@
       "MSG15",
       "MSG16"
     ],
-    "notes": "Tasks may be created unassigned or assigned to a category at any time; exact rules (e.g., multiple categories per task) are left open."
+    "justification": "Tasks may be created unassigned or assigned to a category at any time; exact rules (e.g., multiple categories per task) are left open."
   },
   {
-    "id": "FR-5",
+    "id": "REQ-5",
     "type": "functional",
     "status": "draft",
-    "label": "Manage category lifecycle",
+    "label": "FR_5",
     "category": "category",
     "description": "The system shall allow the user to create, rename, and delete task categories that are used to organize tasks, and shall update any category lists and filters in the UI accordingly.",
     "priority": "must",
-    "sectionHint": "2.2",
     "anchors": [
       "AN4"
     ],
@@ -123,17 +118,16 @@
       "MSG13",
       "MSG14"
     ],
-    "notes": "The behavior when deleting a category that still has tasks assigned (e.g., unassign vs. prevent deletion) must be defined and implemented as per MSG13 constraint."
+    "justification": "The behavior when deleting a category that still has tasks assigned (e.g., unassign vs. prevent deletion) must be defined and implemented as per MSG13 constraint."
   },
   {
-    "id": "FR-6",
+    "id": "REQ-6",
     "type": "functional",
     "status": "draft",
-    "label": "Display main task list view",
+    "label": "FR_6",
     "category": "view",
     "description": "The system shall provide a main task list view that displays all relevant tasks and allows the user to scan and interact with them.",
     "priority": "must",
-    "sectionHint": "2.3",
     "anchors": [
       "AN5"
     ],
@@ -152,17 +146,16 @@
       "MSG24",
       "MSG35"
     ],
-    "notes": "Interaction operations (edit, complete, delete) are covered by separate requirements; this focuses on the existence of a central list view."
+    "justification": "Interaction operations (edit, complete, delete) are covered by separate requirements; this focuses on the existence of a central list view."
   },
   {
-    "id": "FR-7",
+    "id": "REQ-7",
     "type": "functional",
     "status": "draft",
-    "label": "Edit and delete existing tasks",
+    "label": "FR_7",
     "category": "task",
-    "description": "The system shall allow the user to modify existing tasks’ attributes (including title, description, due date, and category) and to delete tasks, ensuring that the task list view reflects edits and removals.",
+    "description": "The system shall allow the user to modify existing tasks\u00e2\u20ac\u2122 attributes (including title, description, due date, and category) and to delete tasks, ensuring that the task list view reflects edits and removals.",
     "priority": "must",
-    "sectionHint": "2.4",
     "anchors": [
       "AN6"
     ],
@@ -179,17 +172,16 @@
       "MSG7",
       "MSG8"
     ],
-    "notes": "Edits and deletions must operate only on existing tasks as constrained in MSG3 and MSG7."
+    "justification": "Edits and deletions must operate only on existing tasks as constrained in MSG3 and MSG7."
   },
   {
-    "id": "FR-8",
+    "id": "REQ-8",
     "type": "functional",
     "status": "draft",
-    "label": "Manage task completion status",
+    "label": "FR_8",
     "category": "task",
     "description": "The system shall allow the user to mark tasks as complete or incomplete and shall keep the completion status up to date so that it is reflected correctly in the main task list view and any related filters.",
     "priority": "must",
-    "sectionHint": "2.4",
     "anchors": [
       "AN6",
       "AN7"
@@ -204,17 +196,16 @@
       "MSG5",
       "MSG6"
     ],
-    "notes": "Completion status updates must be safe to repeat (idempotent) as per MSG5 constraint."
+    "justification": "Completion status updates must be safe to repeat (idempotent) as per MSG5 constraint."
   },
   {
-    "id": "FR-9",
+    "id": "REQ-9",
     "type": "functional",
     "status": "draft",
-    "label": "Filter tasks by completion status",
+    "label": "FR_9",
     "category": "view",
     "description": "The system shall allow the user to filter tasks in the main list view by completion status, including at least: all tasks, only incomplete tasks, and only completed tasks.",
     "priority": "must",
-    "sectionHint": "2.5",
     "anchors": [
       "AN7"
     ],
@@ -230,17 +221,16 @@
       "MSG19",
       "MSG20"
     ],
-    "notes": "The applied status filter must be clearly represented in the returned view and filter settings."
+    "justification": "The applied status filter must be clearly represented in the returned view and filter settings."
   },
   {
-    "id": "FR-10",
+    "id": "REQ-10",
     "type": "functional",
     "status": "draft",
-    "label": "Filter tasks by category",
+    "label": "FR_10",
     "category": "view",
     "description": "The system shall allow the user to filter the main task list view by category so that only tasks assigned to the selected category (or all categories) are shown.",
     "priority": "must",
-    "sectionHint": "2.5",
     "anchors": [
       "AN4",
       "AN7"
@@ -258,17 +248,16 @@
       "MSG21",
       "MSG22"
     ],
-    "notes": "Any category used in a filter must reference an existing category as constrained in MSG21."
+    "justification": "Any category used in a filter must reference an existing category as constrained in MSG21."
   },
   {
-    "id": "FR-11",
+    "id": "REQ-11",
     "type": "functional",
     "status": "draft",
-    "label": "Sort tasks in the main list view",
+    "label": "FR_11",
     "category": "view",
     "description": "The system shall allow the user to sort tasks in the main list view by at least creation time, due date, and title, and shall present the list ordered accordingly.",
     "priority": "must",
-    "sectionHint": "2.5",
     "anchors": [
       "AN7"
     ],
@@ -286,17 +275,16 @@
       "MSG23",
       "MSG24"
     ],
-    "notes": "Secondary sorting rules (e.g., tie-breakers) are implementation-specific but must be consistent."
+    "justification": "Secondary sorting rules (e.g., tie-breakers) are implementation-specific but must be consistent."
   },
   {
-    "id": "FR-12",
+    "id": "REQ-12",
     "type": "functional",
     "status": "draft",
-    "label": "Persist filter preferences as default view",
+    "label": "FR_12",
     "category": "persistence",
-    "description": "The system shall be able to remember the user’s chosen filter settings and include them in the default view configuration used when the application opens.",
+    "description": "The system shall be able to remember the user\u00e2\u20ac\u2122s chosen filter settings and include them in the default view configuration used when the application opens.",
     "priority": "must",
-    "sectionHint": "2.6",
     "anchors": [
       "AN8"
     ],
@@ -314,17 +302,16 @@
       "MSG29",
       "MSG30"
     ],
-    "notes": "Filters that the user wishes to persist must be stored in a way that can be restored on startup as part of the default view."
+    "justification": "Filters that the user wishes to persist must be stored in a way that can be restored on startup as part of the default view."
   },
   {
-    "id": "FR-13",
+    "id": "REQ-13",
     "type": "functional",
     "status": "draft",
-    "label": "Persist sort preferences as default view",
+    "label": "FR_13",
     "category": "persistence",
-    "description": "The system shall be able to remember the user’s chosen sort settings and include them in the default view configuration used when the application opens.",
+    "description": "The system shall be able to remember the user\u00e2\u20ac\u2122s chosen sort settings and include them in the default view configuration used when the application opens.",
     "priority": "must",
-    "sectionHint": "2.6",
     "anchors": [
       "AN8"
     ],
@@ -342,17 +329,16 @@
       "MSG29",
       "MSG30"
     ],
-    "notes": "Sorting preferences should be applied automatically to the main list view when the app starts."
+    "justification": "Sorting preferences should be applied automatically to the main list view when the app starts."
   },
   {
-    "id": "FR-14",
+    "id": "REQ-14",
     "type": "functional",
     "status": "draft",
-    "label": "Open with useful default view",
+    "label": "FR_14",
     "category": "view",
     "description": "When the application starts, it shall load any saved default view configuration, including persisted filter and sort settings, and apply it to the main task list view so that the user sees a useful default view.",
     "priority": "must",
-    "sectionHint": "2.6",
     "anchors": [
       "AN2",
       "AN8"
@@ -367,17 +353,16 @@
       "MSG30",
       "MSG18"
     ],
-    "notes": "If no saved configuration exists, a sensible default must still be provided (e.g., all tasks, reasonable sort)."
+    "justification": "If no saved configuration exists, a sensible default must still be provided (e.g., all tasks, reasonable sort)."
   },
   {
-    "id": "FR-15",
+    "id": "REQ-15",
     "type": "functional",
     "status": "draft",
-    "label": "Automatic saving of changes",
+    "label": "FR_15",
     "category": "persistence",
     "description": "The system shall automatically save changes to tasks and user preferences to local storage without requiring the user to perform any explicit Save action or use a Save button.",
     "priority": "must",
-    "sectionHint": "2.7",
     "anchors": [
       "AN9"
     ],
@@ -392,17 +377,16 @@
       "MSG31",
       "MSG32"
     ],
-    "notes": "Autosave must be reliable and frequent enough to preserve user data while respecting performance constraints."
+    "justification": "Autosave must be reliable and frequent enough to preserve user data while respecting performance constraints."
   },
   {
-    "id": "NFR-1",
+    "id": "REQ-16",
     "type": "nonfunctional",
     "status": "draft",
-    "label": "Offline operation without network",
+    "label": "NFR_1",
     "category": "sync",
     "description": "The system shall support full execution of all core operations (task creation, editing, deletion, viewing, filtering, sorting, and persistence) while completely offline, and shall not issue network requests as part of normal operation after installation.",
     "priority": "must",
-    "sectionHint": "3.1",
     "anchors": [
       "AN1",
       "AN10",
@@ -416,17 +400,16 @@
     "relatedMessages": [
       "MSG33"
     ],
-    "notes": "Any future sync or integration features must be strictly opt-in and not affect default offline behavior."
+    "justification": "Any future sync or integration features must be strictly opt-in and not affect default offline behavior."
   },
   {
-    "id": "NFR-2",
+    "id": "REQ-17",
     "type": "nonfunctional",
     "status": "draft",
-    "label": "Performance for typical personal usage",
+    "label": "NFR_2",
     "category": "analytics",
     "description": "The system shall remain reasonably fast and responsive for typical personal usage scenarios, including managing up to a few thousand tasks in the local store and main list view.",
     "priority": "should",
-    "sectionHint": "3.2",
     "anchors": [
       "AN11"
     ],
@@ -437,17 +420,16 @@
       "DE7"
     ],
     "relatedMessages": [],
-    "notes": "Exact performance metrics (e.g., response times) can be refined later but must maintain a smooth user experience at the indicated scale."
+    "justification": "Exact performance metrics (e.g., response times) can be refined later but must maintain a smooth user experience at the indicated scale."
   },
   {
-    "id": "UI-1",
+    "id": "REQ-18",
     "type": "ui",
     "status": "draft",
-    "label": "Simple, intuitive user interface",
+    "label": "UI_1",
     "category": "ui",
-    "description": "The application’s user interface shall be simple and intuitive enough that most users can learn to use it without reading documentation.",
+    "description": "The application\u00e2\u20ac\u2122s user interface shall be simple and intuitive enough that most users can learn to use it without reading documentation.",
     "priority": "should",
-    "sectionHint": "3.3",
     "anchors": [
       "AN12"
     ],
@@ -456,17 +438,16 @@
       "DE3"
     ],
     "relatedMessages": [],
-    "notes": "This includes clarity of controls, layouts, and labels, but does not prescribe a specific visual design."
+    "justification": "This includes clarity of controls, layouts, and labels, but does not prescribe a specific visual design."
   },
   {
-    "id": "NFR-3",
+    "id": "REQ-19",
     "type": "nonfunctional",
     "status": "draft",
-    "label": "Local-only data and privacy",
+    "label": "NFR_3",
     "category": "privacy",
     "description": "The system shall keep all task data and related configuration on the local machine and shall not perform background syncing or send user data over the network in the core application.",
     "priority": "must",
-    "sectionHint": "3.4",
     "anchors": [
       "AN13"
     ],
@@ -479,17 +460,16 @@
       "MSG31",
       "MSG32"
     ],
-    "notes": "Any future sync functionality must be explicitly opt-in and respect local-first privacy expectations."
+    "justification": "Any future sync functionality must be explicitly opt-in and respect local-first privacy expectations."
   },
   {
-    "id": "EX-1",
+    "id": "REQ-20",
     "type": "excluded",
     "status": "draft",
-    "label": "No multi-user accounts or authentication",
+    "label": "EX_1",
     "category": "category",
     "description": "The system shall not provide multi-user features, user accounts, or authentication mechanisms; it is strictly a single-user application.",
     "priority": "must",
-    "sectionHint": "4.1",
     "anchors": [
       "AN2",
       "AN14"
@@ -499,17 +479,16 @@
       "DE23"
     ],
     "relatedMessages": [],
-    "notes": "Any identity or login-related functionality is out of scope for this version."
+    "justification": "Any identity or login-related functionality is out of scope for this version."
   },
   {
-    "id": "EX-2",
+    "id": "REQ-21",
     "type": "excluded",
     "status": "draft",
-    "label": "No collaboration or shared lists",
+    "label": "EX_2",
     "category": "category",
     "description": "The system shall not support collaboration features such as shared task lists or concurrent multi-user editing.",
     "priority": "must",
-    "sectionHint": "4.2",
     "anchors": [
       "AN15"
     ],
@@ -517,17 +496,16 @@
       "DE24"
     ],
     "relatedMessages": [],
-    "notes": "All lists and tasks are private to the single local user."
+    "justification": "All lists and tasks are private to the single local user."
   },
   {
-    "id": "EX-3",
+    "id": "REQ-22",
     "type": "excluded",
     "status": "draft",
-    "label": "No mobile-specific design or external integrations in first version",
+    "label": "EX_3",
     "category": "sync",
     "description": "The first version of the system shall not provide mobile-specific designs or native mobile applications and shall not integrate with specific external services or technologies.",
     "priority": "must",
-    "sectionHint": "4.3",
     "anchors": [
       "AN16"
     ],
@@ -535,17 +513,16 @@
       "DE25"
     ],
     "relatedMessages": [],
-    "notes": "The target environment is a standard desktop or laptop browser; integrations may be considered in future versions."
+    "justification": "The target environment is a standard desktop or laptop browser; integrations may be considered in future versions."
   },
   {
-    "id": "FR-FUT-1",
+    "id": "REQ-23",
     "type": "future-functional",
     "status": "draft",
-    "label": "Task priority levels with visual cues",
+    "label": "FR_FUT_1",
     "category": "task",
-    "description": "In a future version, the system could allow the user to assign simple priority levels (e.g., Low, Medium, High) to tasks and display visual cues that reflect each task’s priority.",
+    "description": "In a future version, the system could allow the user to assign simple priority levels (e.g., Low, Medium, High) to tasks and display visual cues that reflect each task\u00e2\u20ac\u2122s priority.",
     "priority": "could",
-    "sectionHint": "5.1",
     "anchors": [
       "AN17"
     ],
@@ -557,17 +534,16 @@
       "ACT20"
     ],
     "relatedMessages": [],
-    "notes": "Priority may later be used by other features such as smart suggestions or saved views."
+    "justification": "Priority may later be used by other features such as smart suggestions or saved views."
   },
   {
-    "id": "FR-FUT-2",
+    "id": "REQ-24",
     "type": "future-functional",
     "status": "draft",
-    "label": "Local reminders and notifications for due dates",
+    "label": "FR_FUT_2",
     "category": "task",
     "description": "In a future version, the system could support local reminders for task due dates, generating pop-up or system notifications so that tasks are not forgotten.",
     "priority": "could",
-    "sectionHint": "5.2",
     "anchors": [
       "AN18"
     ],
@@ -580,17 +556,16 @@
       "ACT22"
     ],
     "relatedMessages": [],
-    "notes": "Reminder scheduling and notification behavior must remain consistent with offline and privacy constraints."
+    "justification": "Reminder scheduling and notification behavior must remain consistent with offline and privacy constraints."
   },
   {
-    "id": "FR-FUT-3",
+    "id": "REQ-25",
     "type": "future-functional",
     "status": "draft",
-    "label": "Recurring tasks with schedule patterns",
+    "label": "FR_FUT_3",
     "category": "task",
     "description": "In a future version, the system could allow tasks to be configured as recurring with patterns such as daily, weekly, monthly, or custom schedules, automatically generating repeated task instances accordingly.",
     "priority": "could",
-    "sectionHint": "5.3",
     "anchors": [
       "AN19"
     ],
@@ -603,17 +578,16 @@
       "ACT24"
     ],
     "relatedMessages": [],
-    "notes": "The exact semantics for generating and completing recurring instances will need further specification."
+    "justification": "The exact semantics for generating and completing recurring instances will need further specification."
   },
   {
-    "id": "FR-FUT-4",
+    "id": "REQ-26",
     "type": "future-functional",
     "status": "draft",
-    "label": "Tags and saved views for richer organization",
+    "label": "FR_FUT_4",
     "category": "view",
     "description": "In a future version, the system could support tags in addition to categories and allow users to define and save view configurations (e.g., Today, This Week, High Priority) that can be recalled later.",
     "priority": "could",
-    "sectionHint": "5.4",
     "anchors": [
       "AN20"
     ],
@@ -628,17 +602,16 @@
       "ACT26"
     ],
     "relatedMessages": [],
-    "notes": "Saved views may build on existing filter and sort settings plus future attributes like priority and tags."
+    "justification": "Saved views may build on existing filter and sort settings plus future attributes like priority and tags."
   },
   {
-    "id": "FR-FUT-5",
+    "id": "REQ-27",
     "type": "future-functional",
     "status": "draft",
-    "label": "Export and import tasks via simple files",
+    "label": "FR_FUT_5",
     "category": "persistence",
     "description": "In a future version, the system could allow users to export tasks to a simple file format and import tasks from such files for backup or moving data between machines.",
     "priority": "could",
-    "sectionHint": "5.5",
     "anchors": [
       "AN21"
     ],
@@ -651,17 +624,16 @@
       "ACT28"
     ],
     "relatedMessages": [],
-    "notes": "The file format should remain simple and compatible across versions; import behavior for duplicates needs definition."
+    "justification": "The file format should remain simple and compatible across versions; import behavior for duplicates needs definition."
   },
   {
-    "id": "FR-FUT-6",
+    "id": "REQ-28",
     "type": "future-functional",
     "status": "draft",
-    "label": "Free-text search across tasks",
+    "label": "FR_FUT_6",
     "category": "view",
     "description": "In a future version, the system could support free-text search across task titles and descriptions, optionally constrained by filters such as only incomplete tasks, and present results in a list view.",
     "priority": "could",
-    "sectionHint": "5.6",
     "anchors": [
       "AN22"
     ],
@@ -676,17 +648,16 @@
       "MSG34",
       "MSG35"
     ],
-    "notes": "Search results should reuse the familiar task list layout to minimize additional learning for users."
+    "justification": "Search results should reuse the familiar task list layout to minimize additional learning for users."
   },
   {
-    "id": "FR-FUT-7",
+    "id": "REQ-29",
     "type": "future-functional",
     "status": "draft",
-    "label": "Task analytics and insights",
+    "label": "FR_FUT_7",
     "category": "analytics",
     "description": "In a future version, the system could provide simple analytics and insights such as tasks completed per week, counts of overdue tasks, completion streaks, and basic charts visualizing these statistics.",
     "priority": "could",
-    "sectionHint": "5.7",
     "anchors": [
       "AN23"
     ],
@@ -698,17 +669,16 @@
       "ACT31"
     ],
     "relatedMessages": [],
-    "notes": "Analytics may also serve as input to smart suggestion features."
+    "justification": "Analytics may also serve as input to smart suggestion features."
   },
   {
-    "id": "FR-FUT-8",
+    "id": "REQ-30",
     "type": "future-functional",
     "status": "draft",
-    "label": "Opt-in multi-device synchronization",
+    "label": "FR_FUT_8",
     "category": "sync",
     "description": "In a future version, the system could support optional, opt-in synchronization of task data across multiple devices (e.g., home and work PCs) via a SyncEngine while preserving privacy and local-first behavior.",
     "priority": "could",
-    "sectionHint": "5.8",
     "anchors": [
       "AN24"
     ],
@@ -727,17 +697,16 @@
       "MSG38",
       "MSG39"
     ],
-    "notes": "Sync must be disabled by default and must honor user-configured privacy and scope settings as constrained in MSG36 and MSG38."
+    "justification": "Sync must be disabled by default and must honor user-configured privacy and scope settings as constrained in MSG36 and MSG38."
   },
   {
-    "id": "FR-FUT-9",
+    "id": "REQ-31",
     "type": "future-functional",
     "status": "draft",
-    "label": "Smart task suggestions",
+    "label": "FR_FUT_9",
     "category": "analytics",
     "description": "In a future version, the system could provide smart suggestions indicating which tasks the user should do next, based on factors such as due dates, priority, and past behavior, using a SuggestionEngine.",
     "priority": "could",
-    "sectionHint": "5.9",
     "anchors": [
       "AN25"
     ],
@@ -755,17 +724,16 @@
       "MSG40",
       "MSG41"
     ],
-    "notes": "The criteria and rules for generating suggestions should be transparent and adjustable where feasible."
+    "justification": "The criteria and rules for generating suggestions should be transparent and adjustable where feasible."
   },
   {
-    "id": "FR-FUT-10",
+    "id": "REQ-32",
     "type": "future-functional",
     "status": "draft",
-    "label": "Theming and layout customization",
+    "label": "FR_FUT_10",
     "category": "ui",
     "description": "In a future version, the system could allow users to customize the visual appearance and layout of the main task view, including selecting light or dark mode, customizing colors, and defining their own main view layout.",
     "priority": "could",
-    "sectionHint": "5.10",
     "anchors": [
       "AN26"
     ],
@@ -779,6 +747,6 @@
       "ACT37"
     ],
     "relatedMessages": [],
-    "notes": "User-selected themes and layouts should integrate cleanly with default view and filtering behaviors."
+    "justification": "User-selected themes and layouts should integrate cleanly with default view and filtering behaviors."
   }
 ]
