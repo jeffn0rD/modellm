@@ -2,9 +2,10 @@
 
 import pytest
 from unittest.mock import Mock, MagicMock, patch
-from ..entity_manager import EntityManager
-from ..entities import Actor, Action, TextBlock
-from ..client import TypeDBClient, TransactionType
+# Use absolute imports from the package
+from tools.typedb_v3_client.entity_manager import EntityManager
+from tools.typedb_v3_client.entities import Actor, Action, TextBlock
+from tools.typedb_v3_client.client import TypeDBClient, TransactionType
 
 
 class TestEntityManager:

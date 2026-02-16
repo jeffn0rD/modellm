@@ -12,7 +12,15 @@ A Python library for TypeDB v3 operations with support for:
 __version__ = "0.1.0"
 
 # Main exports
-from .client import TypeDBClient, TransactionType
+from .client import (
+    TypeDBClient, TransactionType, TransactionContext,
+    SecureTokenManager,
+    validate_base_url, validate_credentials, validate_timeout,
+    validate_operation_timeouts,
+    create_optimized_session,
+    DEFAULT_POOL_CONNECTIONS, DEFAULT_POOL_MAXSIZE,
+    DEFAULT_MAX_RETRIES, DEFAULT_BACKOFF_FACTOR
+)
 from .query_builder import QueryBuilder, Variable, RelationBuilder
 from .entities import (
     Entity, Relation,
@@ -35,6 +43,17 @@ __all__ = [
     # Client
     "TypeDBClient",
     "TransactionType",
+    "TransactionContext",
+    "SecureTokenManager",
+    "validate_base_url",
+    "validate_credentials",
+    "validate_timeout",
+    "validate_operation_timeouts",
+    "create_optimized_session",
+    "DEFAULT_POOL_CONNECTIONS",
+    "DEFAULT_POOL_MAXSIZE",
+    "DEFAULT_MAX_RETRIES",
+    "DEFAULT_BACKOFF_FACTOR",
     
     # Query Builder
     "QueryBuilder",

@@ -8,12 +8,20 @@ import requests
 from unittest.mock import Mock, patch, MagicMock
 from pathlib import Path
 
-from ..client import TypeDBClient, TransactionType, TransactionContext
-from ..exceptions import (
+import sys
+from pathlib import Path
+
+# Add project root to Python path for absolute imports
+project_root = Path(__file__).parent.parent.parent.parent
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
+
+# Import from tools.typedb_v3_client package
+from tools.typedb_v3_client import TypeDBClient, TransactionType, TransactionContext
+from tools.typedb_v3_client.exceptions import (
     TypeDBConnectionError, TypeDBAuthenticationError,
     TypeDBQueryError, TypeDBServerError, TypeDBValidationError
 )
-
 
 class TestTypeDBClient:
     """Test TypeDBClient class."""
@@ -36,7 +44,7 @@ class TestTypeDBClient:
             assert client.username == "admin"
             assert client.password == "password"
     
-    @patch('tools.typedb_v3_client.client.requests.Session')
+    @patch('typedb_v3_client.client.requests.Session')
     def test_authenticate_success(self, mock_session_class):
         """Test successful authentication."""
         mock_session = Mock()
@@ -55,7 +63,7 @@ class TestTypeDBClient:
         
         assert client._token == "test_token"
     
-    @patch('tools.typedb_v3_client.client.requests.Session')
+    @patch('typedb_v3_client.client.requests.Session')
     def test_authenticate_failure(self, mock_session_class):
         """Test authentication failure."""
         mock_session = Mock()
@@ -70,7 +78,7 @@ class TestTypeDBClient:
                 password="password"
             )
     
-    @patch('tools.typedb_v3_client.client.requests.Session')
+    @patch('typedb_v3_client.client.requests.Session')
     def test_authenticate_no_token(self, mock_session_class):
         """Test authentication with no token in response."""
         mock_session = Mock()
@@ -108,7 +116,7 @@ class TestTypeDBClient:
             assert headers["Content-Type"] == "application/json"
             assert headers["Authorization"] == "Bearer test_token"
     
-    @patch('tools.typedb_v3_client.client.requests.Session')
+    @patch('typedb_v3_client.client.requests.Session')
     def test_list_databases(self, mock_session_class):
         """Test list_databases."""
         mock_session = Mock()
@@ -123,7 +131,7 @@ class TestTypeDBClient:
         databases = client.list_databases()
         assert databases == ["db1", "db2"]
     
-    @patch('tools.typedb_v3_client.client.requests.Session')
+    @patch('typedb_v3_client.client.requests.Session')
     def test_create_database_success(self, mock_session_class):
         """Test create_database success."""
         mock_session = Mock()
@@ -138,7 +146,7 @@ class TestTypeDBClient:
         
         # Should not raise
     
-    @patch('tools.typedb_v3_client.client.requests.Session')
+    @patch('typedb_v3_client.client.requests.Session')
     def test_create_database_already_exists(self, mock_session_class):
         """Test create_database when database already exists."""
         mock_session = Mock()
@@ -157,7 +165,7 @@ class TestTypeDBClient:
         with pytest.raises(TypeDBValidationError):
             client.create_database("test_db")
     
-    @patch('tools.typedb_v3_client.client.requests.Session')
+    @patch('typedb_v3_client.client.requests.Session')
     def test_delete_database_success(self, mock_session_class):
         """Test delete_database success."""
         mock_session = Mock()
@@ -172,7 +180,7 @@ class TestTypeDBClient:
         
         # Should not raise
     
-    @patch('tools.typedb_v3_client.client.requests.Session')
+    @patch('typedb_v3_client.client.requests.Session')
     def test_delete_database_not_found(self, mock_session_class):
         """Test delete_database when database doesn't exist."""
         mock_session = Mock()
@@ -191,7 +199,7 @@ class TestTypeDBClient:
         with pytest.raises(TypeDBValidationError):
             client.delete_database("test_db")
     
-    @patch('tools.typedb_v3_client.client.requests.Session')
+    @patch('typedb_v3_client.client.requests.Session')
     def test_database_exists_true(self, mock_session_class):
         """Test database_exists returns True."""
         mock_session = Mock()
@@ -205,7 +213,7 @@ class TestTypeDBClient:
         client = TypeDBClient(base_url="http://localhost:8000")
         assert client.database_exists("test_db") is True
     
-    @patch('tools.typedb_v3_client.client.requests.Session')
+    @patch('typedb_v3_client.client.requests.Session')
     def test_database_exists_false(self, mock_session_class):
         """Test database_exists returns False."""
         mock_session = Mock()
@@ -219,7 +227,7 @@ class TestTypeDBClient:
         client = TypeDBClient(base_url="http://localhost:8000")
         assert client.database_exists("test_db") is False
     
-    @patch('tools.typedb_v3_client.client.requests.Session')
+    @patch('typedb_v3_client.client.requests.Session')
     def test_execute_query_read(self, mock_session_class):
         """Test execute_query for READ transaction."""
         mock_session = Mock()
@@ -244,7 +252,7 @@ class TestTypeDBClient:
         assert call_args[1]["json"]["transaction_type"] == "read"
         assert call_args[1]["json"]["query"] == "match $x isa actor; fetch $x;"
     
-    @patch('tools.typedb_v3_client.client.requests.Session')
+    @patch('typedb_v3_client.client.requests.Session')
     def test_execute_query_write(self, mock_session_class):
         """Test execute_query for WRITE transaction."""
         mock_session = Mock()
@@ -268,7 +276,7 @@ class TestTypeDBClient:
         call_args = mock_session.post.call_args
         assert call_args[1]["json"]["transaction_type"] == "write"
     
-    @patch('tools.typedb_v3_client.client.requests.Session')
+    @patch('typedb_v3_client.client.requests.Session')
     def test_execute_query_http_error(self, mock_session_class):
         """Test execute_query with HTTP error."""
         mock_session = Mock()
@@ -287,7 +295,7 @@ class TestTypeDBClient:
         with pytest.raises(TypeDBQueryError):
             client.execute_query("test_db", "invalid query")
     
-    @patch('tools.typedb_v3_client.client.requests.Session')
+    @patch('typedb_v3_client.client.requests.Session')
     def test_execute_transaction(self, mock_session_class):
         """Test execute_transaction."""
         mock_session = Mock()
@@ -316,7 +324,7 @@ class TestTypeDBClient:
         assert call_args[1]["json"]["transaction_type"] == "write"
         assert call_args[1]["json"]["operations"] == operations
     
-    @patch('tools.typedb_v3_client.client.requests.Session')
+    @patch('typedb_v3_client.client.requests.Session')
     def test_execute_queries(self, mock_session_class):
         """Test execute_queries helper."""
         mock_session = Mock()
@@ -353,7 +361,7 @@ class TestTypeDBClient:
     
     @patch('pathlib.Path.exists')
     @patch('pathlib.Path.read_text')
-    @patch('tools.typedb_v3_client.client.requests.Session')
+    @patch('typedb_v3_client.client.requests.Session')
     def test_load_schema(self, mock_session_class, mock_read_text, mock_exists):
         """Test load_schema."""
         mock_session = Mock()
@@ -382,7 +390,7 @@ class TestTypeDBClient:
         with pytest.raises(FileNotFoundError):
             client.load_schema("test_db", schema_path)
     
-    @patch('tools.typedb_v3_client.client.requests.Session')
+    @patch('typedb_v3_client.client.requests.Session')
     def test_clear_database(self, mock_session_class):
         """Test clear_database."""
         mock_session = Mock()
@@ -399,7 +407,7 @@ class TestTypeDBClient:
         # Check the delete query was called
         assert mock_session.post.called
     
-    @patch('tools.typedb_v3_client.client.requests.Session')
+    @patch('typedb_v3_client.client.requests.Session')
     def test_close(self, mock_session_class):
         """Test close method."""
         mock_session = Mock()

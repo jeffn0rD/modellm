@@ -1,7 +1,8 @@
 """Unit tests for entities module"""
 
 import pytest
-from ..entities import (
+# Use absolute imports from the package
+from tools.typedb_v3_client.entities import (
     Entity, Relation,
     Actor, Action, Message, DataEntity, Requirement,
     ActionAggregate, MessageAggregate, Constraint, Category,

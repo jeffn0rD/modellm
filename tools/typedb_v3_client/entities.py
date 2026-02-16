@@ -4,7 +4,8 @@ Defines all entities and relations from the typedb_schema_2.tql file.
 These are dataclasses that can be used with EntityManager for CRUD operations.
 """
 
-from typing import ClassVar, Optional, Dict, List, Any
+import uuid
+from typing import ClassVar, Optional, Dict, List, Any, Tuple
 from dataclasses import dataclass
 
 
@@ -64,7 +65,11 @@ class Entity:
         return f'match ${var_name} isa {self._type}, has {self._key_attr} {self._escape_value(key_value)};'
     
     def _escape_value(self, value: Any) -> str:
-        """Escape a value for TypeQL."""
+        """Escape a value for TypeQL.
+        
+        WARNING: This method is deprecated and should only be used for backward
+        compatibility. Use to_parameterized_insert_query() instead for security.
+        """
         if isinstance(value, str):
             escaped = value.replace('\\', '\\\\').replace('"', '\\"')
             return f'"{escaped}"'
@@ -74,6 +79,87 @@ class Entity:
             return str(value)
         else:
             raise ValueError(f"Unsupported value type: {type(value)}")
+
+    def _create_parameterized_value(self, value: Any, attribute_name: str) -> Tuple[str, Any]:
+        """Create a parameterized placeholder for a value.
+        
+        This method prevents SQL/TypeQL injection by using parameterized queries
+        instead of string escaping.
+        
+        Args:
+            value: The value to parameterize
+            attribute_name: The attribute name for the placeholder
+            
+        Returns:
+            Tuple of (placeholder_string, parameter_value)
+        """
+        if value is None:
+            return (None, None)
+        
+        # Generate unique placeholder using entity type, attribute, and UUID
+        unique_suffix = str(uuid.uuid4())[:8]
+        placeholder = f"${self._type}_{attribute_name}_{unique_suffix}"
+        
+        # Return placeholder and the raw value (to be bound by the client)
+        return (placeholder, value)
+
+    def to_parameterized_insert_query(self) -> Tuple[str, Dict[str, Any]]:
+        """Generate parameterized INSERT query for this entity.
+        
+        This method is secure against injection attacks as it uses parameterized
+        queries instead of string escaping.
+        
+        Returns:
+            Tuple of (query_string, parameters_dict)
+            - query_string: TypeQL INSERT query with placeholders
+            - parameters_dict: Dictionary mapping placeholders to values
+        """
+        var_name = self.__class__.__name__.lower()[:1]  # Single letter variable
+        parameters: Dict[str, Any] = {}
+        
+        parts = [f"${var_name} isa {self._type}"]
+        
+        # Add attributes with parameterized placeholders
+        for field_name in self.__dataclass_fields__.keys():
+            value = getattr(self, field_name)
+            if value is not None:
+                # Convert snake_case to kebab-case for TypeDB
+                db_attr_name = field_name.replace('_', '-')
+                placeholder, param_value = self._create_parameterized_value(value, field_name)
+                if placeholder:
+                    parts.append(f'has {db_attr_name} {placeholder}')
+                    parameters[placeholder] = param_value
+        
+        query = f"insert {', '.join(parts)};"
+        return (query, parameters)
+    
+    def to_parameterized_match_query(self) -> Tuple[str, Dict[str, Any]]:
+        """Generate parameterized MATCH query to find this entity by key.
+        
+        This method is secure against injection attacks as it uses parameterized
+        queries instead of string escaping.
+        
+        Returns:
+            Tuple of (query_string, parameters_dict)
+            - query_string: TypeQL MATCH query with placeholders
+            - parameters_dict: Dictionary mapping placeholders to values
+        """
+        if not self._key_attr:
+            raise ValueError(f"No key attribute defined for {self.__class__.__name__}")
+        
+        key_value = self.get_key_value()
+        var_name = self.__class__.__name__.lower()[:1]
+        
+        # Convert key attribute from kebab-case to snake_case for field lookup
+        key_field_name = self._key_attr.replace('-', '_')
+        
+        placeholder, param_value = self._create_parameterized_value(key_value, key_field_name)
+        
+        parameters = {placeholder: param_value} if placeholder else {}
+        
+        query = f'match ${var_name} isa {self._type}, has {self._key_attr} {placeholder};'
+        
+        return (query, parameters)
 
 
 @dataclass
