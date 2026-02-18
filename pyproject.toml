@@ -3,7 +3,7 @@ requires = ["setuptools>=45", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "typedb-v3-client"
+name = "TypeDBClient3"
 version = "0.1.0"
 description = "Python client library for TypeDB v3"
 authors = [{name = "Developer", email = "dev@example.com"}]
@@ -23,10 +23,10 @@ dev = [
 ]
 
 [tool.setuptools]
-packages = ["typedb_v3_client"]
+packages = ["typedb_client3"]
 
 [tool.setuptools.package-dir]
-typedb_v3_client = "tools/typedb_v3_client"
+typedb_client3 = "tools/typedb_client3"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

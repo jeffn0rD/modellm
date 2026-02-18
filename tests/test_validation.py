@@ -8,13 +8,13 @@ Tests:
 """
 
 import pytest
-from typedb_v3_client.validation import (
+from typedb_client3.validation import (
     validate_base_url,
     validate_credentials,
     validate_timeout,
     validate_operation_timeouts,
 )
-from typedb_v3_client.exceptions import TypeDBValidationError
+from typedb_client3.exceptions import TypeDBValidationError
 
 
 @pytest.mark.unit

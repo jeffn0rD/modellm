@@ -17,9 +17,9 @@ import uuid
 from pathlib import Path
 from typing import Optional
 
-# Import from typedb_v3_client library
-from tools.typedb_v3_client import TypeDBClient, TransactionType
-from tools.typedb_v3_client.importer import TypeDBImporter
+# Import from typedb_client3 library
+from typedb_client3 import TypeDBClient, TransactionType
+from typedb_client3.importer import TypeDBImporter
 
 
 # ANSI color codes for terminal output

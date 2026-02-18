@@ -1,7 +1,7 @@
 """Unit tests for QueryBuilder module"""
 
 import pytest
-from typedb_v3_client.query_builder import QueryBuilder, Variable, RelationBuilder
+from typedb_client3.query_builder import QueryBuilder, Variable, RelationBuilder
 
 
 class TestVariable:

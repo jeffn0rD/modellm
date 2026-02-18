@@ -7,7 +7,7 @@ Tests:
 """
 
 import pytest
-from typedb_v3_client import TransactionType
+from typedb_client3 import TransactionType
 
 
 @pytest.mark.unit

@@ -1,19 +1,19 @@
-# TypeDB v3 Client API Documentation
+# TypeDBClient3 API Documentation
 
 ## Overview
 
-The `typedb_v3_client` library provides a Python interface to TypeDB v3's HTTP API. It supports authentication, database management, query execution, and schema operations.
+The `TypeDBClient3` library provides a Python interface to TypeDB v3's HTTP API. It supports authentication, database management, query execution, schema operations, entity management, query building, and data import.
 
 ## Installation
 
 ```bash
-pip install typedb-v3-client
+pip install TypeDBClient3
 ```
 
 ## Quick Start
 
 ```python
-from typedb_v3_client import TypeDBClient, TransactionType
+from typedb_client3 import TypeDBClient, TransactionType
 
 # Connect to TypeDB
 client = TypeDBClient(
@@ -388,7 +388,7 @@ Close all connections and clear sensitive data from memory.
 Enum for transaction types.
 
 ```python
-from typedb_v3_client import TransactionType
+from typedb_client3 import TransactionType
 
 TransactionType.READ   # For read queries
 TransactionType.WRITE # For write/insert/delete queries
@@ -494,8 +494,8 @@ Clear cached token from memory.
 ## Error Handling Example
 
 ```python
-from typedb_v3_client import TypeDBClient, TransactionType
-from typedb_v3_client.exceptions import (
+from typedb_client3 import TypeDBClient, TransactionType
+from typedb_client3.exceptions import (
     TypeDBConnectionError,
     TypeDBQueryError,
     TypeDBValidationError

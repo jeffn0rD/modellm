@@ -9,8 +9,8 @@ Tests:
 """
 
 import pytest
-from typedb_v3_client.auth import SecureTokenManager
-from typedb_v3_client.exceptions import TypeDBAuthenticationError
+from typedb_client3.auth import SecureTokenManager
+from typedb_client3.exceptions import TypeDBAuthenticationError
 
 
 @pytest.mark.unit

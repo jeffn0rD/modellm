@@ -9,8 +9,8 @@ Tests:
 
 import pytest
 
-from typedb_v3_client import TypeDBClient, TransactionType
-from typedb_v3_client.exceptions import TypeDBValidationError
+from typedb_client3 import TypeDBClient, TransactionType
+from typedb_client3.exceptions import TypeDBValidationError
 
 
 class TestDatabaseOperations:

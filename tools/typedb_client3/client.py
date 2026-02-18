@@ -536,8 +536,9 @@ class TypeDBClient:
     def wipe_database(self, database: str, verify: bool = True) -> bool:
         """Wipe all data from database safely (delete in dependency order).
         
-        This method deletes all relations first (in dependency order), then deletes
-        all entities (in dependency order) to avoid foreign key constraint violations.
+        This method parses the schema to dynamically determine what entities
+        and relations need to be deleted, then deletes in dependency order
+        to avoid foreign key constraint violations.
         
         Args:
             database: Database name to wipe
@@ -550,38 +551,14 @@ class TypeDBClient:
             TypeDBConnectionError: If connection fails
             TypeDBQueryError: If delete query fails
         """
-        # Relation types to delete in dependency order (must delete relations before entities)
-        relation_types = [
-            "message-payload",
-            "constrained-by", 
-            "requiring",
-            "messaging",
-            "membership-seq",
-            "membership",
-            "anchoring",
-            "categorization",
-            "outlining",
-            "filesystem"
-        ]
+        # Parse schema to get entity and relation types
+        schema = self.get_schema(database)
+        entity_types, relation_types = self._parse_schema_types(schema)
         
-        # Entity types to delete in dependency order
-        entity_types = [
-            "constraint",
-            "message-aggregate",
-            "action-aggregate",
-            "message",
-            "requirement",
-            "data-entity",
-            "action",
-            "actor",
-            "category",
-            "semantic-cue",
-            "concept",
-            "text-block",
-            "spec-section",
-            "spec-document",
-            "fs-folder"
-        ]
+        # Reverse dependency order: delete subtypes before supertypes
+        # Relations must be deleted before entities that play roles in them
+        # Sort by length descending (longer names = more specific = subtypes)
+        relation_types = sorted(relation_types, key=len, reverse=True)
         
         # Delete relations first (in dependency order)
         for rel_type in relation_types:
@@ -589,8 +566,11 @@ class TypeDBClient:
                 query = f"match $r isa {rel_type}; delete $r;"
                 self.execute_query(database, query, TransactionType.WRITE)
             except TypeDBQueryError:
-                # Relation type might not exist in schema, continue
+                # Relation type might not exist in schema or have no instances
                 pass
+        
+        # Sort entities by length descending (subtypes first)
+        entity_types = sorted(entity_types, key=len, reverse=True)
         
         # Delete entities (in dependency order)
         for entity_type in entity_types:
@@ -598,28 +578,66 @@ class TypeDBClient:
                 query = f"match $x isa {entity_type}; delete $x;"
                 self.execute_query(database, query, TransactionType.WRITE)
             except TypeDBQueryError:
-                # Entity type might not exist in schema, continue
+                # Entity type might not exist in schema or have no instances
                 pass
         
         # Verify wipe if requested
         if verify:
-            return self._verify_wipe(database)
+            return self._verify_wipe(database, entity_types, relation_types)
         
         return True
     
-    def _verify_wipe(self, database: str) -> bool:
+    def _parse_schema_types(self, schema: str) -> tuple:
+        """Parse TypeQL schema to extract entity and relation type names.
+        
+        Args:
+            schema: TypeQL schema string
+            
+        Returns:
+            tuple: (entity_types, relation_types) as lists of type names
+        """
+        import re
+        
+        entity_types: List[str] = []
+        relation_types: List[str] = []
+        
+        # Pattern to match entity definitions
+        # Handles: "entity name," and "entity name sub parent,"
+        entity_pattern = r'entity\s+(\w[\w-]*)\s*(?:sub\s+(\w[\w-]*))?\s*,'
+        
+        # Pattern to match relation definitions
+        # Handles: "relation name," and "relation name sub parent,"
+        relation_pattern = r'relation\s+(\w[\w-]*)\s*(?:sub\s+(\w[\w-]*))?\s*,'
+        
+        # Find all entity types
+        for match in re.finditer(entity_pattern, schema, re.IGNORECASE):
+            entity_name = match.group(1)
+            if not entity_name.startswith('@'):  # Skip @abstract markers
+                entity_types.append(entity_name)
+        
+        # Find all relation types
+        for match in re.finditer(relation_pattern, schema, re.IGNORECASE):
+            relation_name = match.group(1)
+            if not relation_name.startswith('@'):  # Skip @abstract markers
+                relation_types.append(relation_name)
+        
+        return entity_types, relation_types
+    
+    def _verify_wipe(self, database: str, entity_types: List[str] = None, relation_types: List[str] = None) -> bool:
         """Verify that database has been completely wiped.
         
         Checks for any remaining entities and relations in the database.
         
         Args:
             database: Database name to verify
+            entity_types: Optional list of entity types from schema (if None, uses fallback list)
+            relation_types: Optional list of relation types from schema (if None, uses fallback list)
             
         Returns:
             bool: True if database is completely empty
         """
-        # Key entity types to check
-        entity_types_to_check = [
+        # Use parsed types if provided, otherwise use fallback list
+        entity_types_to_check = entity_types or [
             "spec-document",
             "spec-section", 
             "text-block",
@@ -637,8 +655,8 @@ class TypeDBClient:
             "fs-folder"
         ]
         
-        # Key relation types to check
-        relation_types_to_check = [
+        # Use parsed types if provided, otherwise use fallback list
+        relation_types_to_check = relation_types or [
             "outlining",
             "anchoring",
             "categorization",

@@ -8,8 +8,8 @@ Tests:
 """
 
 import pytest
-from typedb_v3_client import TypeDBClient
-from typedb_v3_client.exceptions import TypeDBConnectionError, TypeDBAuthenticationError
+from typedb_client3 import TypeDBClient
+from typedb_client3.exceptions import TypeDBConnectionError, TypeDBAuthenticationError
 
 
 # Test server configuration

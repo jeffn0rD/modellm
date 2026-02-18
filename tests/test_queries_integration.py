@@ -10,8 +10,8 @@ Tests:
 import pytest
 import uuid
 
-from typedb_v3_client import TypeDBClient, TransactionType
-from typedb_v3_client.exceptions import TypeDBQueryError
+from typedb_client3 import TypeDBClient, TransactionType
+from typedb_client3.exceptions import TypeDBQueryError
 
 
 # Test server configuration

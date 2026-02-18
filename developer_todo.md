@@ -13,8 +13,7 @@
     - the README and doc/API.md files do not cover the entire library (Query Nuilder, etc).  Make sure all classes are covered with examples.
     - TypeDBClient3: need to implement database wipe using schema parsing to determine what entities and relations need to be deleted
     
-  ##
-
+  ## TASKS THAT NEED DETAILED PLANNING AND SPECIFICATION (FUTURE)
   - need to streamlining the prompt pipeline to go from NL informal specification to typedb database
     - prompts are in `prompts` folder.
     - nanocoder integration would be great. possibly a MCP call?

@@ -9,7 +9,7 @@ Provides:
 import pytest
 import uuid
 
-from typedb_v3_client import TypeDBClient, TransactionType
+from typedb_client3 import TypeDBClient, TransactionType
 
 
 # Test server configuration
