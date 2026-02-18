@@ -602,12 +602,12 @@ class TypeDBClient:
         relation_types: List[str] = []
         
         # Pattern to match entity definitions
-        # Handles: "entity name," and "entity name sub parent,"
-        entity_pattern = r'entity\s+(\w[\w-]*)\s*(?:sub\s+(\w[\w-]*))?\s*,'
+        # Handles: "entity name," "entity name;" "entity name sub parent,"
+        entity_pattern = r'entity\s+(\w[\w-]*)\s*(?:sub\s+(\w[\w-]*))?\s*[,;]?\s*'
         
         # Pattern to match relation definitions
-        # Handles: "relation name," and "relation name sub parent,"
-        relation_pattern = r'relation\s+(\w[\w-]*)\s*(?:sub\s+(\w[\w-]*))?\s*,'
+        # Handles: "relation name," "relation name;" "relation name sub parent,"
+        relation_pattern = r'relation\s+(\w[\w-]*)\s*(?:sub\s+(\w[\w-]*))?\s*[,;]?\s*'
         
         # Find all entity types
         for match in re.finditer(entity_pattern, schema, re.IGNORECASE):

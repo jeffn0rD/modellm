@@ -2,17 +2,9 @@
 
 ## TODO:
   ## NEXT TASKS
-    - directory re-structuring
-      - /tool and /tools is redundant.  there should be one directory.  lets call it ./tools; thats where the import CLI tool goes
-      - is tools/typedb_concepts_import.py needed anymore? typedb_import.py covers all scenarios (yaml and json)?
-      - the typedb_c3_client library should live in a directory off of root not named tools.  something more python canonical?  module?  lib?
-        - will have to make sure import paths work and pip install
-      - why are there 2 test directories? (tools/tests and ./tests)
-    - typedb_v3_client isn't a great name for a library; lets change to TypeDBClient3  
-    - make sure all test and development temp files are cleaned up -- or moved to agents directory
-    - the README and doc/API.md files do not cover the entire library (Query Nuilder, etc).  Make sure all classes are covered with examples.
-    - TypeDBClient3: need to implement database wipe using schema parsing to determine what entities and relations need to be deleted
     
+
+  ** DO NOT PLAN OR CREATE TASKS FOR ANYTHING AFTER THIS POINT **    
   ## TASKS THAT NEED DETAILED PLANNING AND SPECIFICATION (FUTURE)
   - need to streamlining the prompt pipeline to go from NL informal specification to typedb database
     - prompts are in `prompts` folder.
@@ -44,3 +36,13 @@ X    - needs better looking output, use colors and add switches for verbosity
 X    - default verbosity should only output errors, and summary of entities and relations created
 X    - the intent was to have this tool import both json and yaml, a library should be created with logic 
 X      from this tool and typedb_concepts_import.py
+X    - directory re-structuring
+X      - /tool and /tools is redundant.  there should be one directory.  lets call it ./tools; thats where the import CLI tool goes
+X      - is tools/typedb_concepts_import.py needed anymore? typedb_import.py covers all scenarios (yaml and json)?
+X      - the typedb_c3_client library should live in a directory off of root not named tools.  something more python canonical?  module?  lib?
+X        - will have to make sure import paths work and pip install
+X      - why are there 2 test directories? (tools/tests and ./tests)
+X    - typedb_v3_client isn't a great name for a library; lets change to TypeDBClient3  
+X    - make sure all test and development temp files are cleaned up -- or moved to agents directory
+X    - the README and doc/API.md files do not cover the entire library (Query Nuilder, etc).  Make sure all classes are covered with examples.
+X    - TypeDBClient3: need to implement database wipe using schema parsing to determine what entities and relations need to be deleted
