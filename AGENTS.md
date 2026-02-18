@@ -11,11 +11,52 @@ AI coding agent instructions for **modellm**
 
 **Documentation:**
 - `developer_todo.md` -- master (human engineer) todo list
+- `agents/implementation_guide.md` -- Detailed implementation guide with specifications for (some) tasks
 - `doc\TypeQL3_REF.md` -- typeql version 3 reference
 - `doc/typedb_schema.tql` -- typedb database schema used in this project  
+- `doc/typedb_http_api.md` -- guide to the HTTP api
+
+## Task Management
+## Task Creation *IMPORTANT*
+- keep tasks as narrow and focused as possible so as to minimize required context and inputs to accomplish the task
+- during task creation reason carefully (<think>) taking into account complexity and dependencies
+- it is better to have 30 tasks implementing one function each then 1 task implementing 30 functions!
+- each task should be a small testable, verifiable, atomic unit (as practically possible)
+- if the scope expands beyond one module or 2-3 functions verify the plan with the human engineer
+
+### Task Reference System
+All implementation tasks are tracked in `.nanocoder/tasks.json` and reference specific sections in `agents/implementation_guide.md`. Each task includes:
+- **Priority level**: CRITICAL, HIGH, or MEDIUM
+- **File paths**: Exact file locations to modify
+- **Line numbers**: Specific line ranges referenced
+- **Implementation guide section**: Links to detailed specifications
+- **Test requirements**: Detailed test specifications
+- **Success criteria**: Clear completion criteria
+
+### Before Starting Any Task
+1. **Read the implementation guide**: Check `agents/implementation_guide.md` for the specific task section
+2. **Review line numbers**: Look at the exact lines mentioned in the task description
+3. **Check existing code**: Read the current implementation before making changes
+4. **Understand context**: Review related files and imports mentioned in the guide
+5. **Verify test requirements**: Understand what tests need to be written
+
+### During Task Implementation
+- Follow the implementation specifications in the guide
+- Add type hints to all new functions
+- Include comprehensive docstrings
+- Write tests BEFORE implementation (TDD approach)
+- Use small, focused commits
+- Test with the actual TypeDB server when possible
+
+### After Task Completion
+- All tests must pass (`pytest tests/ -v`)
+- Security tests pass with malicious inputs
+- Performance benchmarks show improvement
+- Code coverage > 90% for new code
+- No deprecation warnings when running
 
 ## Code Style Guidelines
-
+- DO NOT USE inline imports.  Imports belong at the top of the module.  
 - Follow PEP 8 style guide
 - Use snake_case for variables and functions
 - Use PascalCase for classes
@@ -27,11 +68,44 @@ AI coding agent instructions for **modellm**
 
 ## Testing
 - all code needs at least 80% test coverage
+- unit tests AND integration tests (against test server) are required
 - all newly generated code needs to pass all tests before the task can be considered complete
 - there is a TypeQL test database server at `http://localhost:8000` creds: admin/password
   - it is a docker container for test purposes 
+
+```bash
+# Run all tests
+pytest tests/ -v
+
+# Run specific test file
+pytest tests/test_client.py -v
+
+# Run with coverage
+pytest tests/ --cov=tools/typedb_v3_client --cov-report=html
+
+# Run performance benchmarks
+pytest tests/performance_tests.py -v --benchmark-only
+```
+
+### Viewing Implementation Guide
+```bash
+# View specific section
+head -60 agents/implementation_guide.md  # Task 1 spec
+head -135 agents/implementation_guide.md | tail -75  # Task 2-3 specs
+```
+
+### Task Management
+```bash
+# View all tasks
+list_tasks
+
+# Update task status
+update_task --id <task_id> --status in_progress
+
+# Mark task complete
+update_task --id <task_id> --status completed
+```
   
-**Test Files:**
 
 ## AI Coding Assistance Notes
 - the `./agents` folder is for all things to do with LLM agents ONLY; this folder is not for project deliverables

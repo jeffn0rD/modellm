@@ -1,7 +1,7 @@
 """Unit tests for QueryBuilder module"""
 
 import pytest
-from ..query_builder import QueryBuilder, Variable, RelationBuilder
+from typedb_v3_client.query_builder import QueryBuilder, Variable, RelationBuilder
 
 
 class TestVariable:
@@ -133,7 +133,7 @@ class TestQueryBuilder:
             .build()
         )
         
-        expected = 'match $x isa actor, has actor-id "A1"; fetch {$x.*};'
+        expected = 'match $x isa actor, has actor-id "A1"; fetch {"x": {$x.*}};'
         assert query == expected
     
     def test_insert_query(self):
@@ -309,11 +309,12 @@ class TestQueryBuilder:
         query = (QueryBuilder()
             .match()
             .variable("x", "actor", {"actor-id": "A1"})
-            .fetch(["x"])
+            .variable("y", "actor", {"actor-id": "A2"})
+            .fetch(["x", "y"])
         )
         
         tql = query.get_tql()
-        expected = 'match $x isa actor, has actor-id "A1"; fetch {$x.*};'
+        expected = 'match $x isa actor, has actor-id "A1"; $y isa actor, has actor-id "A2"; fetch {"x": {$x.*}, "y": {$y.*}};'
         assert tql == expected
     
     def test_get_tql_cached(self):
@@ -428,7 +429,7 @@ class TestQueryBuilder:
         
         assert "$a isa actor" in query
         assert "$m isa message" in query
-        assert "fetch $a, $m" in query
+        assert "fetch {\"a\": {$a.*}, \"m\": {$m.*}}" in query
     
     def test_multiple_relations(self):
         """Test multiple relations in same query."""

@@ -496,11 +496,11 @@ class QueryBuilder:
             if isinstance(self._fetch_vars, dict):
                 # Nested fetch structure
                 fetch_parts = self._build_nested_fetch(self._fetch_vars)
-                segments.append(f"fetch {fetch_parts}")
+                segments.append(f"fetch { {fetch_parts} }")
             else:
                 # Simple list fetch
-                fetch_vars = [f"${var}" for var in self._fetch_vars]
-                segments.append(f"fetch {', '.join(fetch_vars)}")
+                fetch_vars = [f'"{var}": {{${var}.*}}' for var in self._fetch_vars]
+                segments.append(f"fetch {{{', '.join(fetch_vars)}}}")
         
         # Build ORDER BY clause
         if self._order_by:

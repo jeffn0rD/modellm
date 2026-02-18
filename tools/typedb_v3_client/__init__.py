@@ -14,7 +14,11 @@ __version__ = "0.1.0"
 # Main exports
 from .client import (
     TypeDBClient, TransactionType, TransactionContext,
+)
+from .auth import (
     SecureTokenManager,
+)
+from .validation import (
     validate_base_url, validate_credentials, validate_timeout,
     validate_operation_timeouts,
     create_optimized_session,

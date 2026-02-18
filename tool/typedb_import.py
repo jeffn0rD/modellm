@@ -1,17 +1,28 @@
 #!/usr/bin/env python3
-"""TypeDB Specification Importer - Version 2
-Adds colors and verbosity switches to the importer.
+"""TypeDB Unified Importer - CLI Tool
+
+A unified CLI tool that imports both YAML specification files and JSON concept files
+into TypeDB. Supports database creation, wiping, and comprehensive import modes.
+
+Usage:
+    python tool/typedb_import.py --mode yaml --database mydb --yaml-file spec.yaml --create-db
+    python tool/typedb_import.py --mode json --database mydb --json-dir ./json
+    python tool/typedb_import.py --mode all --database mydb --wipe-db --create-db
+    python tool/typedb_import.py --mode wipe --database mydb --check-wipe
 """
 
 import argparse
 import sys
-import json
+import uuid
 from pathlib import Path
-from typing import Dict, List, Any, Optional
-import yaml
-import requests
+from typing import Optional
 
-# ANSI color codes
+# Import from typedb_v3_client library
+from tools.typedb_v3_client import TypeDBClient, TransactionType
+from tools.typedb_v3_client.importer import TypeDBImporter
+
+
+# ANSI color codes for terminal output
 class Colors:
     RESET = '\033[0m'
     RED = '\033[91m'
@@ -32,621 +43,443 @@ class VerboseLevel:
     DEBUG = 3      # All debug info
 
 
-class Logger:
-    """Colored logger with verbosity control."""
+def create_parser() -> argparse.ArgumentParser:
+    """Create and configure the argument parser."""
+    parser = argparse.ArgumentParser(
+        description='TypeDB Unified Importer - Import YAML/JSON into TypeDB',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Import YAML specification only
+  python tool/typedb_import.py --mode yaml --database specs --yaml-file doc/spec.yaml --create-db
+
+  # Import JSON concepts only
+  python tool/typedb_import.py --mode json --database specs --json-dir json
+
+  # Full pipeline: wipe, create, import YAML and JSON
+  python tool/typedb_import.py --mode all --database specs --yaml-file doc/spec.yaml --json-dir json --wipe-db --create-db
+
+  # Wipe database and verify
+  python tool/typedb_import.py --mode wipe --database specs --check-wipe
+
+  # Quiet mode (errors only)
+  python tool/typedb_import.py --mode yaml --database specs --yaml-file spec.yaml --verbose 0
+        """
+    )
     
-    def __init__(self, verbose: int = VerboseLevel.NORMAL):
+    # Add custom action for argument validation
+    class ValidateModeAction(argparse.Action):
+        """Custom action to validate mode-specific arguments."""
+        def __call__(self, parser, namespace, values, option_string=None):
+            # Validation will happen in main(), just set the value
+            setattr(namespace, self.dest, values)
+    
+    # Required arguments
+    parser.add_argument(
+        '--mode',
+        type=str,
+        choices=['yaml', 'json', 'all', 'wipe'],
+        required=True,
+        help='Import mode: yaml (specifications), json (concepts), all (both), or wipe (clear database)'
+    )
+    
+    parser.add_argument(
+        '--database',
+        type=str,
+        required=True,
+        help='TypeDB database name'
+    )
+    
+    # Database operations
+    parser.add_argument(
+        '--create-db',
+        action='store_true',
+        help='Create database if it does not exist'
+    )
+    
+    parser.add_argument(
+        '--wipe-db',
+        action='store_true',
+        help='Wipe database before import (DANGEROUS - deletes all data!)'
+    )
+    
+    parser.add_argument(
+        '--check-wipe',
+        action='store_true',
+        help='Verify database is completely wiped (test mode)'
+    )
+    
+    # Connection options
+    parser.add_argument(
+        '--base-url',
+        type=str,
+        default='http://localhost:8000',
+        help='TypeDB server URL (default: http://localhost:8000)'
+    )
+    
+    parser.add_argument(
+        '--username',
+        type=str,
+        default='admin',
+        help='TypeDB username (default: admin)'
+    )
+    
+    parser.add_argument(
+        '--password',
+        type=str,
+        default='password',
+        help='TypeDB password (default: password)'
+    )
+    
+    # File options
+    parser.add_argument(
+        '--yaml-file',
+        type=Path,
+        help='Path to YAML specification file (for yaml or all mode)'
+    )
+    
+    parser.add_argument(
+        '--json-dir',
+        type=Path,
+        help='Directory containing JSON concept files (for json or all mode)'
+    )
+    
+    parser.add_argument(
+        '--all-concepts',
+        action='store_true',
+        help='Import all concept JSON files from default location (./json)'
+    )
+    
+    # Import options
+    parser.add_argument(
+        '--force-update',
+        action='store_true',
+        help='Force update of existing entities'
+    )
+    
+    # Output options
+    parser.add_argument(
+        '--verbose',
+        type=int,
+        default=1,
+        choices=[0, 1, 2, 3],
+        help='Verbosity level: 0 (error), 1 (normal), 2 (verbose), 3 (debug)'
+    )
+    
+    parser.add_argument(
+        '--stats-only',
+        action='store_true',
+        help='Only print statistics, do not perform actual import'
+    )
+    
+    return parser
+
+
+class UnifiedTypeDBImporter:
+    """Unified importer for both YAML and JSON files into TypeDB.
+    
+    This class provides a unified interface for importing both YAML specification
+    files and JSON concept files into a TypeDB database. It handles database
+    creation, wiping, and verification.
+    """
+    
+    def __init__(
+        self,
+        base_url: str = "http://localhost:8000",
+        database: str = "specifications",
+        username: str = "admin",
+        password: str = "password",
+        verbose: int = VerboseLevel.NORMAL
+    ):
+        """Initialize the unified importer.
+        
+        Args:
+            base_url: TypeDB server URL
+            database: Database name
+            username: TypeDB username
+            password: TypeDB password
+            verbose: Verbosity level
+        """
+        self.base_url = base_url
+        self.database = database
+        self.username = username
+        self.password = password
         self.verbose = verbose
+        
+        # Create the TypeDB client
+        self.client = TypeDBClient(
+            base_url=base_url,
+            username=username,
+            password=password
+        )
+        
+        # Create the importer (without auto-connect)
+        self.importer = TypeDBImporter(
+            base_url=base_url,
+            database=database,
+            username=username,
+            password=password,
+            verbose=verbose,
+            auto_connect=False
+        )
     
-    def error(self, msg: str):
-        """Print error message."""
-        print(f"{Colors.RED}ERROR:{Colors.RESET} {msg}", file=sys.stderr)
+    def log(self, level: str, message: str) -> None:
+        """Log a message based on verbosity level."""
+        if level == "error":
+            print(f"{Colors.RED}ERROR:{Colors.RESET} {message}", file=sys.stderr)
+        elif level == "warning":
+            if self.verbose >= VerboseLevel.NORMAL:
+                print(f"{Colors.YELLOW}WARNING:{Colors.RESET} {message}")
+        elif level == "success":
+            if self.verbose >= VerboseLevel.NORMAL:
+                print(f"{Colors.GREEN}SUCCESS:{Colors.RESET} {message}")
+        elif level == "info":
+            if self.verbose >= VerboseLevel.VERBOSE:
+                print(f"{Colors.BLUE}INFO:{Colors.RESET} {message}")
+        elif level == "debug":
+            if self.verbose >= VerboseLevel.DEBUG:
+                print(f"{Colors.DIM}DEBUG:{Colors.RESET} {message}")
     
-    def warning(self, msg: str):
-        """Print warning message."""
-        if self.verbose >= VerboseLevel.NORMAL:
-            print(f"{Colors.YELLOW}WARNING:{Colors.RESET} {msg}")
-    
-    def success(self, msg: str):
-        """Print success message."""
-        if self.verbose >= VerboseLevel.NORMAL:
-            print(f"{Colors.GREEN}SUCCESS:{Colors.RESET} {msg}")
-    
-    def info(self, msg: str):
-        """Print info message."""
-        if self.verbose >= VerboseLevel.VERBOSE:
-            print(f"{Colors.BLUE}INFO:{Colors.RESET} {msg}")
-    
-    def debug(self, msg: str):
-        """Print debug message."""
-        if self.verbose >= VerboseLevel.DEBUG:
-            print(f"{Colors.DIM}DEBUG:{Colors.RESET} {msg}")
-    
-    def section(self, title: str):
-        """Print section header."""
+    def section(self, title: str) -> None:
+        """Print a section header."""
         if self.verbose >= VerboseLevel.VERBOSE:
             print(f"\n{Colors.CYAN}{Colors.BOLD}{'='*50}{Colors.RESET}")
             print(f"{Colors.CYAN}{Colors.BOLD}{title}{Colors.RESET}")
             print(f"{Colors.CYAN}{Colors.BOLD}{'='*50}{Colors.RESET}")
     
-    def subsection(self, title: str):
-        """Print subsection header."""
-        if self.verbose >= VerboseLevel.VERBOSE:
-            print(f"\n{Colors.MAGENTA}{title}{Colors.RESET}")
-
-
-class TypeDBHTTPClient:
-    """HTTP client for TypeDB 3 API."""
-    
-    def __init__(self, base_url: str = "http://localhost:8000", 
-                 username: Optional[str] = None, 
-                 password: Optional[str] = None,
-                 verbose: int = VerboseLevel.NORMAL):
-        """Initialize the HTTP client."""
-        self.base_url = base_url.rstrip('/')
-        self.token = None
-        self.session = requests.Session()
-        self.logger = Logger(verbose)
-        
-        # Authenticate if credentials provided
-        if username and password:
-            self._authenticate(username, password)
-    
-    def _authenticate(self, username: str, password: str):
-        """Authenticate and get JWT token."""
-        url = f"{self.base_url}/v1/signin"
-        body = {"username": username, "password": password}
-        
-        response = requests.post(url, json=body)
-        response.raise_for_status()
-        
-        self.token = response.json()["token"]
-        self.session.headers.update({"Authorization": f"Bearer {self.token}"})
-        self.logger.success(f"Authenticated successfully")
-    
-    def list_databases(self) -> List[str]:
-        """List all databases."""
-        url = f"{self.base_url}/v1/databases"
-        response = self.session.get(url)
-        response.raise_for_status()
-        
-        self.logger.debug(f"GET: {url}")
-        databases = response.json().get("databases", [])
-        return [db["name"] for db in databases]
-    
-    def database_exists(self, database: str) -> bool:
-        """Check if a database exists."""
-        databases = self.list_databases()
-        exists = database in databases
-        
-        if exists:
-            self.logger.debug(f"Database '{database}' exists")
-        else:
-            self.logger.debug(f"Database '{database}' not found")
-        
-        return exists
-    
-    def create_database(self, database: str):
-        """Create a new database."""
-        url = f"{self.base_url}/v1/databases"
-        body = {"name": database}
-        response = self.session.post(url, json=body)
-        
-        self.logger.debug(f"POST: {url}")
-        response.raise_for_status()
-        self.logger.success(f"Created database: {database}")
-    
-    def delete_database(self, database: str):
-        """Delete a database."""
-        url = f"{self.base_url}/v1/databases/{database}"
-        response = self.session.delete(url)
-        
-        self.logger.debug(f"DELETE: {url}")
-        response.raise_for_status()
-        self.logger.success(f"Deleted database: {database}")
-    
-    def execute_query(self, database: str, query: str, transaction_type: str) -> Optional[Dict]:
-        """Execute a query (read or write)."""
-        url = f"{self.base_url}/v1/query"
-        body = {
-            "query": query,
-            "commit": True,
-            "databaseName": database,
-            "transactionType": transaction_type
-        }
-        
-        self.logger.debug(f"Executing {transaction_type} query: {query[:100]}...")
+    def connect(self) -> None:
+        """Connect to TypeDB and ensure database exists."""
+        self.section("Connecting to TypeDB")
         
         try:
-            response = self.session.post(url, json=body)
-            
-            if response.status_code == 200:
-                self.logger.debug("Query succeeded")
-                return response.json() if response.text else None
+            if self.client.database_exists(self.database):
+                self.log("info", f"Database '{self.database}' already exists")
             else:
-                self.logger.error(f"HTTP {response.status_code}: {response.text}")
-                response.raise_for_status()
-                
-        except requests.exceptions.HTTPError as e:
-            self.logger.error(f"HTTP Error: {e}")
-            return None
-        except requests.exceptions.RequestException as e:
-            self.logger.error(f"Request Error: {e}")
-            return None
-
-    def execute_read_query(self, database: str, query: str) -> Optional[Dict]:
-        """Execute a read query (match)."""
-        return self.execute_query(database, query, "read")
-
-    def execute_write_query(self, database: str, query: str) -> Optional[Dict]:
-        """Execute a write query."""
-        return self.execute_query(database, query, "write")
-    
-    def close(self):
-        """Close the session."""
-        self.session.close()
-
-
-class TypeDBSpecImporter:
-    """Imports specification YAML files into TypeDB."""
-    
-    def __init__(self, base_url: str = "http://localhost:8000", 
-                 database: str = "specifications",
-                 username: Optional[str] = None, 
-                 password: Optional[str] = None,
-                 verbose: int = VerboseLevel.NORMAL):
-        """Initialize the importer with TypeDB connection details."""
-        self.database = database
-        self.verbose = verbose
-        self.logger = Logger(verbose)
-        self.stats = {
-            "documents": 0,
-            "sections": 0,
-            "text_blocks": 0,
-            "concepts": 0,
-            "semantic_cues": 0,
-            "relations": 0
-        }
-        
-        self.client = TypeDBHTTPClient(base_url, username, password, verbose)
-        
-    def connect(self):
-        """Establish connection to TypeDB and ensure database exists."""
-        try:
-            if not self.client.database_exists(self.database):
-                self.client.create_database(self.database)
-            self.logger.success(f"Connected to database: {self.database}")
+                self.log("info", f"Database '{self.database}' does not exist")
+                self.log("warning", "Use --create-db to create the database")
                 
         except Exception as e:
-            self.logger.error(f"Error connecting to TypeDB: {e}")
+            self.log("error", f"Error connecting to TypeDB: {e}")
             sys.exit(1)
     
-    def close(self):
-        """Close the TypeDB connection."""
-        self.client.close()
-    
-    def _print_summary(self):
-        """Print import summary."""
-        self.logger.section("Import Summary")
-        print(f"  {Colors.GREEN}Documents:{Colors.RESET} {self.stats['documents']}")
-        print(f"  {Colors.GREEN}Sections:{Colors.RESET} {self.stats['sections']}")
-        print(f"  {Colors.GREEN}Text Blocks:{Colors.RESET} {self.stats['text_blocks']}")
-        print(f"  {Colors.GREEN}Concepts:{Colors.RESET} {self.stats['concepts']}")
-        print(f"  {Colors.GREEN}Semantic Cues:{Colors.RESET} {self.stats['semantic_cues']}")
-        print(f"  {Colors.GREEN}Relations:{Colors.RESET} {self.stats['relations']}")
-    
-    def clear_specification_data(self):
-        """Clear all specification-related entities from the database."""
-        self.logger.info("Clearing specification data from database...")
+    def create_database(self) -> bool:
+        """Create the database if it doesn't exist.
         
-        # Delete relations first, then entities
-        relation_types = ["anchoring", "membership", "outlining"]
+        Returns:
+            bool: True if database was created or already exists
+        """
+        self.section("Database Creation")
         
-        for relation_type in relation_types:
-            try:
-                delete_query = f"match $r isa {relation_type}; delete $r;"
-                self.client.execute_write_query(self.database, delete_query)
-                self.logger.debug(f"  Deleted {relation_type} relations")
-            except Exception as e:
-                self.logger.warning(f"Error deleting {relation_type}: {e}")
-        
-        # Now delete entities
-        entity_types = [
-            "text-block", "concept", "semantic-cue",
-            "spec-section", "spec-document"
-        ]
-        
-        for entity_type in entity_types:
-            try:
-                delete_query = f"match $x isa {entity_type}; delete $x;"
-                self.client.execute_write_query(self.database, delete_query)
-                self.logger.debug(f"  Deleted {entity_type} entities")
-            except Exception as e:
-                self.logger.warning(f"Error deleting {entity_type}: {e}")
-        
-        self.logger.success("Database cleared")
-    
-    def entity_exists(self, entity_type: str, key_attr: str, key_value: str) -> bool:
-        """Check if an entity with the given key already exists."""
-        query = f'match $x isa {entity_type}, has {key_attr} "{key_value}";'
         try:
-            result = self.client.execute_read_query(self.database, query)
-            if result and isinstance(result, dict):
-                answers = result.get("answers", [])
-                return len(answers) > 0
-            return False
+            if self.client.database_exists(self.database):
+                self.log("info", f"Database '{self.database}' already exists")
+                return True
+            
+            self.client.create_database(self.database)
+            self.log("success", f"Created database: {self.database}")
+            return True
+            
         except Exception as e:
-            self.logger.debug(f"Error checking entity existence: {e}")
+            self.log("error", f"Failed to create database: {e}")
             return False
     
-    def import_spec_file(self, yaml_path: Path, force_update: bool = False):
-        """Import a specification YAML file into TypeDB."""
-        self.logger.section(f"Importing: {yaml_path.name}")
+    def wipe_database(self, verify: bool = True) -> bool:
+        """Wipe all data from the database.
         
-        # Load YAML file
+        Args:
+            verify: Whether to verify the wipe was successful
+            
+        Returns:
+            bool: True if wipe was successful
+        """
+        self.section("Database Wipe")
+        
+        if not self.client.database_exists(self.database):
+            self.log("error", f"Database '{self.database}' does not exist")
+            return False
+        
+        self.log("warning", f"Wiping all data from database '{self.database}'...")
+        
         try:
-            with open(yaml_path, 'r', encoding='utf-8') as f:
-                data = yaml.safe_load(f)
+            result = self.client.wipe_database(self.database, verify=verify)
+            if result:
+                self.log("success", "Database wiped successfully")
+            return result
+            
         except Exception as e:
-            self.logger.error(f"Loading YAML file: {e}")
+            self.log("error", f"Failed to wipe database: {e}")
+            return False
+    
+    def verify_wipe(self) -> bool:
+        """Verify that the database is completely wiped.
+        
+        Returns:
+            bool: True if database is empty
+        """
+        self.section("Wipe Verification")
+        
+        if not self.client.database_exists(self.database):
+            self.log("error", f"Database '{self.database}' does not exist")
+            return False
+        
+        try:
+            result = self.client._verify_wipe(self.database)
+            self.log("success", "Database wipe verified - database is clean")
+            return result
+            
+        except Exception as e:
+            self.log("error", f"Wipe verification failed: {e}")
+            return False
+    
+    def import_yaml(self, yaml_path: Path, force_update: bool = False) -> None:
+        """Import a YAML specification file.
+        
+        Args:
+            yaml_path: Path to YAML file
+            force_update: Force update of existing entities
+        """
+        self.section("YAML Import")
+        
+        if not yaml_path.exists():
+            self.log("error", f"YAML file not found: {yaml_path}")
             sys.exit(1)
         
-        spec = data.get('specification', {})
-        spec_doc_id = spec.get('id', 'SPEC1')
+        self.log("info", f"Importing YAML from: {yaml_path}")
         
-        if force_update or not self.entity_exists('spec-document', 'spec-doc-id', spec_doc_id):
-            self._create_spec_document(yaml_path, spec)
-            self.stats['documents'] += 1
-            self.logger.info(f"Created spec-document: {spec_doc_id}")
+        # Connect importer
+        self.importer.connect()
         
-        # Process sections recursively
-        sections = spec.get('sections', [])
-        for section in sections:
-            self._process_section(section, spec_doc_id, 'spec-document', force_update)
+        # Import YAML
+        self.importer.import_yaml(yaml_path, force_update=force_update)
         
-        self._print_summary()
-        self.logger.success("Import completed")
+        self.log("success", "YAML import completed")
     
-    def _create_spec_document(self, yaml_path: Path, spec: Dict[str, Any]):
-        """Create a spec-document entity."""
-        spec_id = spec.get('id', 'SPEC1')
-        title = self._escape_string(spec.get('title', ''))
-        version = spec.get('version', '0.1')
-        description = self._escape_string(spec.get('description', ''))
+    def import_json(self, json_dir: Path, force_update: bool = False) -> None:
+        """Import JSON concept files from a directory.
         
-        query = f'''
-            insert 
-                $folder isa fs-folder,
-                  has foldername "{yaml_path.parent}";
-                $doc isa spec-document,
-                  has spec-doc-id "{spec_id}",
-                  has title "{title}",
-                  has version "{version}",
-                  has status "draft",
-                  has description "{description}",
-                  has filename "{yaml_path}";
-                filesystem(folder: $folder, entry: $doc);
-        '''
-        self.client.execute_write_query(self.database, query)
+        Args:
+            json_dir: Path to directory containing JSON files
+            force_update: Force update of existing entities
+        """
+        self.section("JSON Import")
+        
+        if not json_dir.exists():
+            self.log("error", f"JSON directory not found: {json_dir}")
+            sys.exit(1)
+        
+        self.log("info", f"Importing JSON concepts from: {json_dir}")
+        
+        # Connect importer
+        self.importer.connect()
+        
+        # Import JSON directory
+        self.importer.import_json_directory(json_dir, force_update=force_update)
+        
+        self.log("success", "JSON import completed")
     
-    def _process_section(self, section: Dict[str, Any], parent_id: str, 
-                        parent_type: str, force_update: bool):
-        """Process a section and its subsections/text-blocks recursively."""
-        section_id = section.get('section_id')
-        
-        if not section_id:
-            self.logger.warning("Section without section_id, skipping")
-            return
-        
-        # Create section entity
-        if force_update or not self.entity_exists('spec-section', 'spec-section-id', section_id):
-            self._create_spec_section(section)
-            self.stats['sections'] += 1
-            self.logger.debug(f"Created spec-section: {section_id}")
-        
-        # Create outlining relation
-        if parent_type == 'spec-document':
-            relation_query = f'''
-                match 
-                    $parent isa spec-document, has spec-doc-id "{parent_id}";
-                    $child isa spec-section, has spec-section-id "{section_id}";
-                insert outlining(section: $parent, subsection: $child);
-            '''
-        else:
-            relation_query = f'''
-                match 
-                    $parent isa spec-section, has spec-section-id "{parent_id}";
-                    $child isa spec-section, has spec-section-id "{section_id}";
-                insert outlining(section: $parent, subsection: $child);
-            '''
-        
+    def close(self) -> None:
+        """Close connections and cleanup resources."""
         try:
-            self.client.execute_write_query(self.database, relation_query)
-            self.stats['relations'] += 1
+            self.client.close()
         except Exception:
             pass
-        
-        # Process text blocks
-        text_blocks = section.get('text_blocks', [])
-        block_order = 0
-        for text_block in text_blocks:
-            self._process_text_block(text_block, section_id, block_order, force_update)
-            block_order += 1
-        
-        # Process subsections recursively
-        subsections = section.get('sections', [])
-        for subsection in subsections:
-            self._process_section(subsection, section_id, 'spec-section', force_update)
-    
-    def _create_spec_section(self, section: Dict[str, Any]):
-        """Create a spec-section entity."""
-        section_id = section.get('section_id')
-        title = self._escape_string(section.get('title', ''))
-        label = section.get('label', '')
-        order = section.get('order', 0)
-        
-        query = f'''
-            insert $sec isa spec-section,
-                has spec-section-id "{section_id}",
-                has title "{title}",
-                has id-label "{label}",
-                has order {order};
-        '''
-        self.client.execute_write_query(self.database, query)
-    
-    def _process_text_block(self, text_block: Dict[str, Any], 
-                           section_id: str, order: int, force_update: bool):
-        """Process a text block with its concepts and semantic cues."""
-        anchor_id = text_block.get('anchor_id')
-        
-        if not anchor_id:
-            self.logger.warning("Text block without anchor_id, skipping")
-            return
-        
-        # Create text-block entity
-        if force_update or not self.entity_exists('text-block', 'anchor-id', anchor_id):
-            self._create_text_block(text_block, order)
-            self.stats['text_blocks'] += 1
-            self.logger.debug(f"Created text-block: {anchor_id}")
-        
-        # Create outlining relation
-        relation_query = f'''
-            match 
-                $parent isa spec-section, has spec-section-id "{section_id}";
-                $child isa text-block, has anchor-id "{anchor_id}";
-            insert outlining(section: $parent, subsection: $child);
-        '''
-        try:
-            self.client.execute_write_query(self.database, relation_query)
-            self.stats['relations'] += 1
-        except Exception:
-            pass
-        
-        # Process concepts
-        concepts = text_block.get('concepts', [])
-        for concept in concepts:
-            self._process_concept(concept, anchor_id, force_update)
-        
-        # Process semantic cues
-        semantic_cues = text_block.get('semantic_cues', [])
-        for cue in semantic_cues:
-            self._process_semantic_cue(cue, anchor_id, force_update)
-    
-    def _create_text_block(self, text_block: Dict[str, Any], order: int):
-        """Create a text-block entity."""
-        anchor_id = text_block.get('anchor_id')
-        label = text_block.get('label', '')
-        anchor_type = text_block.get('type', 'goal')
-        text = self._escape_string(text_block.get('text', ''))
-        
-        query = f'''
-            insert $tb isa text-block,
-                has anchor-id "{anchor_id}",
-                has id-label "{label}",
-                has anchor-type "{anchor_type}",
-                has text "{text}",
-                has order {order};
-        '''
-        self.client.execute_write_query(self.database, query)
-    
-    def _process_concept(self, concept: Dict[str, Any], 
-                        anchor_id: str, force_update: bool):
-        """Process a concept and create anchoring relation."""
-        concept_id = concept.get('concept_id')
-        
-        if not concept_id:
-            self.logger.warning("Concept without concept_id, skipping")
-            return
-        
-        # Create concept entity
-        if force_update or not self.entity_exists('concept', 'concept-id', concept_id):
-            self._create_concept(concept)
-            self.stats['concepts'] += 1
-            self.logger.debug(f"Created concept: {concept_id}")
-        
-        # Create anchoring relation
-        relation_query = f'''
-            match 
-                $anchor isa text-block, has anchor-id "{anchor_id}";
-                $concept isa concept, has concept-id "{concept_id}";
-            insert anchoring(anchor: $anchor, concept: $concept);
-        '''
-        try:
-            self.client.execute_write_query(self.database, relation_query)
-            self.stats['relations'] += 1
-        except Exception:
-            pass
-    
-    def _create_concept(self, concept: Dict[str, Any]):
-        """Create a concept entity."""
-        concept_id = concept.get('concept_id')
-        name = concept.get('name', '')
-        description = self._escape_string(concept.get('description', ''))
-        
-        query = f'''
-            insert $c isa concept,
-                has concept-id "{concept_id}",
-                has id-label "{name}",
-                has description "{description}";
-        '''
-        self.client.execute_write_query(self.database, query)
-    
-    def _process_semantic_cue(self, cue: str, anchor_id: str, force_update: bool):
-        """Process a semantic cue and create membership relation."""
-        if not cue:
-            return
-        
-        cue_id = cue.replace('-', '_').replace(' ', '_')
-        
-        if force_update or not self.entity_exists('semantic-cue', 'identifier', cue_id):
-            query = f'''
-                insert $sc isa semantic-cue,
-                    has identifier "{cue_id}";
-            '''
-            try:
-                self.client.execute_write_query(self.database, query)
-                self.stats['semantic_cues'] += 1
-                self.logger.debug(f"Created semantic-cue: {cue_id}")
-            except Exception as e:
-                self.logger.warning(f"Could not create semantic-cue '{cue_id}': {e}")
-        
-        # Create membership relation
-        relation_query = f'''
-            match 
-                $tb isa text-block, has anchor-id "{anchor_id}";
-                $sc isa semantic-cue, has identifier "{cue_id}";
-            insert membership(member-of: $tb, member: $sc);
-        '''
-        try:
-            self.client.execute_write_query(self.database, relation_query)
-            self.stats['relations'] += 1
-        except Exception:
-            pass
-    
-    def _escape_string(self, s: str) -> str:
-        """Escape special characters in strings for TypeQL."""
-        if not s:
-            return ""
-        s = s.replace('\\', '\\\\')
-        s = s.replace('"', '\\"')
-        s = s.replace('\n', ' ')
-        s = s.replace('\r', ' ')
-        s = ' '.join(s.split())
-        return s
 
 
 def main():
     """Main CLI entry point."""
-    parser = argparse.ArgumentParser(
-        description='Import YAML specification files into TypeDB 3 (HTTP API)',
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog=f"""
-Verbosity levels:
-  -q, --quiet     Error messages only
-  -v, --verbose   Detailed progress information
-  -vv, --debug    All debug information
-
-Examples:
-  %(prog)s --parse-spec-file spec.yaml
-  %(prog)s -v --clear --parse-spec-file spec.yaml
-  %(prog)s -vv --url http://cloud.typedb.com:8000 \\
-      --username admin --password secret --parse-spec-file spec.yaml
-        """
-    )
-    
-    parser.add_argument(
-        '--parse-spec-file', type=Path,
-        help='Path to YAML specification file to import'
-    )
-    
-    parser.add_argument(
-        '--clear', action='store_true',
-        help='Clear all specification data from database before import'
-    )
-    
-    parser.add_argument(
-        '--url', default='http://localhost:8000',
-        help='TypeDB server URL (default: http://localhost:8000)'
-    )
-    
-    parser.add_argument(
-        '--database', default='specifications',
-        help='TypeDB database name (default: specifications)'
-    )
-    
-    parser.add_argument(
-        '--username', help='TypeDB username (for authentication)'
-    )
-    
-    parser.add_argument(
-        '--password', help='TypeDB password (for authentication)'
-    )
-    
-    parser.add_argument(
-        '--force-update', action='store_true',
-        help='Force update of existing entities'
-    )
-    
-    # Verbosity flags
-    parser.add_argument(
-        '-q', '--quiet', action='store_true',
-        help='Error messages only'
-    )
-    parser.add_argument(
-        '-v', '--verbose', action='count', default=0,
-        help='Increase verbosity (-v, -vv, -vvv)'
-    )
-    parser.add_argument(
-        '-vv', '--debug', action='store_true',
-        help='All debug information'
-    )
-    
+    parser = create_parser()
     args = parser.parse_args()
     
-    # Determine verbosity level
-    if args.quiet:
-        verbose = VerboseLevel.ERROR
-    elif args.debug:
-        verbose = VerboseLevel.DEBUG
-    elif args.verbose >= 2:
-        verbose = VerboseLevel.DEBUG
-    elif args.verbose == 1:
-        verbose = VerboseLevel.VERBOSE
-    else:
-        verbose = VerboseLevel.NORMAL
+    # Validate arguments based on mode
+    if args.mode in ('yaml', 'all') and not args.yaml_file and not args.stats_only:
+        parser.error("--yaml-file is required for yaml or all mode")
     
-    # Validate arguments
-    if not args.parse_spec_file and not args.clear:
-        parser.error("At least one of --parse-spec-file or --clear must be specified")
+    if args.mode in ('json', 'all') and not args.json_dir and not args.all_concepts and not args.stats_only:
+        parser.error("--json-dir or --all-concepts is required for json or all mode")
     
-    if args.parse_spec_file and not args.parse_spec_file.exists():
-        parser.error(f"File not found: {args.parse_spec_file}")
+    if args.wipe_db and not args.create_db:
+        # This is fine, just a warning
+        pass
     
-    # Create importer
-    importer = TypeDBSpecImporter(
-        base_url=args.url,
+    # Create the unified importer
+    importer = UnifiedTypeDBImporter(
+        base_url=args.base_url,
         database=args.database,
         username=args.username,
         password=args.password,
-        verbose=verbose
+        verbose=args.verbose
     )
     
     try:
-        importer.connect()
+        # Handle wipe mode first
+        if args.mode == 'wipe':
+            if args.wipe_db:
+                success = importer.wipe_database(verify=args.check_wipe)
+                if not success:
+                    sys.exit(1)
+            elif args.check_wipe:
+                success = importer.verify_wipe()
+                if not success:
+                    sys.exit(1)
+            else:
+                importer.log("warning", "No action specified for wipe mode. Use --wipe-db or --check-wipe")
+            return
         
-        if args.clear:
-            importer.clear_specification_data()
+        # Handle stats-only mode
+        if args.stats_only:
+            importer.section("Statistics")
+            importer.log("info", f"Database: {args.database}")
+            importer.log("info", f"Mode: {args.mode}")
+            if args.yaml_file:
+                importer.log("info", f"YAML file: {args.yaml_file}")
+            if args.json_dir:
+                importer.log("info", f"JSON directory: {args.json_dir}")
+            elif args.all_concepts:
+                importer.log("info", "JSON directory: ./json (default)")
+            return
         
-        if args.parse_spec_file:
-            importer.import_spec_file(args.parse_spec_file, args.force_update)
+        # Create database if requested
+        if args.create_db:
+            success = importer.create_database()
+            if not success:
+                sys.exit(1)
+        
+        # Wipe database if requested (before import)
+        if args.wipe_db:
+            success = importer.wipe_database(verify=False)  # Don't verify before import
+            if not success:
+                sys.exit(1)
+        
+        # Import based on mode
+        if args.mode == 'yaml':
+            importer.import_yaml(args.yaml_file, force_update=args.force_update)
+            
+        elif args.mode == 'json':
+            json_dir = args.json_dir if args.json_dir else Path('./json')
+            importer.import_json(json_dir, force_update=args.force_update)
+            
+        elif args.mode == 'all':
+            # Import YAML first
+            if args.yaml_file:
+                importer.import_yaml(args.yaml_file, force_update=args.force_update)
+            
+            # Then import JSON
+            if args.json_dir:
+                importer.import_json(args.json_dir, force_update=args.force_update)
+            elif args.all_concepts:
+                importer.import_json(Path('./json'), force_update=args.force_update)
+        
+        # Final verification if requested
+        if args.wipe_db and args.check_wipe:
+            importer.verify_wipe()
+        
+        importer.log("success", f"Operation completed successfully")
         
     except KeyboardInterrupt:
-        print("\nOperation cancelled by user")
+        importer.log("warning", "Operation cancelled by user")
         sys.exit(1)
     except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
-        import traceback
-        traceback.print_exc()
+        importer.log("error", f"Unexpected error: {e}")
         sys.exit(1)
     finally:
         importer.close()
