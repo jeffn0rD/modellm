@@ -11,10 +11,30 @@ AI coding agent instructions for **modellm**
 
 **Documentation:**
 - `developer_todo.md` -- master (human engineer) todo list
-- `agents/implementation_guide.md` -- Detailed implementation guide with specifications for (some) tasks
-- `doc\TypeQL3_REF.md` -- typeql version 3 reference
-- `doc/typedb_schema.tql` -- typedb database schema used in this project  
+- `agents/implementation_guide.md` -- Detailed implementation guide with specifications for tasks
+- `doc/migration_proposal.md` -- Comprehensive implementation plan for prompt pipeline
+- `doc/workflow_guide.md` -- Usage workflow and examples
+- `doc/typedb_schema_2.tql` -- TypeDB schema (v3 syntax)
 - `doc/typedb_http_api.md` -- guide to the HTTP api
+- `doc/TypeQL3_REF.md` -- TypeQL version 3 reference
+
+**Configuration:**
+- `configuration/pipeline_config.yaml` -- Flexible step configuration for prompt pipeline
+- `pyproject.toml` -- Updated with prompt-pipeline CLI tool
+
+**Prompt Pipeline Library:**
+- `prompt_pipeline/llm_client.py` -- OpenRouter API client
+- `prompt_pipeline/prompt_manager.py` -- Prompt loading and step configuration
+- `prompt_pipeline/validation/` -- YAML and JSON validators
+- `prompt_pipeline/step_executor.py` -- Individual step execution
+- `prompt_pipeline/orchestrator.py` -- Pipeline coordination
+
+**CLI Tool:**
+- `prompt_pipeline_cli/main.py` -- Main CLI entry point
+- `prompt_pipeline_cli/commands/` -- CLI command implementations
+
+**Prompts:**
+- `prompts/` -- Prompt templates for pipeline steps (step1, step2, step3, stepC3, stepC4, stepC5, stepD1)
 
 ## Task Management
 ## Task Creation *IMPORTANT*

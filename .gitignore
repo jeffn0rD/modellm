@@ -50,3 +50,20 @@ Thumbs.db
 coverage.json
 .nanocoder/
 agents/
+
+# Pipeline outputs
+pipeline_output/
+yaml/
+json/
+dev_output/
+prod_output/
+test_output/
+
+# Partial outputs
+*.partial
+
+# Cache
+.cache/
+
+# Temporary files
+*.tmp

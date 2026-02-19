@@ -1,0 +1,320 @@
+# Prompt Pipeline Configuration File
+# This file contains configuration for the prompt pipeline tool
+
+# Flexible Step Configuration
+# Each step can be customized with name, prompt file, order, output file, and type
+steps:
+  # Step 1: NL spec → YAML
+  step1:
+    name: "step1"
+    prompt_file: "prompt_step1_v2.md"
+    order: 1
+    output_file: "spec_1.yaml"
+    output_type: "yaml"
+    # Input requirements
+    requires_nl_spec: true
+    # Dependencies on other steps
+    dependencies: []
+    # JSON schema for validation (if output_type is json)
+    json_schema: null
+
+  # Step 2: YAML → Formal spec (revision cycle)
+  step2:
+    name: "step2"
+    prompt_file: "prompt_step2_v2.md"
+    order: 2
+    output_file: "spec_formal.md"
+    output_type: "md"
+    requires_nl_spec: false
+    requires_spec_file: true
+    dependencies: ["step1"]
+    json_schema: null
+
+  # Step 3: Revision cycle
+  step3:
+    name: "step3"
+    prompt_file: "prompt_step3_v2.md"
+    order: 3
+    output_file: "revised_spec.md"
+    output_type: "md"
+    requires_nl_spec: false
+    requires_spec_file: true
+    dependencies: ["step2"]
+    json_schema: null
+
+  # Step C3: Extract concepts
+  stepC3:
+    name: "stepC3"
+    prompt_file: "prompt_step_C3.md"
+    order: 4
+    output_file: "concepts.json"
+    output_type: "json"
+    requires_nl_spec: false
+    requires_spec_file: true
+    dependencies: []
+    json_schema: "schemas/concepts_schema.json"
+
+  # Step C4: Define aggregations
+  stepC4:
+    name: "stepC4"
+    prompt_file: "prompt_step_C4.md"
+    order: 5
+    output_file: "aggregations.json"
+    output_type: "json"
+    requires_nl_spec: false
+    requires_spec_file: true
+    requires_concepts_file: true
+    dependencies: ["stepC3"]
+    json_schema: "schemas/aggregations_schema.json"
+
+  # Step C5: Define messages
+  stepC5:
+    name: "stepC5"
+    prompt_file: "prompt_step_C5.md"
+    order: 6
+    output_file: "messages.json"
+    output_type: "json"
+    output_files:
+      - "messages.json"
+      - "messageAggregations.json"
+    requires_nl_spec: false
+    requires_spec_file: true
+    requires_concepts_file: true
+    requires_aggregations_file: true
+    dependencies: ["stepC3", "stepC4"]
+    json_schema: "schemas/messages_schema.json"
+
+  # Step D1: Extract requirements
+  stepD1:
+    name: "stepD1"
+    prompt_file: "prompt_step_D1.md"
+    order: 7
+    output_file: "requirements.json"
+    output_type: "json"
+    requires_nl_spec: false
+    requires_spec_file: true
+    requires_concepts_file: true
+    requires_messages_file: true
+    dependencies: ["stepC3", "stepC5"]
+    json_schema: "schemas/requirements_schema.json"
+
+# Model levels for each step
+# Level 1: Cheapest/fastest (development)
+# Level 2: Balanced (regular use)
+# Level 3: Best (production)
+
+model_levels:
+  step1:
+    1: "minimax/m2.5"
+    2: "mimo/v2-flash"
+    3: "moonshotai/kimi-k2-0905"
+
+  step2:
+    1: "minimax/m2.5"
+    2: "mimo/v2-flash"
+    3: "moonshotai/kimi-k2-0905"
+
+  step3:
+    1: "minimax/m2.5"
+    2: "mimo/v2-flash"
+    3: "moonshotai/kimi-k2-0905"
+
+  stepC3:
+    1: "qwen"
+    2: "mimo/v2-flash"
+    3: "moonshotai/kimi-k2-0905"
+
+  stepC4:
+    1: "minimax/m2.5"
+    2: "mimo/v2-flash"
+    3: "moonshotai/kimi-k2-0905"
+
+  stepC5:
+    1: "qwen"
+    2: "mimo/v2-flash"
+    3: "moonshotai/kimi-k2-0905"
+
+  stepD1:
+    1: "qwen"
+    2: "mimo/v2-flash"
+    3: "moonshotai/kimi-k2-0905"
+
+# Development defaults
+dev_defaults:
+  model_level: 1
+  verbosity: 2
+  skip_validation: false
+  dry_run: false
+
+# Validation settings
+validation:
+  # Default: strict validation (fail on errors)
+  strict: true
+  # Future: auto-fix capability
+  auto_fix: false
+  # Max retry attempts for auto-fix
+  max_auto_fix_attempts: 3
+
+# File locations
+paths:
+  prompts_dir: "prompts"
+  default_output_dir: "pipeline_output"
+  schema_file: "doc/typedb_schema_2.tql"
+
+# LLM settings
+llm:
+  # OpenRouter API key (from environment variable OPENROUTER_API_KEY)
+  # Format: "${ENV_VAR_NAME}" for environment variable substitution
+  api_key: "${OPENROUTER_API_KEY}"
+  
+  # Default request settings
+  max_retries: 3
+  timeout: 60
+  max_tokens: 4000
+  rate_limit_delay: 0.5
+
+# TypeDB settings
+typedb:
+  # Default connection settings (can be overridden by environment variables)
+  url: "http://localhost:8000"
+  username: "admin"
+  password: "password"
+  
+  # Format: "${ENV_VAR_NAME}" for environment variable substitution
+  url_env: "${TYPEDB_URL}"
+  username_env: "${TYPEDB_USERNAME}"
+  password_env: "${TYPEDB_PASSWORD}"
+
+# Import settings
+import:
+  # Validation before import
+  validate_before_import: true
+  # Create database if it doesn't exist
+  create_if_missing: false
+  # Auto-wipe on import (requires explicit --wipe flag)
+  wipe_before_import: false
+
+# Output settings
+output:
+  # Verbosity levels:
+  # 0: Errors only
+  # 1: Summary (default)
+  # 2: Verbose
+  # 3: Debug
+  default_verbosity: 1
+  
+  # Colored output
+  colors: true
+  
+  # Save partial outputs on failure
+  save_partial_on_failure: true
+
+# Logging
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR
+  file: null     # Set to file path to enable file logging
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+# Performance
+performance:
+  # Parallel execution (future feature)
+  parallel_steps: false
+  max_parallel: 4
+  
+  # Cache settings (future feature)
+  cache_enabled: false
+  cache_dir: ".cache"
+  cache_ttl: 3600  # seconds
+
+# Command defaults
+defaults:
+  # Default model level (1, 2, or 3)
+  model_level: 1
+  # Default output directory
+  output_dir: "pipeline_output"
+  # Default verbosity
+  verbosity: 1
+  # Default: don't skip validation
+  skip_validation: false
+
+# Stage-specific settings
+stages:
+  # Stage 1: Basic pipeline (NL → YAML, C3, C4, C5, D1)
+  basic:
+    enabled: true
+    default_model_level: 1
+  
+  # Stage 2: Revision cycle (Steps 2-3)
+  revision:
+    enabled: true
+    manual_approval_required: true
+    # For future: auto-retry with fixes
+    auto_retry: false
+    max_retries: 3
+
+# Security
+security:
+  # Mask sensitive data in logs
+  mask_api_keys: true
+  mask_passwords: true
+  
+  # File permissions
+  output_file_mode: "0o644"
+  cache_file_mode: "0o600"
+
+# Future features (placeholder)
+future:
+  # Context compression
+  compression_enabled: false
+  compression_algorithm: "summarization"  # summarization, key_extraction, semantic
+  
+  # Batch processing
+  batch_enabled: false
+  batch_dir: "specs"
+  
+  # Web interface
+  web_enabled: false
+  web_port: 8080
+
+# Validation rules
+validation_rules:
+  # YAML validation (Step 1)
+  yaml:
+    required_fields:
+      - "specification"
+      - "specification.id"
+      - "specification.title"
+      - "specification.sections"
+    id_patterns:
+      anchor: "^AN\\d+$"
+      section: "^S\\d+$"
+      concept: "^C\\d+$"
+  
+  # JSON validation (Steps C3, C4, C5, D1)
+  json:
+    concepts:
+      required_fields: ["type", "id", "label", "description"]
+      id_patterns:
+        actor: "^A\\d+$"
+        action: "^ACT\\d+$"
+        dataentity: "^DE\\d+$"
+    aggregations:
+      required_fields: ["id", "label", "category", "members"]
+      id_pattern: "^AG\\d+$"
+    messages:
+      required_fields: ["id", "label", "category", "producer", "consumer"]
+      id_pattern: "^MSG\\d+$"
+      categories: ["command", "request", "response", "event"]
+    requirements:
+      required_fields: ["id", "type", "label", "description", "priority"]
+      id_pattern: "^REQ-[a-zA-Z0-9_.]+$"
+      types: ["functional", "nonfunctional", "ui", "future-functional"]
+      priorities: ["must", "should", "could"]
+
+---
+# End of configuration file
+# Note: This file can be overridden by:
+# 1. Project-local: ./configuration/pipeline_config.yaml
+# 2. User-global: ~/.prompt-pipeline/config.yaml
+# 3. Custom path: --config <path>
+# 4. Environment variable: PROMPT_PIPELINE_CONFIG=<path>

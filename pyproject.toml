@@ -3,30 +3,38 @@ requires = ["setuptools>=45", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "TypeDBClient3"
+name = "modellm"
 version = "0.1.0"
-description = "Python client library for TypeDB v3"
+description = "TypeDB client library and prompt pipeline for NL to database conversion"
 authors = [{name = "Developer", email = "dev@example.com"}]
 readme = "README.md"
 requires-python = ">=3.8"
 dependencies = [
     "requests>=2.25.0",
     "cryptography>=3.4.8",
-    "urllib3>=1.26.0"
+    "urllib3>=1.26.0",
+    "pyyaml>=6.0",
+    "click>=8.0.0"
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=6.0",
     "pytest-cov>=2.0",
-    "pytest-mock>=3.0"
+    "pytest-mock>=3.0",
+    "pytest-asyncio>=0.21.0"
 ]
 
+[project.scripts]
+prompt-pipeline = "prompt_pipeline_cli.main:cli"
+
 [tool.setuptools]
-packages = ["typedb_client3"]
+packages = ["typedb_client3", "prompt_pipeline", "prompt_pipeline_cli"]
 
 [tool.setuptools.package-dir]
 typedb_client3 = "tools/typedb_client3"
+prompt_pipeline = "prompt_pipeline"
+prompt_pipeline_cli = "prompt_pipeline_cli"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -2,7 +2,25 @@
 
 ## TODO:
   ## NEXT TASKS
-    
+  - need to streamlining the prompt pipeline to go from NL informal specification to typedb database
+    - prompts are in `prompts` folder.
+    - review the prompts
+      - prompt_step1_v2.md is designed to generate YAML from NL specification
+      - prompt_step2_v2.md will convert the YAML into a more formalized specification .md
+      - prompt_step3_v2.md is designed for handling revisions to the formal spec
+      - steps 2 and 3 above are only used when a revise/refine cycle is being used to get to an approved specification draft 0.1
+      - prompt_step_[C3, C4, C5, D1] are steps that generated json files describing typedb entities
+      - the already created tools/typedb_import.py script intakes the yaml and json files generated and creates requisite database entities and relations 
+    - a new library needs to be created to handle the generation pipeline
+      - it will use openrouter api to execute the prompts and save the outputs
+      - different models can be used for different steps
+      - the prompts will need the necessary data substituted/appended in from previous steps
+        - later revision of the library will utilize some form of compression to keep context minimal and concise
+    - a CLI tool needs to be created that will use the library.  switches for model and step and file/folder locations will need to be supplied
+      - switches also configurable so entire pipeline can be run (this would exclude the step 2/3 revision cycle) or individual steps.  For simplicity only one switch for model, so if entire pipeline is run it will use the same model
+      - a later revision should have a configuration file (yaml) that would allow specification of prefered models for steps
+      - some form of validation needs to be done on the outputs (yaml and json).  
+      
 
   ** DO NOT PLAN OR CREATE TASKS FOR ANYTHING AFTER THIS POINT **    
   ## TASKS THAT NEED DETAILED PLANNING AND SPECIFICATION (FUTURE)

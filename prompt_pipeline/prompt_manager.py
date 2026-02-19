@@ -1,0 +1,351 @@
+"""
+Prompt Manager Module for the prompt pipeline.
+
+This module handles loading prompts from files, managing step configurations,
+and performing variable substitution in prompt templates.
+"""
+
+import os
+from pathlib import Path
+from typing import Dict, Any, List, Optional
+
+
+class PromptManager:
+    """
+    Load prompts and manage step configurations.
+    
+    Handles loading prompt templates from files, substituting variables,
+    and managing step dependencies and configurations.
+    """
+    
+    def __init__(
+        self,
+        config_path: str,
+        prompts_dir: str = "prompts"
+    ):
+        """
+        Initialize the Prompt Manager.
+        
+        Args:
+            config_path: Path to the pipeline configuration YAML file.
+            prompts_dir: Directory containing prompt template files.
+        """
+        self.config_path = config_path
+        self.prompts_dir = prompts_dir
+        self.steps_config = self._load_step_config()
+    
+    def _load_step_config(self) -> Dict[str, Any]:
+        """Load step configurations from YAML file."""
+        import yaml
+        with open(self.config_path, 'r') as f:
+            config = yaml.safe_load(f)
+        return config
+    
+    def get_step_config(self, step_name: str) -> Optional[Dict[str, Any]]:
+        """
+        Get full configuration for a step.
+        
+        Args:
+            step_name: Name of the step.
+        
+        Returns:
+            Step configuration dictionary, or None if step not found.
+        """
+        steps = self.steps_config.get('steps', {})
+        return steps.get(step_name)
+    
+    def load_prompt(self, prompt_file: str) -> str:
+        """
+        Load prompt template from file.
+        
+        Args:
+            prompt_file: Name of the prompt file in prompts_dir.
+        
+        Returns:
+            Prompt template content as string.
+        
+        Raises:
+            FileNotFoundError: If prompt file doesn't exist.
+        """
+        path = Path(self.prompts_dir) / prompt_file
+        if not path.exists():
+            raise FileNotFoundError(f"Prompt file not found: {path}")
+        return path.read_text(encoding='utf-8')
+    
+    def substitute_variables(
+        self,
+        prompt: str,
+        variables: Dict[str, Any]
+    ) -> str:
+        """
+        Replace {{variable}} placeholders in prompt.
+        
+        Args:
+            prompt: Prompt template string with {{variable}} placeholders.
+            variables: Dictionary of variable names to values.
+        
+        Returns:
+            Prompt with all variables substituted.
+        """
+        result = prompt
+        for key, value in variables.items():
+            placeholder = f"{{{{{key}}}}}"
+            result = result.replace(placeholder, str(value))
+        return result
+    
+    def get_prompt_file(self, step_name: str) -> Optional[str]:
+        """
+        Get prompt filename for step.
+        
+        Args:
+            step_name: Name of the step.
+        
+        Returns:
+            Prompt filename, or None if step not found.
+        """
+        config = self.get_step_config(step_name)
+        if config is None:
+            return None
+        return config.get('prompt_file')
+    
+    def get_output_file(self, step_name: str) -> Optional[str]:
+        """
+        Get output filename for step.
+        
+        Args:
+            step_name: Name of the step.
+        
+        Returns:
+            Output filename, or None if step not found.
+        """
+        config = self.get_step_config(step_name)
+        if config is None:
+            return None
+        return config.get('output_file')
+    
+    def get_output_type(self, step_name: str) -> Optional[str]:
+        """
+        Get output type for step (yaml, json, md).
+        
+        Args:
+            step_name: Name of the step.
+        
+        Returns:
+            Output type string, or None if step not found.
+        """
+        config = self.get_step_config(step_name)
+        if config is None:
+            return None
+        return config.get('output_type')
+    
+    def get_json_schema(self, step_name: str) -> Optional[str]:
+        """
+        Get JSON schema path for step.
+        
+        Args:
+            step_name: Name of the step.
+        
+        Returns:
+            Path to JSON schema file, or None if not specified.
+        """
+        config = self.get_step_config(step_name)
+        if config is None:
+            return None
+        return config.get('json_schema')
+    
+    def get_required_inputs(self, step_name: str) -> List[str]:
+        """
+        Determine what inputs a step needs.
+        
+        Args:
+            step_name: Name of the step.
+        
+        Returns:
+            List of required input types (e.g., 'nl_spec', 'spec_file', 'concepts_file').
+        """
+        config = self.get_step_config(step_name)
+        if config is None:
+            return []
+        
+        inputs = []
+        if config.get('requires_nl_spec'):
+            inputs.append('nl_spec')
+        if config.get('requires_spec_file'):
+            inputs.append('spec_file')
+        if config.get('requires_concepts_file'):
+            inputs.append('concepts_file')
+        if config.get('requires_aggregations_file'):
+            inputs.append('aggregations_file')
+        if config.get('requires_messages_file'):
+            inputs.append('messages_file')
+        if config.get('requires_requirements_file'):
+            inputs.append('requirements_file')
+        
+        return inputs
+    
+    def get_dependencies(self, step_name: str) -> List[str]:
+        """
+        Get step dependencies from config.
+        
+        Args:
+            step_name: Name of the step.
+        
+        Returns:
+            List of step names this step depends on.
+        """
+        config = self.get_step_config(step_name)
+        if config is None:
+            return []
+        return config.get('dependencies', [])
+    
+    def get_step_order(self, step_name: str) -> int:
+        """
+        Get execution order for step.
+        
+        Args:
+            step_name: Name of the step.
+        
+        Returns:
+            Order number (lower = earlier execution).
+        """
+        config = self.get_step_config(step_name)
+        if config is None:
+            return 999
+        return config.get('order', 999)
+    
+    def get_all_steps(self) -> List[Dict[str, Any]]:
+        """
+        Get all step configurations.
+        
+        Returns:
+            List of all step configuration dictionaries.
+        """
+        steps = self.steps_config.get('steps', {})
+        return list(steps.values())
+    
+    def get_all_step_names(self) -> List[str]:
+        """
+        Get all step names.
+        
+        Returns:
+            List of step names.
+        """
+        steps = self.steps_config.get('steps', {})
+        return list(steps.keys())
+    
+    def get_sorted_steps(self) -> List[Dict[str, Any]]:
+        """
+        Get all steps sorted by execution order.
+        
+        Returns:
+            List of step configurations sorted by 'order' field.
+        """
+        steps = self.get_all_steps()
+        return sorted(steps, key=lambda s: s.get('order', 999))
+    
+    def get_steps_for_execution(self, start_step: Optional[str] = None) -> List[Dict[str, Any]]:
+        """
+        Get steps that need to be executed based on dependencies.
+        
+        If start_step is provided, returns steps from start_step onwards
+        (including dependencies).
+        
+        Args:
+            start_step: Optional step name to start from.
+        
+        Returns:
+            List of steps to execute in order.
+        """
+        if start_step is None:
+            return self.get_sorted_steps()
+        
+        # Get all steps needed - start step and its dependencies
+        steps_to_execute = []
+        visited = set()
+        
+        def add_step_and_deps(step_name: str):
+            if step_name in visited:
+                return
+            visited.add(step_name)
+            
+            # First add dependencies
+            deps = self.get_dependencies(step_name)
+            for dep in deps:
+                add_step_and_deps(dep)
+            
+            # Then add this step
+            config = self.get_step_config(step_name)
+            if config:
+                steps_to_execute.append(config)
+        
+        add_step_and_deps(start_step)
+        
+        # Sort by order
+        return sorted(steps_to_execute, key=lambda s: s.get('order', 999))
+    
+    def get_prompt_with_variables(
+        self,
+        step_name: str,
+        variables: Dict[str, Any]
+    ) -> str:
+        """
+        Load prompt for step and substitute variables.
+        
+        Args:
+            step_name: Name of the step.
+            variables: Dictionary of variables to substitute.
+        
+        Returns:
+            Processed prompt string.
+        """
+        prompt_file = self.get_prompt_file(step_name)
+        if prompt_file is None:
+            raise ValueError(f"Step '{step_name}' not found in configuration")
+        
+        prompt = self.load_prompt(prompt_file)
+        return self.substitute_variables(prompt, variables)
+    
+    def get_dev_defaults(self) -> Dict[str, Any]:
+        """
+        Get development default settings.
+        
+        Returns:
+            Dictionary of dev defaults.
+        """
+        return self.steps_config.get('dev_defaults', {})
+    
+    def get_validation_config(self) -> Dict[str, Any]:
+        """
+        Get validation configuration.
+        
+        Returns:
+            Dictionary of validation settings.
+        """
+        return self.steps_config.get('validation', {})
+    
+    def get_paths_config(self) -> Dict[str, Any]:
+        """
+        Get paths configuration.
+        
+        Returns:
+            Dictionary of path settings.
+        """
+        return self.steps_config.get('paths', {})
+
+
+# Convenience function for simple usage
+def create_prompt_manager(
+    config_path: str = "configuration/pipeline_config.yaml",
+    prompts_dir: str = "prompts"
+) -> PromptManager:
+    """
+    Create a PromptManager instance.
+    
+    Args:
+        config_path: Path to pipeline config.
+        prompts_dir: Directory containing prompts.
+    
+    Returns:
+        Configured PromptManager instance.
+    """
+    return PromptManager(config_path=config_path, prompts_dir=prompts_dir)

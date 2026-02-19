@@ -1,732 +1,694 @@
-# TypeDB Migration Proposal: JSON Concepts Import
+# Prompt Pipeline Migration Proposal
 
 ## Overview
 
-This document outlines the migration strategy for importing JSON concept files into TypeDB 3 using the `--parse-concepts` flag in the `typedb_import.py` script.
+This document provides a comprehensive plan for creating a unified prompt pipeline library and CLI tool that automates the conversion of natural language specifications into TypeDB databases. The pipeline transforms NL specs through multiple stages using LLM-powered prompts with **fully configurable step definitions**.
 
-## 1. JSON File Structure Analysis
+## Key Innovation: Flexible Step Configuration
 
-### 1.1 Concepts JSON File (`concepts.json`)
+**NEW FEATURE:** All steps are now configured in `pipeline_config.yaml` with complete flexibility:
 
-Contains three types of design concepts:
-
-**Actor Objects:**
-```json
-{
-  "type": "Actor",
-  "id": "A1",
-  "label": "EndUser",
-  "categories": ["core"],
-  "description": "A single person using the application...",
-  "justification": "Described as a single user...",
-  "anchors": ["AN1", "AN2", ...],
-  "sourceConceptIds": ["C1", "C5", ...]
-}
+```yaml
+steps:
+  stepC3:
+    name: "stepC3"
+    prompt_file: "prompt_step_C3.md"
+    order: 4
+    output_file: "concepts.json"
+    output_type: "json"
+    requires_nl_spec: false
+    requires_spec_file: true
+    dependencies: []
+    json_schema: "schemas/concepts_schema.json"
 ```
 
-**Action Objects:**
-```json
-{
-  "type": "Action",
-  "id": "ACT1",
-  "label": "CreateTask",
-  "categories": ["core"],
-  "description": "Create a new task...",
-  "justification": "User needs to create tasks...",
-  "anchors": ["AN3", ...],
-  "sourceConceptIds": [...]
-}
-```
-
-**DataEntity Objects:**
-```json
-{
-  "type": "DataEntity",
-  "id": "DE16",
-  "label": "SearchQuery",
-  "categories": ["future"],
-  "description": "A free-text expression...",
-  "justification": "Search capability specifies...",
-  "anchors": ["AN22"],
-  "sourceConceptIds": ["C65", "C66", ...]
-}
-```
-
-### 1.2 Aggregations JSON File (`aggregations.json`)
-
-Contains ActionAggregate objects:
-```json
-{
-  "id": "AG1",
-  "label": "TaskLifecycle",
-  "category": "lifecycle",
-  "members": ["ACT1", "ACT2", "ACT4", "ACT3"],
-  "description": "Lifecycle of an individual Task...",
-  "justification": "The specification emphasizes...",
-  "anchors": ["AN3", "AN6", "AN7"]
-}
-```
-
-### 1.3 Messages JSON File (`messages.json`)
-
-Contains Message objects:
-```json
-{
-  "id": "MSG1",
-  "label": "CreateTaskCommand",
-  "category": "command",
-  "description": "EndUser requests creation of a new task...",
-  "producer": "A1",
-  "consumer": "A2",
-  "payload": [
-    {
-      "id": "DE1",
-      "label": "Task",
-      "refConceptId": "DE1",
-      "constraint": "Must include at least a non-empty title...",
-      "notes": "Represents the task fields...",
-      "isNew": false
-    }
-  ],
-  "constraints": [
-    {
-      "id": "C-MSG1-1",
-      "label": "Task title required on creation",
-      "constraint": "TodoApplication must reject...",
-      "notes": "",
-      "isNew": true
-    }
-  ],
-  "justification": "User needs to create simple to-do items...",
-  "anchors": ["AN3"]
-}
-```
-
-### 1.4 MessageAggregations JSON File (`messageAggregations.json`)
-
-Contains MessageAggregate objects:
-```json
-{
-  "id": "MAG1",
-  "label": "TaskLifecycleWorkflow",
-  "category": "lifecycle",
-  "description": "Workflow covering the lifecycle of a Task...",
-  "sequences": [
-    [
-      {
-        "id": "MSG1",
-        "label": "CreateTaskCommand",
-        "description": "EndUser creates a new task.",
-        "isNew": false
-      },
-      ...
-    ]
-  ],
-  "justification": "Implements AG1 TaskLifecycle by expressing...",
-  "anchors": ["AN3", "AN6", "AN7"]
-}
-```
-
-### 1.5 Requirements JSON File (`requirements.json`)
-
-Contains Requirement objects:
-```json
-{
-  "id": "FR-1",
-  "type": "functional",
-  "status": "draft",
-  "label": "Local single-user browser-based to-do app",
-  "category": "category",
-  "description": "The system shall operate as a simple...",
-  "priority": "must",
-  "sectionHint": "1.1",
-  "anchors": ["AN1", "AN2"],
-  "relatedConcepts": ["A1", "A2", "DE7", "DE22", "DE25"],
-  "relatedMessages": [],
-  "notes": "Summarizes the overall deployment..."
-}
-```
-
----
-
-## 2. TypeDB Schema Mapping
-
-### 2.1 Entity Type Mappings
-
-| JSON Type | TypeDB Entity Type | Key Attribute | Key Field Source |
-|-----------|-------------------|---------------|------------------|
-| Actor | `actor` | `actor-id` | `id` field (e.g., "A1") |
-| Action | `action` | `action-id` | `id` field (e.g., "ACT1") |
-| DataEntity | `data-entity` | `data-entity-id` | `id` field (e.g., "DE16") |
-| Message | `message` | `message-id` | `id` field (e.g., "MSG1") |
-| ActionAggregate | `action-aggregate` | `action-agg-id` | `id` field (e.g., "AG1") |
-| MessageAggregate | `message-aggregate` | `message-agg-id` | `id` field (e.g., "MAG1") |
-| Category | `category` | `name` | `categories[]` array or `category` field |
-| Constraint | `constraint` | `constraint-id` | `id` field (e.g., "C-MSG1-1") |
-| Requirement | `design-concept` (abstract) | `id-label` | `id` field (e.g., "FR-1") |
-
-**Note:** Requirement objects don't have a dedicated entity type in the schema. They will be imported as `design-concept` entities with `id-label` as the key.
-
-### 2.2 Attribute Mappings
-
-| JSON Field | TypeDB Attribute | Applicable Entity Types |
-|------------|------------------|------------------------|
-| `id` | Various (see Key Attributes table above) | Actor, Action, DataEntity, Message, Aggregates |
-| `label` | `id-label` | All design-concept subtypes |
-| `description` | `description` | All design-concept subtypes |
-| `justification` | `justification` | All design-concept subtypes |
-| `categories[]` | `categorization` relation | All concepts (via category entities) |
-| `category` | `categorization` relation | Aggregates, Messages |
-| `anchors[]` | `anchoring` relation | All concepts (via text-block entities) |
-
-### 2.3 Relation Type Mappings
-
-| JSON Field | TypeDB Relation | Source Role | Target Role | Notes |
-|------------|-----------------|-------------|-------------|-------|
-| `anchors[]` | `anchoring` | `text-block` | `concept` | Requires text-block entities to exist |
-| `categories[]` | `categorization` | `category` | `object` | Creates category entities if needed |
-| `category` | `categorization` | `category` | `object` | Single category for aggregations/messages |
-| `producer` | `messaging` | `producer` | `message` | Links actor to message |
-| `consumer` | `messaging` | `consumer` | `message` | Links actor to message |
-| `members[]` | `membership` | `member-of` (aggregate) | `member` (action) | Links aggregate to actions |
-| `payload[]` | `message-payload` | `message` | `payload` (data-entity) | Links message to data entities |
-| `constraints[]` | `constrained-by` | `constraint` | `object` (message) | Links constraints to messages |
-| `sequences[]` | Not imported | N/A | N/A | Sequence data not modeled in schema |
-
----
-
-## 3. TypeQL Query Examples
-
-### 3.1 Actor Entity Creation
-
-**JSON:**
-```json
-{
-  "type": "Actor",
-  "id": "A1",
-  "label": "EndUser",
-  "description": "A single person using the application...",
-  "justification": "Described as a single user..."
-}
-```
-
-**TypeQL:**
-```typeql
-insert
-  $a isa actor,
-    has actor-id "A1",
-    has id-label "EndUser",
-    has description "A single person using the application...",
-    has justification "Described as a single user...";
-```
-
-### 3.2 Action Entity Creation
-
-**JSON:**
-```json
-{
-  "type": "Action",
-  "id": "ACT1",
-  "label": "CreateTask",
-  "description": "Create a new task...",
-  "justification": "User needs to create tasks..."
-}
-```
-
-**TypeQL:**
-```typeql
-insert
-  $act isa action,
-    has action-id "ACT1",
-    has id-label "CreateTask",
-    has description "Create a new task...",
-    has justification "User needs to create tasks...";
-```
-
-### 3.3 DataEntity Entity Creation
-
-**JSON:**
-```json
-{
-  "type": "DataEntity",
-  "id": "DE16",
-  "label": "SearchQuery",
-  "categories": ["future"],
-  "description": "A free-text expression and optional filters...",
-  "justification": "Search capability specifies free-text search...",
-  "anchors": ["AN22"]
-}
-```
-
-**TypeQL:**
-```typeql
-insert
-  $de isa data-entity,
-    has data-entity-id "DE16",
-    has id-label "SearchQuery",
-    has description "A free-text expression and optional filters used to search across task titles and descriptions.",
-    has justification "Search capability specifies free-text search across titles and descriptions, possibly with filters like only incomplete.";
-```
-
-### 3.4 Category Entity and Categorization Relation
-
-**JSON:**
-```json
-{
-  "categories": ["core", "future"]
-}
-```
-
-**TypeQL:**
-```typeql
-# Create category entities (if they don't exist)
-insert
-  $c1 isa category, has name "core";
-insert
-  $c2 isa category, has name "future";
-
-# Create categorization relations
-match
-  $c1 isa category, has name "core";
-  $de isa data-entity, has data-entity-id "DE16";
-insert categorization(category: $c1, object: $de);
-
-match
-  $c2 isa category, has name "future";
-  $de isa data-entity, has data-entity-id "DE16";
-insert categorization(category: $c2, object: $de);
-```
-
-### 3.5 Anchoring Relation (to text-block)
-
-**JSON:**
-```json
-{
-  "anchors": ["AN22"]
-}
-```
-
-**TypeQL:**
-```typeql
-match
-  $a isa text-block, has anchor-id "AN22";
-  $de isa data-entity, has data-entity-id "DE16";
-insert anchoring(anchor: $a, concept: $de);
-```
-
-### 3.6 Message Entity Creation
-
-**JSON:**
-```json
-{
-  "id": "MSG1",
-  "label": "CreateTaskCommand",
-  "category": "command",
-  "description": "EndUser requests creation of a new task...",
-  "justification": "User needs to create simple to-do items...",
-  "producer": "A1",
-  "consumer": "A2"
-}
-```
-
-**TypeQL:**
-```typeql
-insert
-  $m isa message,
-    has message-id "MSG1",
-    has id-label "CreateTaskCommand",
-    has description "EndUser requests creation of a new task with required and optional attributes.",
-    has justification "User needs to create simple to-do items with at least a title, and optionally a description and due date.";
-```
-
-### 3.7 Messaging Relation (producer/consumer)
-
-**JSON:**
-```json
-{
-  "producer": "A1",
-  "consumer": "A2"
-}
-```
-
-**TypeQL:**
-```typeql
-match
-  $producer isa actor, has actor-id "A1";
-  $consumer isa actor, has actor-id "A2";
-  $m isa message, has message-id "MSG1";
-insert messaging(producer: $producer, consumer: $consumer, message: $m);
-```
-
-### 3.8 Message-Payload Relation
-
-**JSON:**
-```json
-{
-  "payload": [
-    {
-      "id": "DE1",
-      "label": "Task",
-      "refConceptId": "DE1"
-    }
-  ]
-}
-```
-
-**TypeQL:**
-```typeql
-match
-  $m isa message, has message-id "MSG1";
-  $de isa data-entity, has data-entity-id "DE1";
-insert message-payload(message: $m, payload: $de);
-```
-
-### 3.9 Constraint Entity and Constrained-By Relation
-
-**JSON:**
-```json
-{
-  "constraints": [
-    {
-      "id": "C-MSG1-1",
-      "label": "Task title required on creation",
-      "constraint": "TodoApplication must reject CreateTaskCommand if the provided Task title is empty or whitespace."
-    }
-  ]
-}
-```
-
-**TypeQL:**
-```typeql
-# Create constraint entity
-insert
-  $c isa constraint,
-    has constraint-id "C-MSG1-1",
-    has id-label "Task title required on creation",
-    has description "TodoApplication must reject CreateTaskCommand if the provided Task title is empty or whitespace.";
-
-# Create constrained-by relation
-match
-  $c isa constraint, has constraint-id "C-MSG1-1";
-  $m isa message, has message-id "MSG1";
-insert constrained-by(constraint: $c, object: $m);
-```
-
-### 3.10 ActionAggregate Entity and Membership Relation
-
-**JSON:**
-```json
-{
-  "id": "AG1",
-  "label": "TaskLifecycle",
-  "category": "lifecycle",
-  "members": ["ACT1", "ACT2", "ACT4", "ACT3"],
-  "description": "Lifecycle of an individual Task...",
-  "justification": "The specification emphasizes..."
-}
-```
-
-**TypeQL:**
-```typeql
-# Create action-aggregate entity
-insert
-  $agg isa action-aggregate,
-    has action-agg-id "AG1",
-    has id-label "TaskLifecycle",
-    has description "Lifecycle of an individual Task from creation through updates, completion state changes, and eventual deletion.",
-    has justification "The specification emphasizes basic task management: creating tasks, editing them, marking them complete or incomplete, and deleting them as part of the core task lifecycle.";
-
-# Create category entity
-insert
-  $cat isa category, has name "lifecycle";
-
-# Create categorization relation
-match
-  $cat isa category, has name "lifecycle";
-  $agg isa action-aggregate, has action-agg-id "AG1";
-insert categorization(category: $cat, object: $agg);
-
-# Create membership relations for each member
-match
-  $agg isa action-aggregate, has action-agg-id "AG1";
-  $act1 isa action, has action-id "ACT1";
-insert membership(member-of: $agg, member: $act1);
-
-match
-  $agg isa action-aggregate, has action-agg-id "AG1";
-  $act2 isa action, has action-id "ACT2";
-insert membership(member-of: $agg, member: $act2);
-
-match
-  $agg isa action-aggregate, has action-agg-id "AG1";
-  $act4 isa action, has action-id "ACT4";
-insert membership(member-of: $agg, member: $act4);
-
-match
-  $agg isa action-aggregate, has action-agg-id "AG1";
-  $act3 isa action, has action-id "ACT3";
-insert membership(member-of: $agg, member: $act3);
-```
-
-### 3.11 MessageAggregate Entity
-
-**JSON:**
-```json
-{
-  "id": "MAG1",
-  "label": "TaskLifecycleWorkflow",
-  "category": "lifecycle",
-  "description": "Workflow covering the lifecycle of a Task...",
-  "justification": "Implements AG1 TaskLifecycle by expressing..."
-}
-```
-
-**TypeQL:**
-```typeql
-insert
-  $mag isa message-aggregate,
-    has message-agg-id "MAG1",
-    has id-label "TaskLifecycleWorkflow",
-    has description "Workflow covering the lifecycle of a Task from creation, through edits and completion toggling, to eventual deletion and UI updates.",
-    has justification "Implements AG1 TaskLifecycle by expressing user commands and application events for creating, editing, marking complete/incomplete, and deleting tasks.";
-```
-
-### 3.12 Requirement Entity
-
-  ** Revision **
-    The schema was updated after this proposal was originally created:
-    	relation requiring,
-		    relates required-by,
-		    relates conceptualized-as,
-		    relates implemented-by;
-
-    	entity requirement sub design-concept,
-		    owns requirement-id @key,
-		    owns requirement-type,
-		    owns status,
-		    owns priority,
-		    plays requiring:required-by;
-  	
-      attribute requirement-id sub artifact-id, value string @regex("^REQ-[a-zA-Z0-9_.]*$");
-	    attribute requirement-type value string @values("functional", "nonfunctional", "ui", "future-functional");
-	    attribute priority value string @values("must", "should", "could");
-
-  ** Notes:
-    - "notes" in the json needs to be migrated to "justification"
-    - "label" in the json needs to be a conformant identifier matching other concept json
-    - specification below has been modified to account for the changes
-    - "id" in the json becomes requirement-id; has new regex format "REQ-n".
-    - requirements.json will need to be updated to new spec
-    - "relatedConcepts" and "relatedMessages" related with the "requiring" relation (see below)
-  **
-
-**JSON:**
-```json
-{
-  "id": "REQ-1",
-  "type": "functional",
-  "status": "draft",
-  "label": "Local_todo_app",
-  "category": "category",
-  "description": "The system shall operate as a simple, single-user...",
-  "priority": "must",
-  "sectionHint": "1.1",
-  "justification": "Summarizes the overall deployment and single-user context..."
-}
-```
-
-**TypeQL:**
-```typeql
-insert
-  $req isa requirement,
-    has requirement-id "REQ-1",
-		has requirement-type "functional",
-		has status "draft",
-		has priority "must",
-    has id-label "Local_todo_app",
-    has description "The system shall operate as a simple, single-user to-do list application that runs in a standard desktop or laptop web browser on the user's local machine without relying on external online services or user accounts.",
-    has justification "Summarizes the overall deployment and single-user context...";
-  
-```
-**JSON:**
-```json
-  {
-    "anchors": [
-      "AN2"
-    ],
-    "relatedConcepts": [
-      "A1",
-      "A2",
-      "DE1",
-      "DE7"
-    ],
-    "relatedMessages": [
-      "MSG31",
-      "MSG32"
-    ]
-  }
-```
-
-**TypeQL:**
-
-```typeql
-match
-  $req isa requirement, has requirement-id "REQ-1";
-  $an2 isa text-block, has anchor-id "AN2";
-  $a1 isa actor, has actor-id "A1";
-  $a2 isa actor, has actor-id "A2";
-  $de1 isa data-entity, has data-entity-id "DE1";
-  $de7 isa data-entity, has data-entity-id "DE7";
-  $msg31 isa message, has message-id "MSG31";
-  $msg32 isa message, has message-id "MSG32";
-insert 
-  anchoring(anchor: $an2, concept: $req);
-  requiring(required-by: $req, conceptualized-as: $a1);
-  requiring(required-by: $req, conceptualized-as: $a2);
-  requiring(required-by: $req, conceptualized-as: $de1);
-  requiring(required-by: $req, conceptualized-as: $de7);
-  requiring(required-by: $req, conceptualized-as: $msg31);
-  requiring(required-by: $req, conceptualized-as: $msg32);
-```
-
----
-
-## 4. Implementation Strategy
-
-### 4.1 Entity Existence Check
-
-Before creating any entity, check if it already exists to avoid duplicates:
-
+**Benefits:**
+- ✅ Change step names without code changes
+- ✅ Associate any prompt file with any step
+- ✅ Customize output file names
+- ✅ Add/remove steps dynamically
+- ✅ No code modification needed
+
+## Implementation Plan
+
+### Phase 1: Core Library (Tasks 1-6)
+
+#### Task 1: Create LLM Client Module
+**File:** `prompt_pipeline/llm_client.py`
+
+**Responsibilities:**
+- OpenRouter API integration
+- Model selection (3 levels: 1=cheapest, 2=balanced, 3=best)
+- Exponential retry with partial state saving
+- Rate limiting awareness
+
+**Implementation:**
 ```python
-def entity_exists(self, entity_type: str, key_attr: str, key_value: str) -> bool:
-    """Check if an entity with the given key already exists."""
-    query = f'match $x isa {entity_type}, has {key_attr} "{key_value}";'
-    result = self.client.execute_read_query(self.database, query)
-    return result and len(result.get('answers', [])) > 0
+class OpenRouterClient:
+    def __init__(self, api_key: str, default_model: str = "minimax/m2.5"):
+        self.api_key = api_key
+        self.default_model = default_model
+    
+    async def call_prompt(
+        self,
+        prompt: str,
+        model: Optional[str] = None,
+        max_tokens: int = 4000
+    ) -> str:
+        # API call with retry logic
+        ...
 ```
-
-### 4.2 Import Order
-
-To ensure referential integrity, import in this order:
-
-1. **Categories** - Create all category entities first
-2. **Constraints** - Create constraint entities (for messages)
-3. **Core Concepts** - Create Actor, Action, DataEntity entities
-4. **Aggregates** - Create action-aggregate and message-aggregate entities
-5. **Messages** - Create message entities
-6. **Relations** - Create all relations in order:
-   - Categorization (category → concept)
-   - Anchoring (text-block → concept)
-   - Messaging (producer/consumer → message)
-   - Message-payload (message → data-entity)
-   - Constrained-by (constraint → message)
-   - Membership (aggregate → member)
-
-### 4.3 Special Considerations
-
-1. **Text-Block References**: The `anchors[]` field references text-block entities that must already exist. These are typically created from specification YAML files using the existing `--parse-spec-file` functionality.
-
-2. **Sequence Data**: MessageAggregations contain `sequences[]` data which is not modeled in the current schema. This data will be ignored during import but could be captured in the description field.
-  ** Revision **
-  - sequences are to be related using the `membership-seq` relation, from schema:
-    	relation membership-seq sub membership,
-	    	owns order @card(1);
-  - is works like `membership` exccept the `order` attribute is set with the sequence order.
-  - ordering should be in increments > 1 so that items can be added more easily in future without forcing a re-order.  This should be a setting somewhere (command line switch?)
-  
-** Revision **
-** specification and schema for requirements has been updated, see section 3.12 **
-*3. **Requirement Entities**: Requirements don't have a dedicated entity type and will be imported as *generic `design-concept` entities. Additional fields like `type`, `status`, `priority`, `sectionHint`, *`relatedConcepts`, and `relatedMessages` will need to be:
-*   - Encoded in the description field, OR
-*   - Require schema extension to support them as attributes
-**
-
-4. **Category Handling**: Categories are referenced by name and should be created if they don't exist. The same category name can apply to multiple concepts.
-
-5. **Constraint Creation**: Constraints are embedded in message objects and should be extracted and created as separate constraint entities before creating the constrained-by relations.
 
 ---
 
-## 5. Command-Line Interface
+#### Task 2: Create Prompt Manager Module
+**File:** `prompt_pipeline/prompt_manager.py`
 
-### 5.1 New Argument
+**Key Innovation:** Loads step configurations dynamically from YAML file.
 
-Add `--parse-concepts` argument to the CLI:
+**Responsibilities:**
+- Load prompt templates from files
+- Variable substitution (`{{spec_file}}`, `{{concepts_file}}`, etc.)
+- Load step configurations from `pipeline_config.yaml`
+- Track dependencies between steps
 
+**Step Configuration Management:**
 ```python
-parser.add_argument(
-    '--parse-concepts',
-    type=Path,
-    help='Path to JSON concepts file to import (or directory containing multiple JSON files)'
-)
+class PromptManager:
+    def __init__(self, config_path: str, prompts_dir: str):
+        self.steps_config = self._load_config(config_path)
+    
+    def get_step_config(self, step_name: str) -> Dict[str, Any]:
+        """Returns full configuration for a step."""
+        return self.steps_config['steps'].get(step_name)
+    
+    def get_prompt_file(self, step_name: str) -> str:
+        """Get prompt filename for step."""
+        config = self.get_step_config(step_name)
+        return config.get('prompt_file')
+    
+    def get_output_file(self, step_name: str) -> str:
+        """Get output filename for step."""
+        config = self.get_step_config(step_name)
+        return config.get('output_file')
+    
+    def get_required_inputs(self, step_name: str) -> List[str]:
+        """Determine what inputs a step needs."""
+        config = self.get_step_config(step_name)
+        inputs = []
+        if config.get('requires_nl_spec'):
+            inputs.append('nl_spec')
+        if config.get('requires_spec_file'):
+            inputs.append('spec_file')
+        if config.get('requires_concepts_file'):
+            inputs.append('concepts_file')
+        # ... etc
+        return inputs
 ```
 
-### 5.2 Usage Examples
+**Sample Configuration:**
+```yaml
+steps:
+  step1:
+    name: "step1"
+    prompt_file: "prompt_step1_v2.md"
+    order: 1
+    output_file: "spec_1.yaml"
+    output_type: "yaml"
+    requires_nl_spec: true
+    dependencies: []
+    json_schema: null
 
+  stepC3:
+    name: "stepC3"
+    prompt_file: "prompt_step_C3.md"
+    order: 4
+    output_file: "concepts.json"
+    output_type: "json"
+    requires_nl_spec: false
+    requires_spec_file: true
+    dependencies: []
+    json_schema: "schemas/concepts_schema.json"
+
+model_levels:
+  step1:
+    1: "minimax/m2.5"
+    2: "mimo/v2-flash"
+    3: "moonshotai/kimi-k2-0905"
+```
+
+**Flexibility Examples:**
+
+*Change prompt file:*
+```yaml
+steps:
+  stepC3:
+    prompt_file: "my_custom_concepts_prompt.md"
+```
+
+*Change output filename:*
+```yaml
+steps:
+  stepC3:
+    output_file: "my_concepts_v2.json"
+```
+
+*Rename step:*
+```yaml
+steps:
+  extract_concepts:  # New name
+    name: "extract_concepts"
+    prompt_file: "prompt_step_C3.md"
+    # ... etc
+```
+
+*Add new step:*
+```yaml
+steps:
+  custom_step:
+    name: "custom_step"
+    prompt_file: "custom_prompt.md"
+    order: 8
+    output_file: "custom_output.json"
+    output_type: "json"
+    requires_nl_spec: false
+    requires_spec_file: true
+    dependencies: ["stepC3"]
+    json_schema: "schemas/custom_schema.json"
+```
+
+---
+
+#### Task 3: Create Validation Module
+**Files:** `prompt_pipeline/validation/yaml_validator.py`, `prompt_pipeline/validation/json_validator.py`
+
+**YAML Validator:**
+- Validates Step 1 output structure
+- Checks hierarchical IDs (S*, AN*)
+- Verifies anchor patterns
+- Uses `pyyaml` for parsing
+
+**JSON Validators:**
+- concepts.json: Actor/Action/DataEntity IDs
+- aggregations.json: AG* IDs and member references
+- messages.json: MSG* IDs, producer/consumer
+- requirements.json: REQ-* IDs, type/priority
+
+**Schema Validation:**
+```python
+class JSONValidator:
+    def __init__(self, schema_path: str):
+        self.schema = self._load_schema(schema_path)
+    
+    def validate(self, json_content: str) -> ValidationResult:
+        # Check structure, required fields, ID patterns
+        # Cross-reference validation
+        ...
+```
+
+---
+
+#### Task 4: Create Step Executor
+**File:** `prompt_pipeline/step_executor.py`
+
+**Responsibilities:**
+- Execute individual steps
+- Load prompt from configured file
+- Determine required inputs from step config
+- Call LLM
+- Validate output
+- Save to configured output file
+
+**Integration with Step Config:**
+```python
+class StepExecutor:
+    async def execute_step(self, step_name: str, inputs: Dict[str, Path]) -> Path:
+        # Get step configuration
+        step_config = self.prompt_manager.get_step_config(step_name)
+        
+        # Load prompt file
+        prompt_file = step_config['prompt_file']
+        prompt = self.prompt_manager.load_prompt(prompt_file)
+        
+        # Prepare variables
+        variables = self._prepare_variables(inputs, step_config)
+        filled_prompt = self.prompt_manager.substitute_variables(prompt, variables)
+        
+        # Call LLM
+        response = await self.llm_client.call_prompt(
+            filled_prompt,
+            model=self._get_model(step_name)
+        )
+        
+        # Validate
+        output_path = self.output_dir / step_config['output_file']
+        if step_config['output_type'] == 'json':
+            self._validate_json(response, step_config['json_schema'])
+        elif step_config['output_type'] == 'yaml':
+            self._validate_yaml(response)
+        
+        # Save
+        output_path.write_text(response)
+        return output_path
+```
+
+---
+
+#### Task 5: Create Pipeline Orchestrator
+**File:** `prompt_pipeline/orchestrator.py`
+
+**Key Innovation:** Executes steps in order based on `order` field in config.
+
+**Responsibilities:**
+- Load all step configurations
+- Sort by `order` field
+- Build execution graph based on dependencies
+- Execute steps in sequence
+- Manage input/output flow between steps
+
+**Execution Logic:**
+```python
+class PipelineOrchestrator:
+    def __init__(self, config_path: str):
+        self.config_path = config_path
+        self.steps = self._load_steps()
+    
+    def _load_steps(self) -> List[Dict[str, Any]]:
+        """Load and sort steps by order."""
+        config = yaml.safe_load(open(self.config_path))
+        steps = list(config['steps'].values())
+        return sorted(steps, key=lambda s: s['order'])
+    
+    async def run_pipeline(self, nl_spec_path: Path, output_dir: Path):
+        # Track outputs
+        outputs = {}
+        current_file = nl_spec_path
+        
+        for step in self.steps:
+            step_name = step['name']
+            
+            # Check if this step should be included
+            if step_name in ['step2', 'step3']:
+                # Revision steps are manual, skip in auto-pipeline
+                continue
+            
+            # Prepare inputs
+            inputs = self._prepare_inputs(step, outputs, current_file)
+            
+            # Execute step
+            result_path = await self.step_executor.execute_step(
+                step_name, 
+                inputs
+            )
+            
+            # Track output
+            outputs[step_name] = result_path
+            current_file = result_path
+        
+        # Import to TypeDB if requested
+        if self.import_database:
+            await self.import_to_typedb(output_dir)
+```
+
+---
+
+#### Task 6: Create CLI Structure
+**Files:** `prompt_pipeline_cli/main.py`, `prompt_pipeline_cli/arguments.py`
+
+**Commands:**
 ```bash
-# Import a single JSON file
-python typedb_import.py --parse-concepts ./json/concepts.json
+# Individual steps
+prompt-pipeline run-step step1 --nl-spec doc/spec.md
+prompt-pipeline run-step stepC3 --spec-file yaml/spec_1.yaml
+prompt-pipeline run-step stepC4 --spec-file yaml/spec_1.yaml --concepts-dir json/
 
-# Import all JSON files in a directory
-python typedb_import.py --parse-concepts ./json/
+# Full pipeline (skips revision steps 2-3)
+prompt-pipeline run-pipeline --nl-spec doc/spec.md --import-database todo_app
 
-# Import with force update
-python typedb_import.py --parse-concepts ./json/ --force-update
+# Validation
+prompt-pipeline validate json/ --strict
+
+# Import
+prompt-pipeline import json/ --database todo_app --wipe
+
+# Config
+prompt-pipeline config show
+prompt-pipeline config set steps.stepC3.prompt_file "custom.md"
 ```
 
----
+### Phase 2: CLI Implementation (Tasks 7-11)
 
-## 6. Error Handling
+#### Task 7: run-step Command
+- Uses step configuration to load prompt file
+- Auto-discovers required inputs from directory
+- Example: `--concepts-dir json/` finds `json/concepts.json`
 
-1. **Missing Text-Blocks**: When anchoring relations fail due to missing text-block entities, log a warning but continue processing.
+#### Task 8: run-pipeline Command
+- Loads all steps by order
+- Excludes revision steps (2-3)
+- Builds execution chain automatically
 
-2. **Missing References**: When messaging or membership relations fail due to missing referenced entities, log a warning and continue.
+#### Task 9: validate and import Commands
+- Validation uses step-configured schemas
+- Import uses existing typedb_import logic
 
-3. **Invalid IDs**: Skip entities with IDs that don't match the expected regex patterns.
+#### Task 10: Main Entry Point
+- Click-based CLI with command groups
+- Registered in pyproject.toml as `prompt-pipeline`
 
-4. **Duplicate Relations**: Existing relations should not cause errors - use try/except to silently handle duplicate insertions.
+#### Task 11: Config Management
+- Load/save pipeline_config.yaml
+- Allow dynamic configuration updates
 
----
+### Phase 3: Configuration & Testing (Tasks 12-18)
 
-## 7. Testing Strategy
+#### Task 12-14: Configuration, Integration, Tests
+- Default config file with all step definitions
+- Integration with TypeDB import
+- Comprehensive test suite
 
-1. **Unit Tests**: Test each entity creation function independently.
+#### Task 15-18: Documentation & Future
+- Updated implementation guide
+- Development utilities
+- Future: compression, caching, batch
 
-2. **Integration Tests**: Test the full import flow with sample JSON data.
+## Usage Examples
 
-3. **Validation Tests**: After import, query TypeDB to verify:
-   - All entities were created
-   - All relations were established
-   - No duplicate entities exist
-   - Referential integrity is maintained
+### Example 1: Modify Step Behavior (No Code Changes)
 
-4. **Performance Tests**: Test with large JSON files (1000+ concepts) to ensure acceptable performance.
+**Before:** Steps use default prompt files
 
----
+**After:** Custom prompt file for stepC3
+```yaml
+# In pipeline_config.yaml
+steps:
+  stepC3:
+    prompt_file: "my_concepts_prompt.md"
+```
 
-## 8. Future Enhancements
+### Example 2: Add Custom Step
 
-1. **Requirement Entity Type**: Add a dedicated `requirement` entity type to the schema to properly capture requirement-specific attributes.
+```yaml
+steps:
+  custom_validation:
+    name: "custom_validation"
+    prompt_file: "validate_schema.md"
+    order: 8
+    output_file: "validation_report.json"
+    output_type: "json"
+    requires_nl_spec: false
+    requires_spec_file: true
+    dependencies: ["stepC3", "stepC5"]
+    json_schema: "schemas/validation_schema.json"
+```
 
-2. **Sequence Modeling**: Add support for modeling message sequences in message-aggregates.
+### Example 3: Rename Steps
 
-3. **Batch Insertions**: Optimize by batching multiple insert operations into single transactions.
+```yaml
+steps:
+  extract_concepts:  # Was stepC3
+    name: "extract_concepts"
+    prompt_file: "prompt_step_C3.md"
+    order: 4
+    output_file: "concepts.json"
+    # ... etc
+```
 
-4. **Progress Reporting**: Add progress bars for large imports.
+### Example 4: Change Output Structure
 
-5. **Validation Mode**: Add `--validate` flag to check JSON files against schema before import.
+```yaml
+steps:
+  stepC3:
+    output_file: "v2/concepts.json"  # Subdirectory
+```
 
----
+## Configuration File Structure
+
+### Complete pipeline_config.yaml
+
+```yaml
+# Flexible Step Configuration
+steps:
+  step1:
+    name: "step1"
+    prompt_file: "prompt_step1_v2.md"
+    order: 1
+    output_file: "spec_1.yaml"
+    output_type: "yaml"
+    requires_nl_spec: true
+    dependencies: []
+    json_schema: null
+
+  step2:
+    name: "step2"
+    prompt_file: "prompt_step2_v2.md"
+    order: 2
+    output_file: "spec_formal.md"
+    output_type: "md"
+    requires_nl_spec: false
+    requires_spec_file: true
+    dependencies: ["step1"]
+    json_schema: null
+
+  step3:
+    name: "step3"
+    prompt_file: "prompt_step3_v2.md"
+    order: 3
+    output_file: "revised_spec.md"
+    output_type: "md"
+    requires_nl_spec: false
+    requires_spec_file: true
+    dependencies: ["step2"]
+    json_schema: null
+
+  stepC3:
+    name: "stepC3"
+    prompt_file: "prompt_step_C3.md"
+    order: 4
+    output_file: "concepts.json"
+    output_type: "json"
+    requires_nl_spec: false
+    requires_spec_file: true
+    dependencies: []
+    json_schema: "schemas/concepts_schema.json"
+
+  stepC4:
+    name: "stepC4"
+    prompt_file: "prompt_step_C4.md"
+    order: 5
+    output_file: "aggregations.json"
+    output_type: "json"
+    requires_nl_spec: false
+    requires_spec_file: true
+    requires_concepts_file: true
+    dependencies: ["stepC3"]
+    json_schema: "schemas/aggregations_schema.json"
+
+  stepC5:
+    name: "stepC5"
+    prompt_file: "prompt_step_C5.md"
+    order: 6
+    output_file: "messages.json"
+    output_type: "json"
+    output_files:
+      - "messages.json"
+      - "messageAggregations.json"
+    requires_nl_spec: false
+    requires_spec_file: true
+    requires_concepts_file: true
+    requires_aggregations_file: true
+    dependencies: ["stepC3", "stepC4"]
+    json_schema: "schemas/messages_schema.json"
+
+  stepD1:
+    name: "stepD1"
+    prompt_file: "prompt_step_D1.md"
+    order: 7
+    output_file: "requirements.json"
+    output_type: "json"
+    requires_nl_spec: false
+    requires_spec_file: true
+    requires_concepts_file: true
+    requires_messages_file: true
+    dependencies: ["stepC3", "stepC5"]
+    json_schema: "schemas/requirements_schema.json"
+
+# Model levels for each step
+model_levels:
+  step1:
+    1: "minimax/m2.5"
+    2: "mimo/v2-flash"
+    3: "moonshotai/kimi-k2-0905"
+  step2:
+    1: "minimax/m2.5"
+    2: "mimo/v2-flash"
+    3: "moonshotai/kimi-k2-0905"
+  step3:
+    1: "minimax/m2.5"
+    2: "mimo/v2-flash"
+    3: "moonshotai/kimi-k2-0905"
+  stepC3:
+    1: "qwen/qwen3-235b-a22b-2507"
+    2: "mimo/v2-flash"
+    3: "moonshotai/kimi-k2-0905"
+  stepC4:
+    1: "minimax/m2.5"
+    2: "mimo/v2-flash"
+    3: "moonshotai/kimi-k2-0905"
+  stepC5:
+    1: "qwen/qwen3-235b-a22b-2507"
+    2: "mimo/v2-flash"
+    3: "moonshotai/kimi-k2-0905"
+  stepD1:
+    1: "qwen/qwen3-235b-a22b-2507"
+    2: "mimo/v2-flash"
+    3: "moonshotai/kimi-k2-0905"
+
+# Validation settings
+validation:
+  strict: true
+  auto_fix: false
+  max_auto_fix_attempts: 3
+
+# File locations
+paths:
+  prompts_dir: "prompts"
+  default_output_dir: "pipeline_output"
+  schema_file: "doc/typedb_schema_2.tql"
+
+# LLM settings
+llm:
+  api_key: "${OPENROUTER_API_KEY}"
+  max_retries: 3
+  timeout: 60
+  max_tokens: 4000
+  rate_limit_delay: 0.5
+
+# TypeDB settings
+typedb:
+  url: "http://localhost:8000"
+  username: "admin"
+  password: "password"
+
+# Import settings
+import:
+  validate_before_import: true
+  create_if_missing: false
+  wipe_before_import: false
+
+# Command defaults
+defaults:
+  model_level: 1
+  output_dir: "pipeline_output"
+  verbosity: 1
+  skip_validation: false
+```
+
+## Workflow Patterns
+
+### Pattern 1: Standard Pipeline
+```bash
+# Step 1: Generate YAML
+prompt-pipeline run-step step1 --nl-spec doc/spec.md --output-dir yaml/
+
+# Steps C3, C4, C5, D1: Auto-discover inputs
+prompt-pipeline run-step stepC3 --spec-file yaml/spec_1.yaml --output-dir json/
+prompt-pipeline run-step stepC4 --spec-file yaml/spec_1.yaml --output-dir json/
+prompt-pipeline run-step stepC5 --spec-file yaml/spec_1.yaml --output-dir json/
+prompt-pipeline run-step stepD1 --spec-file yaml/spec_1.yaml --output-dir json/
+```
+
+### Pattern 2: Full Pipeline (One Command)
+```bash
+prompt-pipeline run-pipeline \
+  --nl-spec doc/spec.md \
+  --import-database todo_app \
+  --wipe
+```
+
+### Pattern 3: Custom Steps
+```bash
+# With custom step configuration
+prompt-pipeline run-pipeline --nl-spec doc/spec.md --config custom_config.yaml
+```
+
+## Implementation Checklist
+
+### Before Starting
+- [ ] Review current task status
+- [ ] Understand all prompt files
+- [ ] Check existing TypeDB import logic
+- [ ] Review test structure
+
+### During Implementation
+- [ ] Follow TDD (tests first)
+- [ ] Use type hints everywhere
+- [ ] Add comprehensive docstrings
+- [ ] Match existing code style
+- [ ] Update tasks as you progress
+
+### After Completion
+- [ ] All tests pass (80%+ coverage)
+- [ ] Integration tests with TypeDB server
+- [ ] Documentation is complete
+- [ ] Example usage works end-to-end
+
+## Questions Answered
+
+### ✅ 1. OpenRouter API Access
+**Answer:** Yes, use OpenRouter API key from environment.
+
+### ✅ 2. Revision Cycle
+**Answer:** Manual user control (steps 2-3 are separate commands, not automatic)
+
+### ✅ 3. Validation Strictness
+**Answer:** Fail on errors (default), with `--skip-validation` for dev mode
+
+### ✅ 4. Output Directory
+**Answer:** User-specified (`--output-dir`), default `pipeline_output/`
+
+### ✅ 5. Model Configuration
+**Answer:** 3 levels with OpenRouter models:
+- Level 1: `minimax/m2.5`, `mimo/v2-flash`, `moonshotai/kimi-k2-0905`, `qwen/qwen3-235b-a22b-2507`
+- Level 2: TBD (balanced)
+- Level 3: TBD (best)
+
+### ✅ 6. TypeDB Import
+**Answer:** Automatic with `--import-database` flag
+
+### ✅ 7. Prompt Template Versioning
+**Answer:** Git-based (no code changes)
+
+### ✅ 8. Compression Strategy
+**Answer:** Deferred (future task)
+
+### ✅ 9. Error Recovery
+**Answer:** Retry + partial state saving
+
+### ✅ 10. Development Mode
+**Answer:** Yes, via atomic switches (`--skip-validation`, `--model-level 1`, `--dry-run`)
+
+### ✅ 11. FLEXIBLE STEP CONFIGURATION
+**Answer:** **MAJOR NEW FEATURE** - All steps configured in YAML, no code changes needed to:
+- Change step names
+- Associate different prompt files
+- Customize output names
+- Add/remove steps
+- Change execution order
 
 ## Summary
 
-This migration proposal provides a comprehensive mapping from JSON concept files to TypeDB entities and relations, following the existing patterns in `typedb_import.py`. The implementation should:
+This implementation provides a **fully configurable, flexible prompt pipeline** where:
+1. All steps are defined in `pipeline_config.yaml`
+2. No code changes needed to customize steps
+3. Steps can be renamed, added, removed, reordered
+4. Prompt files can be swapped per step
+5. Output files can be customized
+6. Execution order is dynamic based on `order` field
 
-- Follow TypeDB 3 syntax patterns
-- Check for entity existence before creation
-- Handle all relation types appropriately
-- Provide clear error messages
-- Maintain referential integrity
-- Be extensible for future enhancements
+The system is extensible without touching code - perfect for iteration and experimentation!
 
-The proposed approach ensures backward compatibility with existing functionality while adding robust support for importing JSON concept data.
+**Document Version:** 2.0  
+**Last Updated:** 2026-02-18  
+**Status:** Proposal for implementation  
+**Next:** Start Task 1 (LLM Client Module)
