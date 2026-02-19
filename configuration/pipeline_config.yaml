@@ -52,7 +52,7 @@ steps:
     requires_nl_spec: false
     requires_spec_file: true
     dependencies: []
-    json_schema: "schemas/concepts_schema.json"
+    json_schema: "schemas/concepts.schema.json"
 
   # Step C4: Define aggregations
   stepC4:
@@ -65,7 +65,7 @@ steps:
     requires_spec_file: true
     requires_concepts_file: true
     dependencies: ["stepC3"]
-    json_schema: "schemas/aggregations_schema.json"
+    json_schema: "schemas/aggregations.schema.json"
 
   # Step C5: Define messages
   stepC5:
@@ -82,7 +82,11 @@ steps:
     requires_concepts_file: true
     requires_aggregations_file: true
     dependencies: ["stepC3", "stepC4"]
-    json_schema: "schemas/messages_schema.json"
+    json_schema: "schemas/messages.schema.json"
+    # Per-output-file schemas for steps with multiple outputs
+    json_schemas:
+      messages.json: "schemas/messages.schema.json"
+      messageAggregations.json: "schemas/messageAggregations.schema.json"
 
   # Step D1: Extract requirements
   stepD1:
@@ -96,7 +100,7 @@ steps:
     requires_concepts_file: true
     requires_messages_file: true
     dependencies: ["stepC3", "stepC5"]
-    json_schema: "schemas/requirements_schema.json"
+    json_schema: "schemas/requirements.schema.json"
 
 # Model levels for each step
 # Level 1: Cheapest/fastest (development)

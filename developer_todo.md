@@ -3,17 +3,7 @@
 ## TODO:
   ## NEXT TASKS
 
-1. Should we add a `--parallel` flag for independent steps?
-2. Should we support reading prompts from URLs?
-3. Should we add a web UI for pipeline monitoring?
-4. Should we add step-level validation configuration?
-5. Should we support step-level skip flags?
-
 ---
-
-
-
-
 
   ** DO NOT PLAN OR CREATE TASKS FOR ANYTHING AFTER THIS POINT **    
   ## TASKS THAT NEED DETAILED PLANNING AND SPECIFICATION (FUTURE)

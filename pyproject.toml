@@ -14,7 +14,8 @@ dependencies = [
     "cryptography>=3.4.8",
     "urllib3>=1.26.0",
     "pyyaml>=6.0",
-    "click>=8.0.0"
+    "click>=8.0.0",
+    "jsonschema>=4.17.0"
 ]
 
 [project.optional-dependencies]

@@ -1,0 +1,70 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["id", "type", "label", "description"],
+    "properties": {
+      "id": {
+        "type": "string",
+        "pattern": "^REQ-\\d+$"
+      },
+      "type": {
+        "type": "string",
+        "enum": ["functional", "nonfunctional", "ui", "future-functional", "excluded"]
+      },
+      "status": {
+        "type": "string",
+        "enum": ["draft", "approved", "superseded", "deprecated"]
+      },
+      "label": {
+        "type": "string",
+        "minLength": 1
+      },
+      "category": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": {
+        "type": "string",
+        "minLength": 1
+      },
+      "priority": {
+        "type": "string",
+        "enum": ["must", "should", "could"]
+      },
+      "sectionHint": {
+        "type": "string",
+        "minLength": 1
+      },
+      "anchors": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "pattern": "^AN\\d+$"
+        },
+        "default": []
+      },
+      "relatedConcepts": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "pattern": "^(A|ACT|DE)\\d+$"
+        },
+        "default": []
+      },
+      "relatedMessages": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "pattern": "^MSG\\d+$"
+        },
+        "default": []
+      },
+      "notes": {
+        "type": "string"
+      }
+    },
+    "additionalProperties": false
+  }
+}
