@@ -8,7 +8,7 @@ Python client library for TypeDB v3 HTTP API.
 pip install TypeDBClient3
 ```
 
-Or install from source:
+Or install from source (this also installs the `prompt-pipeline` CLI command):
 
 ```bash
 pip install -e .
@@ -62,6 +62,64 @@ client.close()
 - **Database Management**: Create, delete, list, and check existence of databases
 - **Schema Operations**: Load and retrieve database schemas
 - **YAML/JSON Importer**: Import data from YAML or JSON files
+- **Prompt Pipeline**: CLI tool for transforming natural language specifications into TypeDB data
+
+## Prompt Pipeline CLI
+
+The `prompt-pipeline` command is a flexible CLI tool for transforming natural language specifications into structured data for TypeDB knowledge graphs.
+
+### Installation
+
+The CLI is installed automatically when you install the package from source:
+
+```bash
+pip install -e .
+```
+
+This registers the `prompt-pipeline` console script defined in `pyproject.toml`.
+
+### Usage
+
+```bash
+# Show help
+prompt-pipeline --help
+
+# Run a specific pipeline step
+prompt-pipeline run-step --step step1 --input input.txt
+
+# Run the entire pipeline
+prompt-pipeline run-pipeline --input input.txt
+
+# Validate configuration or data
+prompt-pipeline validate --config configuration/pipeline_config.yaml
+
+# Import data from file
+prompt-pipeline import --file data.yaml --database mydb
+
+# Show current configuration
+prompt-pipeline config --show
+```
+
+### Configuration
+
+The pipeline uses `configuration/pipeline_config.yaml` by default. You can specify a different config file:
+
+```bash
+prompt-pipeline --config path/to/config.yaml run-pipeline --input input.txt
+```
+
+### Verbosity Levels
+
+Control output verbosity:
+
+```bash
+prompt-pipeline -v 0 run-pipeline   # Quiet
+prompt-pipeline -v 1 run-pipeline   # Normal (default)
+prompt-pipeline -v 2 run-pipeline   # Verbose
+prompt-pipeline -v 3 run-pipeline   # Debug
+```
+
+See `doc/workflow_guide.md` for detailed workflow examples.
 
 ## Query Builder
 

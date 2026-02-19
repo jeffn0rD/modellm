@@ -1,26 +1,19 @@
-###############################################################3
+###############################################################
 
 ## TODO:
   ## NEXT TASKS
-  - need to streamlining the prompt pipeline to go from NL informal specification to typedb database
-    - prompts are in `prompts` folder.
-    - review the prompts
-      - prompt_step1_v2.md is designed to generate YAML from NL specification
-      - prompt_step2_v2.md will convert the YAML into a more formalized specification .md
-      - prompt_step3_v2.md is designed for handling revisions to the formal spec
-      - steps 2 and 3 above are only used when a revise/refine cycle is being used to get to an approved specification draft 0.1
-      - prompt_step_[C3, C4, C5, D1] are steps that generated json files describing typedb entities
-      - the already created tools/typedb_import.py script intakes the yaml and json files generated and creates requisite database entities and relations 
-    - a new library needs to be created to handle the generation pipeline
-      - it will use openrouter api to execute the prompts and save the outputs
-      - different models can be used for different steps
-      - the prompts will need the necessary data substituted/appended in from previous steps
-        - later revision of the library will utilize some form of compression to keep context minimal and concise
-    - a CLI tool needs to be created that will use the library.  switches for model and step and file/folder locations will need to be supplied
-      - switches also configurable so entire pipeline can be run (this would exclude the step 2/3 revision cycle) or individual steps.  For simplicity only one switch for model, so if entire pipeline is run it will use the same model
-      - a later revision should have a configuration file (yaml) that would allow specification of prefered models for steps
-      - some form of validation needs to be done on the outputs (yaml and json).  
-      
+
+1. Should we add a `--parallel` flag for independent steps?
+2. Should we support reading prompts from URLs?
+3. Should we add a web UI for pipeline monitoring?
+4. Should we add step-level validation configuration?
+5. Should we support step-level skip flags?
+
+---
+
+
+
+
 
   ** DO NOT PLAN OR CREATE TASKS FOR ANYTHING AFTER THIS POINT **    
   ## TASKS THAT NEED DETAILED PLANNING AND SPECIFICATION (FUTURE)
@@ -64,3 +57,21 @@ X    - typedb_v3_client isn't a great name for a library; lets change to TypeDBC
 X    - make sure all test and development temp files are cleaned up -- or moved to agents directory
 X    - the README and doc/API.md files do not cover the entire library (Query Nuilder, etc).  Make sure all classes are covered with examples.
 X    - TypeDBClient3: need to implement database wipe using schema parsing to determine what entities and relations need to be deleted
+X  - need to streamlining the prompt pipeline to go from NL informal specification to typedb database
+X    - prompts are in `prompts` folder.
+X    - review the prompts
+X      - prompt_step1_v2.md is designed to generate YAML from NL specification
+X      - prompt_step2_v2.md will convert the YAML into a more formalized specification .md
+X      - prompt_step3_v2.md is designed for handling revisions to the formal spec
+X      - steps 2 and 3 above are only used when a revise/refine cycle is being used to get to an approved specification draft 0.1
+X      - prompt_step_[C3, C4, C5, D1] are steps that generated json files describing typedb entities
+X      - the already created tools/typedb_import.py script intakes the yaml and json files generated and creates requisite database entities and relations 
+X    - a new library needs to be created to handle the generation pipeline
+X      - it will use openrouter api to execute the prompts and save the outputs
+X      - different models can be used for different steps
+X      - the prompts will need the necessary data substituted/appended in from previous steps
+X        - later revision of the library will utilize some form of compression to keep context minimal and concise
+X    - a CLI tool needs to be created that will use the library.  switches for model and step and file/folder locations will need to be supplied
+X      - switches also configurable so entire pipeline can be run (this would exclude the step 2/3 revision cycle) or individual steps.  For simplicity only one switch for model, so if entire pipeline is run it will use the same model
+X      - a later revision should have a configuration file (yaml) that would allow specification of prefered models for steps
+X      - some form of validation needs to be done on the outputs (yaml and json).  
