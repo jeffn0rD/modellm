@@ -7,7 +7,16 @@ and performing variable substitution in prompt templates.
 
 import os
 from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Tuple
+
+from prompt_pipeline.tag_replacement import (
+    TagReplacer,
+    replace_tags,
+    validate_prompt_tags,
+    MissingTagError,
+    InvalidTagError,
+    TagReplacementError
+)
 
 
 class PromptManager:
@@ -121,7 +130,8 @@ class PromptManager:
     def substitute_variables(
         self,
         prompt: str,
-        variables: Dict[str, Any]
+        variables: Dict[str, Any],
+        validate: bool = True
     ) -> str:
         """
         Replace {{variable}} placeholders in prompt.
@@ -129,15 +139,23 @@ class PromptManager:
         Args:
             prompt: Prompt template string with {{variable}} placeholders.
             variables: Dictionary of variable names to values.
+            validate: If True, validate that all required tags are present.
         
         Returns:
             Prompt with all variables substituted.
+        
+        Raises:
+            MissingTagError: If validate=True and a required tag is missing.
+            InvalidTagError: If a tag replacement is invalid.
         """
-        result = prompt
-        for key, value in variables.items():
-            placeholder = f"{{{{{key}}}}}"
-            result = result.replace(placeholder, str(value))
-        return result
+        try:
+            return replace_tags(prompt, variables, validate=validate)
+        except (MissingTagError, InvalidTagError):
+            # Re-raise our custom exceptions
+            raise
+        except Exception as e:
+            # Wrap any other errors in our exception type
+            raise TagReplacementError(f"Error substituting variables: {e}")
     
     def get_prompt_file(self, step_name: str) -> Optional[str]:
         """
@@ -332,7 +350,8 @@ class PromptManager:
     def get_prompt_with_variables(
         self,
         step_name: str,
-        variables: Dict[str, Any]
+        variables: Dict[str, Any],
+        validate: bool = True
     ) -> str:
         """
         Load prompt for step and substitute variables.
@@ -340,16 +359,64 @@ class PromptManager:
         Args:
             step_name: Name of the step.
             variables: Dictionary of variables to substitute.
+            validate: If True, validate that all required tags are present.
         
         Returns:
             Processed prompt string.
+        
+        Raises:
+            MissingTagError: If validate=True and a required tag is missing.
+            InvalidTagError: If a tag replacement is invalid.
         """
         prompt_file = self.get_prompt_file(step_name)
         if prompt_file is None:
             raise ValueError(f"Step '{step_name}' not found in configuration")
         
         prompt = self.load_prompt(prompt_file)
-        return self.substitute_variables(prompt, variables)
+        return self.substitute_variables(prompt, variables, validate=validate)
+    
+    def get_required_tags(self, step_name: str) -> Set[str]:
+        """
+        Get all required tags from a step's prompt.
+        
+        Args:
+            step_name: Name of the step.
+        
+        Returns:
+            Set of tag names required by the prompt.
+        
+        Raises:
+            ValueError: If step not found.
+        """
+        prompt_file = self.get_prompt_file(step_name)
+        if prompt_file is None:
+            raise ValueError(f"Step '{step_name}' not found in configuration")
+        
+        prompt = self.load_prompt(prompt_file)
+        replacer = TagReplacer(prompt)
+        return replacer.get_required_tags()
+    
+    def validate_prompt_tags(
+        self,
+        step_name: str,
+        variables: Dict[str, Any]
+    ) -> Tuple[bool, List[str]]:
+        """
+        Validate that all required tags in a step's prompt have replacements.
+        
+        Args:
+            step_name: Name of the step.
+            variables: Dictionary of variable names to values.
+        
+        Returns:
+            Tuple of (is_valid, missing_tags)
+        """
+        prompt_file = self.get_prompt_file(step_name)
+        if prompt_file is None:
+            return False, [f"Step '{step_name}' not found"]
+        
+        prompt = self.load_prompt(prompt_file)
+        return validate_prompt_tags(prompt, variables)
     
     def get_dev_defaults(self) -> Dict[str, Any]:
         """
