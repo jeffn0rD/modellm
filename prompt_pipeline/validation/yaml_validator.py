@@ -88,13 +88,14 @@ class YAMLValidator:
             if field not in spec:
                 result.add_error(f"Missing required spec field: '{field}'")
 
-        # Validate spec ID pattern (should be S* or AN*)
+        # Validate spec ID pattern - accept any non-empty string
         spec_id = spec.get("id", "")
-        if spec_id and not self.ANCHOR_ID_PATTERN.match(spec_id) and not self.SECTION_ID_PATTERN.match(spec_id):
-            result.add_error(
-                f"Invalid specification ID pattern: '{spec_id}'. "
-                "Expected format: S followed by digits (e.g., S1, S2) or AN followed by digits (e.g., AN1, AN2)"
-            )
+        if spec_id:
+            if not spec_id.strip():
+                result.add_error(
+                    f"Invalid specification ID pattern: '{spec_id}'. "
+                    "ID cannot be empty or whitespace only"
+                )
 
         # Validate title
         title = spec.get("title", "")

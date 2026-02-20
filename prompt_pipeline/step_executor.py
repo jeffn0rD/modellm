@@ -191,6 +191,15 @@ class StepExecutor:
         # Ensure parent directory exists
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
+        # Handle multiple output files (for stepC5)
+        if "output_files" in step_config:
+            self._handle_multiple_outputs(response, step_config, output_path)
+        else:
+            # Save response to output file FIRST (before validation)
+            output_path.write_text(response, encoding="utf-8")
+
+        self._log(f"Output saved to: {output_path}")
+
         # Validate output if not skipped
         if not self.skip_validation:
             self._log("Validating output...")
@@ -213,7 +222,7 @@ class StepExecutor:
                     # Development mode: warn but continue
                     self._log(f"Warning: {error_msg}")
                 else:
-                    # Production mode: fail
+                    # Production mode: fail (but file is already saved)
                     raise StepExecutionError(
                         error_msg,
                         validation_result.errors,
@@ -224,14 +233,6 @@ class StepExecutor:
         else:
             self._log("Validation skipped")
 
-        # Handle multiple output files (for stepC5)
-        if "output_files" in step_config:
-            self._handle_multiple_outputs(response, step_config, output_path)
-        else:
-            # Save response to output file
-            output_path.write_text(response, encoding="utf-8")
-
-        self._log(f"Output saved to: {output_path}")
         return output_path
 
     def _log(self, message: str) -> None:
