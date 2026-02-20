@@ -1,106 +1,242 @@
 # Prompt Pipeline Configuration File
 # This file contains configuration for the prompt pipeline tool
 
-# Flexible Step Configuration
-# Each step can be customized with name, prompt file, order, output file, and type
+# CLI input specifications (interactive inputs)
+# These inputs are provided via command line or prompts
+cli_inputs:
+  - label: "nl_spec"
+    type: "md"
+    prompt: "Enter your natural language specification:"
+    required: true
+    default_file: "doc/todo_list_nl_spec.md"
+
+# External inputs (exogenous files)
+# These are files that are available to steps without being outputs of previous steps
+exogenous_inputs:
+  - file: "doc/todo_list_nl_spec.md"
+    label: "nl_spec"
+  - file: "schemas/concept.schema.json"
+    label: "concept_schema"
+
+# Output labels registry
+# Maps steps to their output labels for cross-step references
+output_labels:
+  - step: "step1"
+    label: "spec"
+  - step: "step2"
+    label: "spec_formal"
+  - step: "step3"
+    label: "revised_spec"
+  - step: "stepC3"
+    label: "concepts"
+  - step: "stepC4"
+    label: "aggregations"
+  - step: "stepC5"
+    label: "messages"
+  - step: "stepD1"
+    label: "requirements"
+
+# Steps configuration
 steps:
   # Step 1: NL spec → YAML
   step1:
     name: "step1"
     prompt_file: "prompt_step1_v2.md"
     order: 1
-    output_file: "spec_1.yaml"
-    output_type: "yaml"
-    # Input requirements
-    requires_nl_spec: true
-    # Dependencies on other steps
+    
+    # Input configuration using labels
+    inputs:
+      - label: "nl_spec"
+        type: "md"
+        source: "cli"  # Comes from CLI input or exogenous_inputs
+        compression: "full"  # No compression for initial extraction
+        color: "cyan"
+    
+    # Output configuration (files are stored in RAW form)
+    outputs:
+      - file: "spec_1.yaml"
+        label: "spec"
+        type: "yaml"
+    
+    # Dependencies (inferred from input labels)
     dependencies: []
-    # JSON schema for validation (if output_type is json)
-    json_schema: null
+    
+    # Validation
+    validation:
+      schema: null
+      enabled: false
 
   # Step 2: YAML → Formal spec (revision cycle)
   step2:
     name: "step2"
     prompt_file: "prompt_step2_v2.md"
     order: 2
-    output_file: "spec_formal.md"
-    output_type: "md"
-    requires_nl_spec: false
-    requires_spec_file: true
+    
+    inputs:
+      - label: "spec"
+        type: "yaml"
+        source: "label:spec"  # References output from step1
+        compression: "full"
+        color: "green"
+    
+    outputs:
+      - file: "spec_formal.md"
+        label: "spec_formal"
+        type: "md"
+    
     dependencies: ["step1"]
-    json_schema: null
+    
+    validation:
+      schema: null
+      enabled: false
 
   # Step 3: Revision cycle
   step3:
     name: "step3"
     prompt_file: "prompt_step3_v2.md"
     order: 3
-    output_file: "revised_spec.md"
-    output_type: "md"
-    requires_nl_spec: false
-    requires_spec_file: true
+    
+    inputs:
+      - label: "spec_formal"
+        type: "md"
+        source: "label:spec_formal"  # References output from step2
+        compression: "full"
+        color: "yellow"
+    
+    outputs:
+      - file: "revised_spec.md"
+        label: "revised_spec"
+        type: "md"
+    
     dependencies: ["step2"]
-    json_schema: null
+    
+    validation:
+      schema: null
+      enabled: false
 
   # Step C3: Extract concepts
   stepC3:
     name: "stepC3"
     prompt_file: "prompt_step_C3.md"
     order: 4
-    output_file: "concepts.json"
-    output_type: "json"
-    requires_nl_spec: false
-    requires_spec_file: true
-    dependencies: []
-    json_schema: "schemas/concepts.schema.json"
+    
+    inputs:
+      - label: "spec"
+        type: "yaml"
+        source: "label:spec"  # References output from step1
+        compression: "full"  # Full spec needed for concept extraction
+        color: "magenta"
+    
+    outputs:
+      - file: "concepts.json"
+        label: "concepts"
+        type: "json"
+    
+    dependencies: ["step1"]
+    
+    validation:
+      schema: "schemas/concepts.schema.json"
+      enabled: true
 
   # Step C4: Define aggregations
   stepC4:
     name: "stepC4"
     prompt_file: "prompt_step_C4.md"
     order: 5
-    output_file: "aggregations.json"
-    output_type: "json"
-    requires_nl_spec: false
-    requires_spec_file: true
-    requires_concepts_file: true
+    
+    inputs:
+      - label: "spec"
+        type: "yaml"
+        source: "label:spec"
+        compression: "full"
+        color: "cyan"
+      - label: "concepts"
+        type: "json"
+        source: "label:concepts"  # References output from stepC3
+        compression: "full"
+        color: "green"
+    
+    outputs:
+      - file: "aggregations.json"
+        label: "aggregations"
+        type: "json"
+    
     dependencies: ["stepC3"]
-    json_schema: "schemas/aggregations.schema.json"
+    
+    validation:
+      schema: "schemas/aggregations.schema.json"
+      enabled: true
 
   # Step C5: Define messages
   stepC5:
     name: "stepC5"
     prompt_file: "prompt_step_C5.md"
     order: 6
-    output_file: "messages.json"
-    output_type: "json"
-    output_files:
-      - "messages.json"
-      - "messageAggregations.json"
-    requires_nl_spec: false
-    requires_spec_file: true
-    requires_concepts_file: true
-    requires_aggregations_file: true
+    
+    inputs:
+      - label: "spec"
+        type: "yaml"
+        source: "label:spec"
+        compression: "full"
+        color: "cyan"
+      - label: "concepts"
+        type: "json"
+        source: "label:concepts"
+        compression: "full"
+        color: "green"
+      - label: "aggregations"
+        type: "json"
+        source: "label:aggregations"  # References output from stepC4
+        compression: "full"
+        color: "yellow"
+    
+    outputs:
+      - file: "messages.json"
+        label: "messages"
+        type: "json"
+      - file: "messageAggregations.json"
+        label: "message_aggregations"
+        type: "json"
+    
     dependencies: ["stepC3", "stepC4"]
-    json_schema: "schemas/messages.schema.json"
-    # Per-output-file schemas for steps with multiple outputs
-    json_schemas:
-      messages.json: "schemas/messages.schema.json"
-      messageAggregations.json: "schemas/messageAggregations.schema.json"
+    
+    validation:
+      schema: "schemas/messages.schema.json"
+      enabled: true
 
   # Step D1: Extract requirements
   stepD1:
     name: "stepD1"
     prompt_file: "prompt_step_D1.md"
     order: 7
-    output_file: "requirements.json"
-    output_type: "json"
-    requires_nl_spec: false
-    requires_spec_file: true
-    requires_concepts_file: true
-    requires_messages_file: true
+    
+    inputs:
+      - label: "spec"
+        type: "yaml"
+        source: "label:spec"
+        compression: "full"
+        color: "cyan"
+      - label: "concepts"
+        type: "json"
+        source: "label:concepts"
+        compression: "full"
+        color: "green"
+      - label: "messages"
+        type: "json"
+        source: "label:messages"  # References output from stepC5
+        compression: "full"
+        color: "magenta"
+    
+    outputs:
+      - file: "requirements.json"
+        label: "requirements"
+        type: "json"
+    
     dependencies: ["stepC3", "stepC5"]
-    json_schema: "schemas/requirements.schema.json"
+    
+    validation:
+      schema: "schemas/requirements.schema.json"
+      enabled: true
 
 # Model levels for each step
 # Level 1: Cheapest/fastest (development)
@@ -148,156 +284,3 @@ dev_defaults:
   model_level: 1
   verbosity: 2
   skip_validation: false
-  dry_run: false
-
-# Validation settings
-validation:
-  # Default: strict validation (fail on errors)
-  strict: true
-  # Future: auto-fix capability
-  auto_fix: false
-  # Max retry attempts for auto-fix
-  max_auto_fix_attempts: 3
-
-# File locations
-paths:
-  prompts_dir: "prompts"
-  default_output_dir: "pipeline_output"
-  schema_file: "doc/typedb_schema_2.tql"
-
-# LLM settings
-llm:
-  # OpenRouter API key (from environment variable OPENROUTER_API_KEY)
-  # Format: "${ENV_VAR_NAME}" for environment variable substitution
-  api_key: "${OPENROUTER_API_KEY}"
-  
-  # Default request settings
-  max_retries: 3
-  timeout: 60
-  max_tokens: 4000
-  rate_limit_delay: 0.5
-
-# TypeDB settings
-typedb:
-  # Default connection settings (can be overridden by environment variables)
-  url: "http://localhost:8000"
-  username: "admin"
-  password: "password"
-  
-  # Format: "${ENV_VAR_NAME}" for environment variable substitution
-  url_env: "${TYPEDB_URL}"
-  username_env: "${TYPEDB_USERNAME}"
-  password_env: "${TYPEDB_PASSWORD}"
-
-# Import settings
-import:
-  # Validation before import
-  validate_before_import: true
-  # Create database if it doesn't exist
-  create_if_missing: false
-  # Auto-wipe on import (requires explicit --wipe flag)
-  wipe_before_import: false
-
-# Output settings
-output:
-  # Verbosity levels:
-  # 0: Errors only
-  # 1: Summary (default)
-  # 2: Verbose
-  # 3: Debug
-  default_verbosity: 1
-  
-  # Colored output
-  colors: true
-  
-  # Save partial outputs on failure
-  save_partial_on_failure: true
-
-# Logging
-logging:
-  level: "INFO"  # DEBUG, INFO, WARNING, ERROR
-  file: null     # Set to file path to enable file logging
-  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-
-# Performance
-performance:
-  # Parallel execution (future feature)
-  parallel_steps: false
-  max_parallel: 4
-  
-  # Cache settings (future feature)
-  cache_enabled: false
-  cache_dir: ".cache"
-  cache_ttl: 3600  # seconds
-
-# Command defaults
-defaults:
-  # Default model level (1, 2, or 3)
-  model_level: 1
-  # Default output directory
-  output_dir: "pipeline_output"
-  # Default verbosity
-  verbosity: 1
-  # Default: don't skip validation
-  skip_validation: false
-
-# Stage-specific settings
-stages:
-  # Stage 1: Basic pipeline (NL → YAML, C3, C4, C5, D1)
-  basic:
-    enabled: true
-    default_model_level: 1
-  
-  # Stage 2: Revision cycle (Steps 2-3)
-  revision:
-    enabled: true
-    manual_approval_required: true
-    # For future: auto-retry with fixes
-    auto_retry: false
-    max_retries: 3
-
-# Security
-security:
-  # Mask sensitive data in logs
-  mask_api_keys: true
-  mask_passwords: true
-  
-  # File permissions
-  output_file_mode: "0o644"
-  cache_file_mode: "0o600"
-
-# Future features (placeholder)
-future:
-  # Context compression
-  compression_enabled: false
-  compression_algorithm: "summarization"  # summarization, key_extraction, semantic
-  
-  # Batch processing
-  batch_enabled: false
-  batch_dir: "specs"
-  
-  # Web interface
-  web_enabled: false
-  web_port: 8080
-
-# Validation rules
-validation_rules:
-  # YAML validation (Step 1)
-  yaml:
-    required_fields:
-      - "specification"
-      - "specification.id"
-      - "specification.title"
-      - "specification.sections"
-    id_patterns:
-      anchor: "^AN\\d+$"
-      section: "^S\\d+$"
-      concept: "^C\\d+$"
-
-
-# End of configuration file
-# Note: This file can be overridden by:
-# 1. Project-local: ./configuration/pipeline_config.yaml
-# 2. User-global: ~/.prompt-pipeline/config.yaml
-# 3. Custom path: --config <path>
-# 4. Environment variable: PROMPT_PIPELINE_CONFIG=<path>
