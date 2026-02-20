@@ -1,12 +1,14 @@
 """Step Executor Module for individual pipeline step execution."""
 
 import json
+import os
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 from prompt_pipeline.llm_client import OpenRouterClient
 from prompt_pipeline.prompt_manager import PromptManager
+from prompt_pipeline.tag_replacement import TagReplacer, MissingTagError
 from prompt_pipeline.terminal_utils import (
     Spinner,
     print_colored,
@@ -117,21 +119,27 @@ class StepExecutor:
     async def execute_step(
         self,
         step_name: str,
-        inputs: Optional[Dict[str, Path]] = None,
-    ) -> Path:
+        cli_inputs: Optional[Dict[str, str]] = None,
+        exogenous_inputs: Optional[Dict[str, Path]] = None,
+        previous_outputs: Optional[Dict[str, Path]] = None,
+    ) -> Dict[str, Path]:
         """Execute a single step.
 
         Args:
             step_name: Name of the step to execute.
-            inputs: Optional dictionary of input file paths.
+            cli_inputs: CLI input values (from --input-file, --input-prompt, --input-text).
+            exogenous_inputs: Exogenous input files (from config or CLI overrides).
+            previous_outputs: Outputs from previous steps (for label resolution).
 
         Returns:
-            Path to output file.
+            Dictionary mapping output labels to output file paths.
 
         Raises:
             StepExecutionError: If step execution fails.
         """
-        inputs = inputs or {}
+        cli_inputs = cli_inputs or {}
+        exogenous_inputs = exogenous_inputs or {}
+        previous_outputs = previous_outputs or {}
         self._log(f"Executing step: {step_name}")
 
         # Get step configuration
@@ -149,11 +157,21 @@ class StepExecutor:
         self._log(f"Loading prompt: {prompt_file}")
         prompt = self.prompt_manager.load_prompt(prompt_file)
 
-        # Prepare variables for substitution
-        variables = self._prepare_variables(inputs, step_config)
+        # Get inputs array from step config
+        inputs_config = step_config.get("inputs", [])
+        
+        # Prepare variables for substitution using new input format
+        variables = self._prepare_variables_from_config(
+            inputs_config=inputs_config,
+            cli_inputs=cli_inputs,
+            exogenous_inputs=exogenous_inputs,
+            previous_outputs=previous_outputs,
+            step_config=step_config,
+        )
+        self._log(f"Prompt variables prepared from {len(variables)} inputs")
 
-        # Substitute variables in prompt
-        filled_prompt = self.prompt_manager.substitute_variables(prompt, variables)
+        # Substitute variables in prompt using TagReplacer
+        filled_prompt = self._substitute_tags(prompt, variables, step_config)
         self._log(f"Prompt variables substituted")
 
         # Get model for this step
@@ -184,24 +202,10 @@ class StepExecutor:
         
         self._log(f"LLM response received ({len(response)} chars)")
 
-        # Determine output path (use output_file override if provided, otherwise use config)
-        if self.output_file:
-            output_path = Path(self.output_file)
-        else:
-            output_filename = step_config.get("output_file", f"{step_name}_output.txt")
-            output_path = self.output_dir / output_filename
+        # Save outputs and collect output paths with labels
+        output_paths = self._save_outputs(response, step_config)
 
-        # Ensure parent directory exists
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-
-        # Handle multiple output files (for stepC5)
-        if "output_files" in step_config:
-            self._handle_multiple_outputs(response, step_config, output_path)
-        else:
-            # Save response to output file FIRST (before validation)
-            output_path.write_text(response, encoding="utf-8")
-
-        self._log(f"Output saved to: {output_path}")
+        self._log(f"Output saved to: {list(output_paths.values())}")
 
         # Validate output if not skipped
         if not self.skip_validation:
@@ -236,12 +240,315 @@ class StepExecutor:
         else:
             self._log("Validation skipped")
 
-        return output_path
+        return output_paths
 
     def _log(self, message: str) -> None:
         """Log message if verbose mode is enabled."""
         if self.verbose:
             print(f"[StepExecutor] {message}")
+
+    def _prepare_variables_from_config(
+        self,
+        inputs_config: List[Dict[str, Any]],
+        cli_inputs: Dict[str, str],
+        exogenous_inputs: Dict[str, Path],
+        previous_outputs: Dict[str, Path],
+        step_config: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """Prepare variables for prompt substitution from new input format.
+
+        Args:
+            inputs_config: List of input configurations from step config.
+            cli_inputs: CLI input values (from --input-file, --input-prompt, --input-text).
+            exogenous_inputs: Exogenous input files (from config or CLI overrides).
+            previous_outputs: Outputs from previous steps (for label resolution).
+            step_config: Step configuration.
+
+        Returns:
+            Dictionary mapping labels to content for substitution.
+        """
+        variables = {}
+        
+        for input_spec in inputs_config:
+            label = input_spec.get("label")
+            input_type = input_spec.get("type", "text")
+            source = input_spec.get("source", "cli")
+            compression = input_spec.get("compression", "full")
+            
+            # Resolve content based on source type
+            content = self._resolve_input_content(
+                label=label,
+                input_type=input_type,
+                source=source,
+                cli_inputs=cli_inputs,
+                exogenous_inputs=exogenous_inputs,
+                previous_outputs=previous_outputs,
+                step_config=step_config,
+            )
+            
+            # Apply compression if specified (placeholder - full compression returns content as-is)
+            if content is not None:
+                compressed_content = self._apply_compression(content, compression, input_type)
+                variables[label] = compressed_content
+            elif self.force:
+                # If force mode and input missing, substitute empty string
+                variables[label] = ""
+            else:
+                raise StepExecutionError(
+                    f"Missing required input for label '{label}' from source '{source}'"
+                )
+        
+        return variables
+
+    def _resolve_input_content(
+        self,
+        label: str,
+        input_type: str,
+        source: str,
+        cli_inputs: Dict[str, str],
+        exogenous_inputs: Dict[str, Path],
+        previous_outputs: Dict[str, Path],
+        step_config: Dict[str, Any],
+    ) -> Optional[str]:
+        """Resolve input content based on source type.
+
+        Priority order:
+        1. CLI inputs (highest)
+        2. Exogenous inputs (from config or CLI overrides)
+        3. Previous step outputs (label references)
+        4. Missing (None)
+
+        Args:
+            label: Input label.
+            input_type: Expected input type (md, json, yaml, text).
+            source: Source type (cli, file, label:NAME).
+            cli_inputs: CLI input values.
+            exogenous_inputs: Exogenous input files.
+            previous_outputs: Outputs from previous steps.
+            step_config: Step configuration.
+
+        Returns:
+            Content string or None if not found.
+        """
+        # Source is in format "label:NAME" for previous step outputs
+        if source.startswith("label:"):
+            ref_label = source[6:]  # Remove "label:" prefix
+            if ref_label in previous_outputs:
+                file_path = previous_outputs[ref_label]
+                return self._load_file_content(file_path, input_type)
+            return None
+        
+        # CLI input - check cli_inputs dict
+        if source == "cli":
+            if label in cli_inputs:
+                return cli_inputs[label]
+            return None
+        
+        # File input - check exogenous_inputs
+        if source == "file":
+            if label in exogenous_inputs:
+                file_path = exogenous_inputs[label]
+                return self._load_file_content(file_path, input_type)
+            return None
+        
+        # Default: try to resolve from various sources
+        # First check CLI inputs
+        if label in cli_inputs:
+            return cli_inputs[label]
+        
+        # Then check exogenous inputs
+        if label in exogenous_inputs:
+            file_path = exogenous_inputs[label]
+            return self._load_file_content(file_path, input_type)
+        
+        # Finally check previous outputs
+        if label in previous_outputs:
+            file_path = previous_outputs[label]
+            return self._load_file_content(file_path, input_type)
+        
+        return None
+
+    def _load_file_content(self, file_path: Path, input_type: str) -> str:
+        """Load content from a file.
+
+        Args:
+            file_path: Path to the file.
+            input_type: Expected input type (for validation).
+
+        Returns:
+            File content as string.
+
+        Raises:
+            StepExecutionError: If file not found or invalid.
+        """
+        if not isinstance(file_path, Path):
+            file_path = Path(file_path)
+        
+        if not file_path.exists():
+            raise StepExecutionError(f"Input file not found: {file_path}")
+        
+        try:
+            content = file_path.read_text(encoding="utf-8")
+        except Exception as e:
+            raise StepExecutionError(f"Failed to read input file {file_path}: {e}")
+        
+        return content
+
+    def _apply_compression(
+        self,
+        content: str,
+        compression: str,
+        input_type: str,
+    ) -> str:
+        """Apply compression to content.
+
+        Currently supports 'full' (no compression) as placeholder.
+        Full compression returns content as-is.
+
+        Args:
+            content: Content to compress.
+            compression: Compression strategy name.
+            input_type: Input type (md, json, yaml, text).
+
+        Returns:
+            Compressed content.
+        """
+        # Placeholder: full compression returns content as-is
+        # Actual compression strategies will be implemented in later tasks
+        if compression in ("full", "none", None, ""):
+            return content
+        
+        # For now, return content as-is for unknown compression strategies
+        # This will be enhanced when compression strategies are implemented
+        self._log(f"Compression '{compression}' not implemented, using full content")
+        return content
+
+    def _substitute_tags(
+        self,
+        prompt: str,
+        variables: Dict[str, Any],
+        step_config: Dict[str, Any],
+    ) -> str:
+        """Substitute tags in prompt using TagReplacer.
+
+        Args:
+            prompt: Prompt template with {{tag}} placeholders.
+            variables: Dictionary mapping labels to content.
+            step_config: Step configuration.
+
+        Returns:
+            Filled prompt with substituted content.
+        """
+        replacer = TagReplacer(prompt)
+        
+        # Validate all required tags have replacements
+        required_tags = replacer.get_required_tags()
+        missing_tags = required_tags - set(variables.keys())
+        
+        if missing_tags:
+            if self.force:
+                # In force mode, add missing tags with empty string
+                for tag in missing_tags:
+                    variables[tag] = ""
+            else:
+                # Raise error for missing tags
+                for tag in missing_tags:
+                    raise MissingTagError(tag)
+        
+        # Perform substitution
+        try:
+            filled_prompt = replacer.replace_all(variables)
+        except Exception as e:
+            raise StepExecutionError(f"Failed to substitute variables: {e}")
+        
+        return filled_prompt
+
+    def _save_outputs(
+        self,
+        response: str,
+        step_config: Dict[str, Any],
+    ) -> Dict[str, Path]:
+        """Save step outputs and return paths with labels.
+
+        Args:
+            response: LLM response content.
+            step_config: Step configuration.
+
+        Returns:
+            Dictionary mapping output labels to output file paths.
+        """
+        output_paths: Dict[str, Path] = {}
+        
+        # Get outputs array from step config
+        outputs_config = step_config.get("outputs", [])
+        
+        if not outputs_config:
+            # Fallback to old format (single output_file)
+            output_filename = step_config.get("output_file", "output.txt")
+            output_path = self.output_dir / output_filename
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path.write_text(response, encoding="utf-8")
+            output_paths["default"] = output_path
+            return output_paths
+        
+        # Handle multiple outputs
+        if len(outputs_config) > 1:
+            # Try to parse JSON response for multiple outputs
+            try:
+                data = json.loads(response)
+                if isinstance(data, dict):
+                    for output_spec in outputs_config:
+                        if isinstance(output_spec, dict):
+                            key = output_spec.get("key")
+                            filename = output_spec.get("filename")
+                            label = output_spec.get("label")
+                            if key and filename and key in data:
+                                file_path = self.output_dir / filename
+                                file_path.parent.mkdir(parents=True, exist_ok=True)
+                                file_path.write_text(
+                                    json.dumps(data[key], indent=2), encoding="utf-8"
+                                )
+                                if label:
+                                    output_paths[label] = file_path
+                                self._log(f"Saved {key} to {filename}")
+                else:
+                    # Single JSON object, save to primary output
+                    self._save_single_output(response, outputs_config[0], output_paths)
+            except json.JSONDecodeError:
+                # Not JSON, save entire response to first output
+                self._save_single_output(response, outputs_config[0], output_paths)
+        else:
+            # Single output
+            self._save_single_output(response, outputs_config[0], output_paths)
+        
+        return output_paths
+
+    def _save_single_output(
+        self,
+        response: str,
+        output_spec: Dict[str, Any],
+        output_paths: Dict[str, Path],
+    ) -> None:
+        """Save a single output file.
+
+        Args:
+            response: LLM response content.
+            output_spec: Output specification (file, label, type).
+            output_paths: Dictionary to update with label -> path mapping.
+        """
+        filename = output_spec.get("file", "output.txt")
+        label = output_spec.get("label")
+        
+        output_path = self.output_dir / filename
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text(response, encoding="utf-8")
+        
+        if label:
+            output_paths[label] = output_path
+        else:
+            output_paths["default"] = output_path
+        
+        self._log(f"Saved output to {filename}")
 
     def _prepare_variables(
         self,
@@ -394,24 +701,34 @@ async def run_step(
     step_name: str,
     config_path: str,
     output_dir: str,
-    inputs: Optional[Dict[str, str]] = None,
+    cli_inputs: Optional[Dict[str, str]] = None,
+    exogenous_inputs: Optional[Dict[str, str]] = None,
+    previous_outputs: Optional[Dict[str, str]] = None,
     model_level: int = 1,
     skip_validation: bool = False,
     verbose: bool = False,
-) -> str:
+    show_prompt: bool = False,
+    show_response: bool = False,
+    force: bool = False,
+) -> Dict[str, str]:
     """Run a single pipeline step.
 
     Args:
         step_name: Name of step to run.
         config_path: Path to pipeline configuration.
         output_dir: Directory for outputs.
-        inputs: Optional input files.
+        cli_inputs: CLI input values.
+        exogenous_inputs: Exogenous input files.
+        previous_outputs: Outputs from previous steps.
         model_level: Model level (1-3).
         skip_validation: Skip validation.
         verbose: Print progress.
+        show_prompt: Show prompt sent to LLM.
+        show_response: Show response from LLM.
+        force: Substitute empty string for missing inputs.
 
     Returns:
-        Path to output file.
+        Dictionary mapping output labels to output file paths.
 
     Raises:
         StepExecutionError: If step fails.
@@ -431,12 +748,26 @@ async def run_step(
         model_level=model_level,
         skip_validation=skip_validation,
         verbose=verbose,
+        show_prompt=show_prompt,
+        show_response=show_response,
+        force=force,
     )
 
     # Convert inputs to Path objects
-    input_paths = None
-    if inputs:
-        input_paths = {k: Path(v) for k, v in inputs.items()}
+    exogenous_path_inputs = None
+    if exogenous_inputs:
+        exogenous_path_inputs = {k: Path(v) for k, v in exogenous_inputs.items()}
+    
+    previous_outputs_path = None
+    if previous_outputs:
+        previous_outputs_path = {k: Path(v) for k, v in previous_outputs.items()}
 
-    output_path = await executor.execute_step(step_name, input_paths)
-    return str(output_path)
+    output_paths = await executor.execute_step(
+        step_name,
+        cli_inputs=cli_inputs,
+        exogenous_inputs=exogenous_path_inputs,
+        previous_outputs=previous_outputs_path,
+    )
+    
+    # Convert Path objects to strings for return
+    return {k: str(v) for k, v in output_paths.items()}
