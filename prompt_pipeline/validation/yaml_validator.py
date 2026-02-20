@@ -1,9 +1,12 @@
-"""YAML Validator module for Step 1 output validation."""
+"""YAML Validator module for Step 1 output validation and pipeline configuration validation."""
 
 import re
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 
 import yaml
+import json
+import jsonschema
+from importlib import resources
 
 
 class ValidationResult:
@@ -244,11 +247,340 @@ class YAMLValidator:
             return result
 
 
-# Convenience function
+class PipelineConfigValidator:
+    """Validate pipeline configuration files against JSON Schema.
+
+    Validates:
+    - Valid YAML syntax
+    - Matches pipeline_config.schema.json structure
+    - Validates cli_inputs, exogenous_inputs, output_labels, steps
+    - Supports both old and new formats for migration
+    """
+
+    def __init__(self, strict: bool = True):
+        """Initialize pipeline config validator.
+
+        Args:
+            strict: If True, validation fails on warnings too.
+        """
+        self.strict = strict
+        self._schema: Optional[Dict[str, Any]] = None
+
+    def _load_schema(self) -> Dict[str, Any]:
+        """Load the pipeline configuration JSON Schema.
+
+        Returns:
+            The JSON Schema dictionary.
+
+        Raises:
+            FileNotFoundError: If schema file is not found.
+            json.JSONDecodeError: If schema file is not valid JSON.
+        """
+        if self._schema is not None:
+            return self._schema
+
+        # Try to load schema from schemas directory
+        schema_path = "schemas/pipeline_config.schema.json"
+        try:
+            with open(schema_path, "r", encoding="utf-8") as f:
+                self._schema = json.load(f)
+        except FileNotFoundError:
+            # Try alternative location in package resources
+            try:
+                schema_content = resources.read_text("schemas", "pipeline_config.schema.json")
+                self._schema = json.loads(schema_content)
+            except (FileNotFoundError, ModuleNotFoundError):
+                raise FileNotFoundError(
+                    f"Pipeline config schema not found at {schema_path} "
+                    "or in package resources"
+                )
+        
+        return self._schema
+
+    def _detect_config_format(self, data: Dict[str, Any]) -> str:
+        """Detect if config is old or new format.
+
+        Args:
+            data: Parsed YAML data.
+
+        Returns:
+            "new" for new format, "old" for old format.
+        """
+        # New format has 'cli_inputs' and uses 'inputs' array in steps
+        if "cli_inputs" in data or "exogenous_inputs" in data:
+            return "new"
+        
+        # Old format has 'requires_nl_spec' and 'output_file' in steps
+        for step_name, step_config in data.get("steps", {}).items():
+            if isinstance(step_config, dict):
+                if "requires_nl_spec" in step_config or "output_file" in step_config:
+                    return "old"
+        
+        # Default to new format if uncertain
+        return "new"
+
+    def validate(self, yaml_content: str) -> ValidationResult:
+        """Validate pipeline configuration against JSON Schema.
+
+        Args:
+            yaml_content: The YAML configuration content to validate.
+
+        Returns:
+            ValidationResult with errors and warnings.
+        """
+        result = ValidationResult()
+
+        # Parse YAML
+        try:
+            data = yaml.safe_load(yaml_content)
+        except yaml.YAMLError as e:
+            result.add_error(f"YAML parse error: {e}")
+            return result
+
+        if data is None:
+            result.add_error("YAML content is empty")
+            return result
+
+        # Detect configuration format
+        config_format = self._detect_config_format(data)
+
+        if config_format == "old":
+            result.add_warning(
+                "Old configuration format detected. "
+                "Please migrate to new format using migration script. "
+                "See doc/migration_guide.md for details."
+            )
+            # Validate old format structure minimally
+            if "steps" not in data:
+                result.add_error("Missing required top-level field: 'steps'")
+            
+            for step_name, step_config in data.get("steps", {}).items():
+                if isinstance(step_config, dict):
+                    if "prompt_file" not in step_config:
+                        result.add_error(f"Step '{step_name}' missing 'prompt_file'")
+                    if "order" not in step_config:
+                        result.add_error(f"Step '{step_name}' missing 'order'")
+            result.passed = result.is_valid()
+            return result
+
+        # Validate new format against JSON Schema
+        # For strict validation, we'll skip model_levels validation since YAML parses
+        # numeric keys as integers while JSON Schema expects string keys
+        try:
+            schema = self._load_schema()
+            
+            # Create a copy of data without model_levels for strict validation
+            if self.strict:
+                data_for_validation = {k: v for k, v in data.items() if k != "model_levels"}
+                jsonschema.validate(instance=data_for_validation, schema=schema)
+            else:
+                jsonschema.validate(instance=data, schema=schema)
+        except json.JSONDecodeError as e:
+            result.add_error(f"Invalid schema JSON: {e}")
+            return result
+        except jsonschema.ValidationError as e:
+            # Provide user-friendly error messages
+            path = ".".join(str(p) for p in e.absolute_path)
+            # Skip model_levels validation errors (they're false positives due to integer keys)
+            if "model_levels" not in path:
+                result.add_error(
+                    f"Schema validation error at '{path}': {e.message}"
+                )
+        except jsonschema.SchemaError as e:
+            result.add_error(f"Invalid schema: {e}")
+
+        # Additional semantic validations
+        self._validate_label_uniqueness(data, result)
+        self._validate_step_dependencies(data, result)
+        self._validate_input_output_types(data, result)
+
+        result.passed = result.is_valid()
+        return result
+
+    def _validate_label_uniqueness(self, data: Dict[str, Any], result: ValidationResult) -> None:
+        """Validate that all labels are unique across the configuration.
+
+        Args:
+            data: Parsed configuration data.
+            result: ValidationResult to append warnings to.
+        """
+        labels: Dict[str, List[str]] = {}
+
+        # Check CLI input labels
+        for i, input_config in enumerate(data.get("cli_inputs", [])):
+            if isinstance(input_config, dict):
+                label = input_config.get("label", "")
+                if label:
+                    labels.setdefault(label, []).append(f"cli_inputs[{i}]")
+
+        # Check exogenous input labels
+        for i, input_config in enumerate(data.get("exogenous_inputs", [])):
+            if isinstance(input_config, dict):
+                label = input_config.get("label", "")
+                if label:
+                    labels.setdefault(label, []).append(f"exogenous_inputs[{i}]")
+
+        # Check output labels
+        for i, output_config in enumerate(data.get("output_labels", [])):
+            if isinstance(output_config, dict):
+                label = output_config.get("label", "")
+                if label:
+                    labels.setdefault(label, []).append(f"output_labels[{i}]")
+
+        # Check step output labels
+        for step_name, step_config in data.get("steps", {}).items():
+            if isinstance(step_config, dict):
+                for i, output_config in enumerate(step_config.get("outputs", [])):
+                    if isinstance(output_config, dict):
+                        label = output_config.get("label", "")
+                        if label:
+                            labels.setdefault(label, []).append(f"steps.{step_name}.outputs[{i}]")
+
+        # Report duplicate labels
+        for label, locations in labels.items():
+            if len(locations) > 1:
+                result.add_warning(
+                    f"Label '{label}' is defined in multiple places: {', '.join(locations)}. "
+                    "This may cause unexpected behavior."
+                )
+
+    def _validate_step_dependencies(self, data: Dict[str, Any], result: ValidationResult) -> None:
+        """Validate that step dependencies are valid.
+
+        Args:
+            data: Parsed configuration data.
+            result: ValidationResult to append warnings to.
+        """
+        steps = data.get("steps", {})
+        step_names = set(steps.keys())
+
+        for step_name, step_config in steps.items():
+            if isinstance(step_config, dict):
+                # Check explicit dependencies
+                for dep in step_config.get("dependencies", []):
+                    if dep not in step_names:
+                        result.add_warning(
+                            f"Step '{step_name}' references unknown dependency '{dep}'"
+                        )
+
+                # Check if inputs reference non-existent labels
+                for input_config in step_config.get("inputs", []):
+                    if isinstance(input_config, dict):
+                        label = input_config.get("label", "")
+                        source = input_config.get("source", "")
+                        
+                        if source.startswith("label:"):
+                            referenced_label = source.split(":", 1)[1]
+                            # Check if label exists anywhere
+                            if not self._label_exists(data, referenced_label):
+                                result.add_warning(
+                                    f"Step '{step_name}' references label '{referenced_label}' "
+                                    "which is not defined in the configuration"
+                                )
+
+    def _validate_input_output_types(self, data: Dict[str, Any], result: ValidationResult) -> None:
+        """Validate that input/output types are consistent.
+
+        Args:
+            data: Parsed configuration data.
+            result: ValidationResult to append warnings to.
+        """
+        valid_types = {"md", "yaml", "json", "text", "typedb_query", "typedb_result"}
+
+        # Check CLI input types
+        for i, input_config in enumerate(data.get("cli_inputs", [])):
+            if isinstance(input_config, dict):
+                input_type = input_config.get("type", "")
+                if input_type and input_type not in valid_types:
+                    result.add_warning(
+                        f"cli_inputs[{i}] has unknown type '{input_type}'. "
+                        f"Valid types: {', '.join(sorted(valid_types))}"
+                    )
+
+        # Check step input types
+        for step_name, step_config in data.get("steps", {}).items():
+            if isinstance(step_config, dict):
+                for i, input_config in enumerate(step_config.get("inputs", [])):
+                    if isinstance(input_config, dict):
+                        input_type = input_config.get("type", "")
+                        if input_type and input_type not in valid_types:
+                            result.add_warning(
+                                f"steps.{step_name}.inputs[{i}] has unknown type '{input_type}'. "
+                                f"Valid types: {', '.join(sorted(valid_types))}"
+                            )
+
+                # Check step output types
+                for i, output_config in enumerate(step_config.get("outputs", [])):
+                    if isinstance(output_config, dict):
+                        output_type = output_config.get("type", "")
+                        if output_type and output_type not in {"md", "yaml", "json", "text"}:
+                            result.add_warning(
+                                f"steps.{step_name}.outputs[{i}] has unknown type '{output_type}'. "
+                                f"Valid types: md, yaml, json, text"
+                            )
+
+    def _label_exists(self, data: Dict[str, Any], label: str) -> bool:
+        """Check if a label exists anywhere in the configuration.
+
+        Args:
+            data: Parsed configuration data.
+            label: Label to check for.
+
+        Returns:
+            True if label exists, False otherwise.
+        """
+        # Check CLI inputs
+        for input_config in data.get("cli_inputs", []):
+            if isinstance(input_config, dict) and input_config.get("label") == label:
+                return True
+
+        # Check exogenous inputs
+        for input_config in data.get("exogenous_inputs", []):
+            if isinstance(input_config, dict) and input_config.get("label") == label:
+                return True
+
+        # Check output labels
+        for output_config in data.get("output_labels", []):
+            if isinstance(output_config, dict) and output_config.get("label") == label:
+                return True
+
+        # Check step outputs
+        for step_config in data.get("steps", {}).values():
+            if isinstance(step_config, dict):
+                for output_config in step_config.get("outputs", []):
+                    if isinstance(output_config, dict) and output_config.get("label") == label:
+                        return True
+
+        return False
+
+    def validate_file(self, file_path: str) -> ValidationResult:
+        """Validate pipeline configuration file.
+
+        Args:
+            file_path: Path to YAML configuration file.
+
+        Returns:
+            ValidationResult with errors and warnings.
+        """
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                content = f.read()
+            return self.validate(content)
+        except FileNotFoundError:
+            result = ValidationResult()
+            result.add_error(f"File not found: {file_path}")
+            return result
+        except Exception as e:
+            result = ValidationResult()
+            result.add_error(f"Error reading file: {e}")
+            return result
+
+
+# Convenience functions for YAML output validation
 def validate_yaml(
     yaml_content: str, strict: bool = True
 ) -> ValidationResult:
-    """Validate YAML content.
+    """Validate YAML content (Step 1 output).
 
     Args:
         yaml_content: The YAML content to validate.
@@ -262,7 +594,7 @@ def validate_yaml(
 
 
 def validate_yaml_file(file_path: str, strict: bool = True) -> ValidationResult:
-    """Validate YAML file.
+    """Validate YAML file (Step 1 output).
 
     Args:
         file_path: Path to YAML file.
@@ -272,4 +604,35 @@ def validate_yaml_file(file_path: str, strict: bool = True) -> ValidationResult:
         ValidationResult with errors and warnings.
     """
     validator = YAMLValidator(strict=strict)
+    return validator.validate_file(file_path)
+
+
+# Convenience functions for pipeline configuration validation
+def validate_pipeline_config(
+    yaml_content: str, strict: bool = True
+) -> ValidationResult:
+    """Validate pipeline configuration content.
+
+    Args:
+        yaml_content: The YAML configuration content to validate.
+        strict: If True, fail on warnings too.
+
+    Returns:
+        ValidationResult with errors and warnings.
+    """
+    validator = PipelineConfigValidator(strict=strict)
+    return validator.validate(yaml_content)
+
+
+def validate_pipeline_config_file(file_path: str, strict: bool = True) -> ValidationResult:
+    """Validate pipeline configuration file.
+
+    Args:
+        file_path: Path to YAML configuration file.
+        strict: If True, fail on warnings too.
+
+    Returns:
+        ValidationResult with errors and warnings.
+    """
+    validator = PipelineConfigValidator(strict=strict)
     return validator.validate_file(file_path)

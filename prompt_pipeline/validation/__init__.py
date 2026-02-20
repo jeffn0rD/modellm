@@ -2,7 +2,12 @@
 
 from prompt_pipeline.validation.yaml_validator import (
     YAMLValidator,
+    PipelineConfigValidator,
     ValidationResult,
+    validate_yaml,
+    validate_yaml_file,
+    validate_pipeline_config,
+    validate_pipeline_config_file,
 )
 from prompt_pipeline.validation.json_validator import (
     JSONValidator,
@@ -14,7 +19,12 @@ from prompt_pipeline.validation.json_validator import (
 
 __all__ = [
     "YAMLValidator",
+    "PipelineConfigValidator",
     "ValidationResult",
+    "validate_yaml",
+    "validate_yaml_file",
+    "validate_pipeline_config",
+    "validate_pipeline_config_file",
     "JSONValidator",
     "ConceptsValidator",
     "AggregationsValidator",
