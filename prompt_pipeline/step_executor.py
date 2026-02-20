@@ -87,6 +87,7 @@ class StepExecutor:
         show_prompt: bool = False,
         show_response: bool = False,
         output_file: Optional[str] = None,
+        force: bool = False,
     ):
         """Initialize step executor.
 
@@ -100,6 +101,7 @@ class StepExecutor:
             show_prompt: If True, display prompt sent to LLM.
             show_response: If True, display response from LLM.
             output_file: Override output file path (if specified).
+            force: If True, substitute empty string for missing inputs instead of failing.
         """
         self.llm_client = llm_client
         self.prompt_manager = prompt_manager
@@ -110,6 +112,7 @@ class StepExecutor:
         self.show_prompt = show_prompt
         self.show_response = show_response
         self.output_file = output_file
+        self.force = force
 
     async def execute_step(
         self,

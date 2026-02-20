@@ -74,6 +74,11 @@ from prompt_pipeline.terminal_utils import (
     is_flag=True,
     help="Display both prompt and response",
 )
+@click.option(
+    "--force",
+    is_flag=True,
+    help="Continue even if inputs are missing (substitute empty strings)",
+)
 @click.pass_context
 def run_pipeline(
     ctx,
@@ -88,6 +93,7 @@ def run_pipeline(
     show_prompt,
     show_response,
     show_both,
+    force,
 ):
     """Run the full pipeline from NL specification.
 
@@ -124,6 +130,7 @@ def run_pipeline(
         verbose=verbose,
         show_prompt=show_prompt or show_both,
         show_response=show_response or show_both,
+        force=force,
     )
 
     orchestrator = PipelineOrchestrator(
