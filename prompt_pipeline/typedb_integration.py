@@ -8,18 +8,9 @@ import sys
 from pathlib import Path
 from typing import Optional
 
-# Import from typedb_client3 library (in tools directory)
-try:
-    from typedb_client3 import TypeDBClient
-    from typedb_client3.importer import TypeDBImporter
-except ImportError:
-    # Fallback if not installed as a package
-    import os
-    tools_path = Path(__file__).parent.parent / "tools"
-    if str(tools_path) not in sys.path:
-        sys.path.insert(0, str(tools_path))
-    from typedb_client3 import TypeDBClient
-    from typedb_client3.importer import TypeDBImporter
+# Import from typedb_client3 library (external package)
+from typedb_client3 import TypeDBClient
+from prompt_pipeline.importer import TypeDBImporter
 
 
 class PipelineImporter:

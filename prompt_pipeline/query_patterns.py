@@ -5,8 +5,8 @@ Pre-built query patterns for common TypeDB queries.
 
 from typing import Dict, Any
 
-from .client import TypeDBClient, TransactionType
-from .query_builder import QueryBuilder
+from typedb_client3 import TypeDBClient, TransactionType
+from typedb_client3 import QueryBuilder
 
 
 class QueryPattern:

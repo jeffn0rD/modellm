@@ -10,6 +10,7 @@ authors = [{name = "Developer", email = "dev@example.com"}]
 readme = "README.md"
 requires-python = ">=3.8"
 dependencies = [
+    "typedb-client3>=0.1.0",
     "requests>=2.25.0",
     "cryptography>=3.4.8",
     "urllib3>=1.26.0",
@@ -30,10 +31,9 @@ dev = [
 prompt-pipeline = "prompt_pipeline_cli.main:cli"
 
 [tool.setuptools]
-packages = ["typedb_client3", "prompt_pipeline", "prompt_pipeline_cli"]
+packages = ["prompt_pipeline", "prompt_pipeline_cli"]
 
 [tool.setuptools.package-dir]
-typedb_client3 = "tools/typedb_client3"
 prompt_pipeline = "prompt_pipeline"
 prompt_pipeline_cli = "prompt_pipeline_cli"
 

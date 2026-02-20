@@ -17,30 +17,10 @@ import uuid
 from pathlib import Path
 from typing import Optional
 
-# Import from typedb_client3 library
+# Import from typedb_client3 library (external package)
 from typedb_client3 import TypeDBClient, TransactionType
-from typedb_client3.importer import TypeDBImporter
-
-
-# ANSI color codes for terminal output
-class Colors:
-    RESET = '\033[0m'
-    RED = '\033[91m'
-    GREEN = '\033[92m'
-    YELLOW = '\033[93m'
-    BLUE = '\033[94m'
-    MAGENTA = '\033[95m'
-    CYAN = '\033[96m'
-    BOLD = '\033[1m'
-    DIM = '\033[2m'
-
-
-class VerboseLevel:
-    """Verbosity levels."""
-    ERROR = 0      # Only errors
-    NORMAL = 1     # Summary (default)
-    VERBOSE = 2    # Detailed progress
-    DEBUG = 3      # All debug info
+# Import local importer module
+from prompt_pipeline.importer.importer import TypeDBImporter, Colors, VerboseLevel
 
 
 def create_parser() -> argparse.ArgumentParser:

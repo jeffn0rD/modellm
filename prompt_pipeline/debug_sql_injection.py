@@ -1,15 +1,8 @@
 #!/usr/bin/env python3
 """Debug the SQL injection test failure."""
 
-import sys
-from pathlib import Path
-
-# Add project root to Python path
-project_root = Path(__file__).parent
-sys.path.insert(0, str(project_root))
-
-from client import validate_credentials
-from exceptions import TypeDBValidationError
+from typedb_client3 import validate_credentials
+from typedb_client3 import TypeDBValidationError
 import re
 
 def debug_validation():

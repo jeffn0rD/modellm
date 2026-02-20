@@ -1,15 +1,8 @@
 #!/usr/bin/env python3
 """Debug validation functions."""
 
-import sys
-from pathlib import Path
-
-# Add project root to Python path
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
-
-from tools.typedb_v3_client.client import validate_credentials
-from tools.typedb_v3_client.exceptions import TypeDBValidationError
+from typedb_client3 import validate_credentials
+from typedb_client3 import TypeDBValidationError
 import re
 
 def test_validation():

@@ -12,8 +12,8 @@ from typing import Any, Dict, List, Optional
 
 import yaml
 
-from .client import TypeDBClient, TransactionType
-from .exceptions import TypeDBError
+from typedb_client3 import TypeDBClient, TransactionType
+from typedb_client3 import TypeDBError
 
 
 # ANSI color codes for terminal output
