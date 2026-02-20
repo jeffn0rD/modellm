@@ -9,6 +9,13 @@ from prompt_pipeline.llm_client import OpenRouterClient
 from prompt_pipeline.orchestrator import PipelineOrchestrator
 from prompt_pipeline.prompt_manager import PromptManager
 from prompt_pipeline.step_executor import StepExecutor
+from prompt_pipeline.terminal_utils import (
+    print_success,
+    print_warning,
+    print_error,
+    print_info,
+    format_step,
+)
 
 
 @click.command()
@@ -50,6 +57,11 @@ from prompt_pipeline.step_executor import StepExecutor
     help="Output directory",
 )
 @click.option(
+    "--output-file",
+    type=click.Path(),
+    help="Output file path (overrides config file setting)",
+)
+@click.option(
     "--model-level",
     type=int,
     default=1,
@@ -70,6 +82,21 @@ from prompt_pipeline.step_executor import StepExecutor
     is_flag=True,
     help="Show what would happen without executing",
 )
+@click.option(
+    "--show-prompt",
+    is_flag=True,
+    help="Display the prompt sent to LLM",
+)
+@click.option(
+    "--show-response",
+    is_flag=True,
+    help="Display the response from LLM",
+)
+@click.option(
+    "--show-both",
+    is_flag=True,
+    help="Display both prompt and response",
+)
 @click.pass_context
 def run_step(
     ctx,
@@ -81,10 +108,14 @@ def run_step(
     messages_file,
     requirements_file,
     output_dir,
+    output_file,
     model_level,
     model,
     skip_validation,
     dry_run,
+    show_prompt,
+    show_response,
+    show_both,
 ):
     """Run a single pipeline step.
 
@@ -95,17 +126,39 @@ def run_step(
     verbose = verbosity > 1
 
     if dry_run:
+        # Determine the output file path
+        step_config = PromptManager(config_path).get_step_config(step_name)
+        if step_config:
+            # Use provided output file or fall back to config
+            if output_file:
+                output_path = Path(output_file)
+            else:
+                config_output_file = step_config.get("output_file", f"{step_name}_output.txt")
+                output_path = Path(output_dir) / config_output_file
+        else:
+            output_path = Path(output_dir) / f"{step_name}_output.txt"
+        
         click.echo(f"[DRY RUN] Would execute step: {step_name}")
         click.echo(f"[DRY RUN] Config: {config_path}")
-        click.echo(f"[DRY RUN] Output dir: {output_dir}")
+        click.echo(f"[DRY RUN] Output path: {output_path}")
         click.echo(f"[DRY RUN] Model level: {model_level}")
+        
+        # Show required inputs
+        if step_config:
+            required_inputs = PromptManager(config_path).get_required_inputs(step_name)
+            if required_inputs:
+                click.echo(f"[DRY RUN] Required inputs: {', '.join(required_inputs)}")
+        
         return
 
     # Initialize components
-    api_key = "dummy"  # Will be overridden by client
-
-    llm_client = OpenRouterClient(api_key=api_key)
+    # API key will be read from OPENROUTER_API_KEY environment variable
+    llm_client = OpenRouterClient(api_key=None)
     prompt_manager = PromptManager(config_path)
+    
+    # Determine what to show
+    show_both = show_both or (show_prompt and show_response)
+    
     executor = StepExecutor(
         llm_client=llm_client,
         prompt_manager=prompt_manager,
@@ -113,6 +166,9 @@ def run_step(
         model_level=model_level,
         skip_validation=skip_validation,
         verbose=verbose,
+        show_prompt=show_prompt or show_both,
+        show_response=show_response or show_both,
+        output_file=output_file,
     )
 
     orchestrator = PipelineOrchestrator(
@@ -175,7 +231,8 @@ def run_step(
     # Run step
     try:
         output_path = asyncio.run(orchestrator.run_step(step_name, inputs))
-        click.echo(f"Step {step_name} completed successfully!")
-        click.echo(f"Output: {output_path}")
+        print_success(f"Step {format_step(step_name)} completed successfully!")
+        print_info(f"Output: {output_path}")
     except Exception as e:
+        print_error(f"Step {format_step(step_name)} failed!")
         raise click.ClickException(f"Step execution failed: {e}")

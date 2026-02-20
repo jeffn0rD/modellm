@@ -35,10 +35,56 @@ class PromptManager:
         self.steps_config = self._load_step_config()
     
     def _load_step_config(self) -> Dict[str, Any]:
-        """Load step configurations from YAML file."""
+        """Load step configurations from YAML file.
+        
+        Raises:
+            FileNotFoundError: If configuration file doesn't exist.
+            yaml.YAMLError: If configuration file has invalid YAML syntax.
+            ValueError: If configuration file is empty or invalid structure.
+        """
         import yaml
-        with open(self.config_path, 'r') as f:
-            config = yaml.safe_load(f)
+        
+        # Check if file exists
+        if not os.path.exists(self.config_path):
+            raise FileNotFoundError(
+                f"Configuration file not found: {self.config_path}. "
+                "Please specify a valid configuration file using --config option "
+                "or create a configuration file at the default location."
+            )
+        
+        # Check if file is readable
+        if not os.path.isfile(self.config_path):
+            raise ValueError(
+                f"Configuration path is not a file: {self.config_path}"
+            )
+        
+        try:
+            with open(self.config_path, 'r', encoding='utf-8') as f:
+                config = yaml.safe_load(f)
+        except yaml.YAMLError as e:
+            raise yaml.YAMLError(
+                f"Invalid YAML syntax in configuration file '{self.config_path}': {e}"
+            )
+        except PermissionError:
+            raise PermissionError(
+                f"Permission denied: Cannot read configuration file '{self.config_path}'"
+            )
+        except Exception as e:
+            raise ValueError(
+                f"Error reading configuration file '{self.config_path}': {e}"
+            )
+        
+        if config is None:
+            raise ValueError(
+                f"Configuration file '{self.config_path}' is empty or contains only comments"
+            )
+        
+        if not isinstance(config, dict):
+            raise ValueError(
+                f"Invalid configuration structure in '{self.config_path}'. "
+                f"Expected a dictionary, but got {type(config).__name__}"
+            )
+        
         return config
     
     def get_step_config(self, step_name: str) -> Optional[Dict[str, Any]]:

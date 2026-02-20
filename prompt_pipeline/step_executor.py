@@ -1,11 +1,26 @@
 """Step Executor Module for individual pipeline step execution."""
 
 import json
+import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from prompt_pipeline.llm_client import OpenRouterClient
 from prompt_pipeline.prompt_manager import PromptManager
+from prompt_pipeline.terminal_utils import (
+    Spinner,
+    print_colored,
+    print_header,
+    print_success,
+    print_warning,
+    print_error,
+    print_info,
+    format_prompt,
+    format_response,
+    format_model,
+    format_step,
+    Color,
+)
 from prompt_pipeline.validation import (
     ConceptsValidator,
     MessagesValidator,
@@ -15,6 +30,23 @@ from prompt_pipeline.validation import (
     AggregationsValidator,
 )
 from prompt_pipeline.validation.json_validator import JSONValidator
+
+
+def safe_print(text: str) -> None:
+    """Print text with encoding error handling.
+    
+    Args:
+        text: Text to print
+    """
+    try:
+        print(text)
+    except UnicodeEncodeError:
+        # If encoding fails, try to print with error replacement
+        try:
+            print(text.encode('utf-8', errors='replace').decode('utf-8'))
+        except:
+            # Last resort: print without special characters
+            print(text.encode('ascii', errors='ignore').decode('ascii'))
 
 
 class StepExecutionError(Exception):
@@ -52,6 +84,9 @@ class StepExecutor:
         model_level: int = 1,
         skip_validation: bool = False,
         verbose: bool = False,
+        show_prompt: bool = False,
+        show_response: bool = False,
+        output_file: Optional[str] = None,
     ):
         """Initialize step executor.
 
@@ -62,6 +97,9 @@ class StepExecutor:
             model_level: Model level (1=cheapest, 2=balanced, 3=best).
             skip_validation: If True, skip output validation.
             verbose: If True, print detailed progress.
+            show_prompt: If True, display prompt sent to LLM.
+            show_response: If True, display response from LLM.
+            output_file: Override output file path (if specified).
         """
         self.llm_client = llm_client
         self.prompt_manager = prompt_manager
@@ -69,6 +107,9 @@ class StepExecutor:
         self.model_level = model_level
         self.skip_validation = skip_validation
         self.verbose = verbose
+        self.show_prompt = show_prompt
+        self.show_response = show_response
+        self.output_file = output_file
 
     async def execute_step(
         self,
@@ -118,12 +159,34 @@ class StepExecutor:
 
         # Call LLM
         self._log(f"Calling LLM...")
-        response = await self.llm_client.call_prompt(filled_prompt, model=model)
+        
+        # Show prompt if requested
+        if self.show_prompt or self.show_response:
+            print_header("PROMPT", Color.CYAN)
+            # Print prompt with encoding error handling
+            safe_print(format_prompt(filled_prompt))
+            print_header(f"Calling model: {format_model(model)}", Color.MAGENTA)
+        
+        # Show progress indicator
+        spinner_message = f"Waiting for response from {format_model(model)}..."
+        with Spinner(spinner_message, Color.CYAN) as spinner:
+            response = await self.llm_client.call_prompt_async(filled_prompt, model=model)
+        
+        # Show response if requested
+        if self.show_response:
+            print_header("RESPONSE", Color.GREEN)
+            # Print response with encoding error handling
+            safe_print(format_response(response))
+            print_info(f"Response received ({len(response)} characters)")
+        
         self._log(f"LLM response received ({len(response)} chars)")
 
-        # Determine output path
-        output_filename = step_config.get("output_file", f"{step_name}_output.txt")
-        output_path = self.output_dir / output_filename
+        # Determine output path (use output_file override if provided, otherwise use config)
+        if self.output_file:
+            output_path = Path(self.output_file)
+        else:
+            output_filename = step_config.get("output_file", f"{step_name}_output.txt")
+            output_path = self.output_dir / output_filename
 
         # Ensure parent directory exists
         output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -133,12 +196,22 @@ class StepExecutor:
             self._log("Validating output...")
             validation_result = self._validate_output(response, step_config)
             if not validation_result.is_valid():
-                error_msg = f"Validation failed for {step_name}"
+                # Build detailed error message
+                error_details = []
+                if validation_result.errors:
+                    error_details.append("Errors:")
+                    for error in validation_result.errors:
+                        error_details.append(f"  - {error}")
+                if validation_result.warnings:
+                    error_details.append("Warnings:")
+                    for warning in validation_result.warnings:
+                        error_details.append(f"  ⚠ {warning}")
+                
+                error_msg = f"Validation failed for {step_name}\n" + "\n".join(error_details)
+                
                 if self.skip_validation:
                     # Development mode: warn but continue
                     self._log(f"Warning: {error_msg}")
-                    for error in validation_result.errors:
-                        self._log(f"  - {error}")
                 else:
                     # Production mode: fail
                     raise StepExecutionError(
@@ -146,7 +219,8 @@ class StepExecutor:
                         validation_result.errors,
                         validation_result.warnings,
                     )
-            self._log("Validation passed")
+            else:
+                self._log("Validation passed")
         else:
             self._log("Validation skipped")
 

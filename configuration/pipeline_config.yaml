@@ -109,38 +109,38 @@ steps:
 
 model_levels:
   step1:
-    1: "minimax/m2.5"
-    2: "mimo/v2-flash"
+    1: "minimax/minimax-m2.5"
+    2: "xiaomi/mimo-v2-flash"
     3: "moonshotai/kimi-k2-0905"
 
   step2:
-    1: "minimax/m2.5"
-    2: "mimo/v2-flash"
+    1: "minimax/minimax-m2.5"
+    2: "xiaomi/mimo-v2-flash"
     3: "moonshotai/kimi-k2-0905"
 
   step3:
-    1: "minimax/m2.5"
-    2: "mimo/v2-flash"
+    1: "minimax/minimax-m2.5"
+    2: "xiaomi/mimo-v2-flash"
     3: "moonshotai/kimi-k2-0905"
 
   stepC3:
-    1: "qwen"
-    2: "mimo/v2-flash"
+    1: "qwen/qwen-2.5-72b"
+    2: "xiaomi/mimo-v2-flash"
     3: "moonshotai/kimi-k2-0905"
 
   stepC4:
-    1: "minimax/m2.5"
-    2: "mimo/v2-flash"
+    1: "minimax/minimax-m2.5"
+    2: "xiaomi/mimo-v2-flash"
     3: "moonshotai/kimi-k2-0905"
 
   stepC5:
-    1: "qwen"
-    2: "mimo/v2-flash"
+    1: "qwen/qwen-2.5-72b"
+    2: "xiaomi/mimo-v2-flash"
     3: "moonshotai/kimi-k2-0905"
 
   stepD1:
-    1: "qwen"
-    2: "mimo/v2-flash"
+    1: "qwen/qwen-2.5-72b"
+    2: "xiaomi/mimo-v2-flash"
     3: "moonshotai/kimi-k2-0905"
 
 # Development defaults
@@ -293,29 +293,8 @@ validation_rules:
       anchor: "^AN\\d+$"
       section: "^S\\d+$"
       concept: "^C\\d+$"
-  
-  # JSON validation (Steps C3, C4, C5, D1)
-  json:
-    concepts:
-      required_fields: ["type", "id", "label", "description"]
-      id_patterns:
-        actor: "^A\\d+$"
-        action: "^ACT\\d+$"
-        dataentity: "^DE\\d+$"
-    aggregations:
-      required_fields: ["id", "label", "category", "members"]
-      id_pattern: "^AG\\d+$"
-    messages:
-      required_fields: ["id", "label", "category", "producer", "consumer"]
-      id_pattern: "^MSG\\d+$"
-      categories: ["command", "request", "response", "event"]
-    requirements:
-      required_fields: ["id", "type", "label", "description", "priority"]
-      id_pattern: "^REQ-[a-zA-Z0-9_.]+$"
-      types: ["functional", "nonfunctional", "ui", "future-functional"]
-      priorities: ["must", "should", "could"]
 
----
+
 # End of configuration file
 # Note: This file can be overridden by:
 # 1. Project-local: ./configuration/pipeline_config.yaml

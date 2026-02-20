@@ -88,12 +88,12 @@ class YAMLValidator:
             if field not in spec:
                 result.add_error(f"Missing required spec field: '{field}'")
 
-        # Validate spec ID pattern (should be S*)
+        # Validate spec ID pattern (should be S* or AN*)
         spec_id = spec.get("id", "")
-        if spec_id and not self.SECTION_ID_PATTERN.match(spec_id):
+        if spec_id and not self.ANCHOR_ID_PATTERN.match(spec_id) and not self.SECTION_ID_PATTERN.match(spec_id):
             result.add_error(
                 f"Invalid specification ID pattern: '{spec_id}'. "
-                "Expected format: S followed by digits (e.g., S1, S2)"
+                "Expected format: S followed by digits (e.g., S1, S2) or AN followed by digits (e.g., AN1, AN2)"
             )
 
         # Validate title
@@ -109,13 +109,14 @@ class YAMLValidator:
         return result
 
     def _validate_sections(
-        self, sections: List[dict], result: ValidationResult
+        self, sections: List[dict], result: ValidationResult, section_ids: Optional[set] = None
     ) -> None:
         """Validate sections array.
 
         Args:
             sections: List of section dictionaries.
             result: ValidationResult to append errors to.
+            section_ids: Set of section IDs for duplicate checking (shared across recursion).
         """
         if not isinstance(sections, list):
             result.add_error("'sections' must be an array")
@@ -124,17 +125,19 @@ class YAMLValidator:
         if len(sections) == 0:
             result.add_warning("No sections defined in specification")
 
-        section_ids = set()
+        if section_ids is None:
+            section_ids = set()
+
         for i, section in enumerate(sections):
             if not isinstance(section, dict):
                 result.add_error(f"Section {i} is not a dictionary")
                 continue
 
-            # Check required section fields
-            if "id" not in section:
-                result.add_error(f"Section {i} missing required field: 'id'")
+            # Check required section fields (support both 'id' and 'section_id')
+            if "section_id" not in section and "id" not in section:
+                result.add_error(f"Section {i} missing required field: 'section_id' or 'id'")
             else:
-                section_id = section.get("id", "")
+                section_id = section.get("section_id") or section.get("id", "")
                 # Validate section ID pattern
                 if not self.SECTION_ID_PATTERN.match(section_id):
                     result.add_error(
@@ -153,6 +156,10 @@ class YAMLValidator:
             # Validate text_blocks
             if "text_blocks" in section:
                 self._validate_text_blocks(section["text_blocks"], i, result)
+            
+            # Recursively validate nested sections
+            if "sections" in section:
+                self._validate_sections(section["sections"], result, section_ids)
 
     def _validate_text_blocks(
         self, text_blocks: List[dict], section_index: int, result: ValidationResult

@@ -9,6 +9,13 @@ from prompt_pipeline.llm_client import OpenRouterClient
 from prompt_pipeline.orchestrator import PipelineOrchestrator
 from prompt_pipeline.prompt_manager import PromptManager
 from prompt_pipeline.step_executor import StepExecutor
+from prompt_pipeline.terminal_utils import (
+    print_success,
+    print_warning,
+    print_error,
+    print_info,
+    format_step,
+)
 
 
 @click.command()
@@ -52,6 +59,21 @@ from prompt_pipeline.step_executor import StepExecutor
     is_flag=True,
     help="Show what would happen without executing",
 )
+@click.option(
+    "--show-prompt",
+    is_flag=True,
+    help="Display the prompt sent to LLM",
+)
+@click.option(
+    "--show-response",
+    is_flag=True,
+    help="Display the response from LLM",
+)
+@click.option(
+    "--show-both",
+    is_flag=True,
+    help="Display both prompt and response",
+)
 @click.pass_context
 def run_pipeline(
     ctx,
@@ -63,6 +85,9 @@ def run_pipeline(
     wipe_database,
     create_database,
     dry_run,
+    show_prompt,
+    show_response,
+    show_both,
 ):
     """Run the full pipeline from NL specification.
 
@@ -83,10 +108,13 @@ def run_pipeline(
         return
 
     # Initialize components
-    api_key = "dummy"  # Will be overridden by client
-
-    llm_client = OpenRouterClient(api_key=api_key)
+    # API key will be read from OPENROUTER_API_KEY environment variable
+    llm_client = OpenRouterClient(api_key=None)
     prompt_manager = PromptManager(config_path)
+    
+    # Determine what to show
+    show_both = show_both or (show_prompt and show_response)
+    
     executor = StepExecutor(
         llm_client=llm_client,
         prompt_manager=prompt_manager,
@@ -94,6 +122,8 @@ def run_pipeline(
         model_level=model_level,
         skip_validation=skip_validation,
         verbose=verbose,
+        show_prompt=show_prompt or show_both,
+        show_response=show_response or show_both,
     )
 
     orchestrator = PipelineOrchestrator(
@@ -109,18 +139,19 @@ def run_pipeline(
 
     # Show step order
     step_order = orchestrator.get_step_order()
-    click.echo(f"Pipeline steps: {' -> '.join(step_order)}")
+    print_info(f"Pipeline steps: {' -> '.join(step_order)}")
 
     # Run pipeline
     try:
         outputs = asyncio.run(orchestrator.run_pipeline(Path(nl_spec_file)))
-        click.echo("\nPipeline completed successfully!")
-        click.echo("\nOutputs:")
+        print_success("Pipeline completed successfully!")
+        print_info("\nOutputs:")
         for step_name, output_path in outputs.items():
-            click.echo(f"  {step_name}: {output_path}")
+            print_info(f"  {format_step(step_name)}: {output_path}")
 
         if import_database:
-            click.echo(f"\nImport to TypeDB database '{import_database}' complete!")
+            print_success(f"Import to TypeDB database '{import_database}' complete!")
 
     except Exception as e:
+        print_error(f"Pipeline execution failed!")
         raise click.ClickException(f"Pipeline execution failed: {e}")

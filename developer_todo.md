@@ -2,6 +2,26 @@
 
 ## TODO:
   ## NEXT TASKS
+  - prompt-pipeline errors with invalid configuration file (pipeline_config.yaml):
+    ```
+    prompt-pipeline config list-steps
+    prompt-pipeline config show
+    ```
+    - the config is valid now.  need to make sure that it fails gracefully if it is not
+    - add a test for this
+    - will the script error out if the step 1 specifiaction yaml is invalid?
+  - command:
+    ```
+      prompt-pipeline run-step --nl-spec .\doc\todo_list_nl_spec.md --model-level 2 step1
+    ```
+    returns:
+    ```
+      Error: Step execution failed: HTTP error: 401
+    ```
+  - pipeline_config.yaml
+    - section '# JSON validation (Steps C3, C4, C5, D1)'
+      - this shouldn't be needed now that json schema validation is used
+  - can prompt-pipeline use a '.env' file for the api key?
 
 ---
 

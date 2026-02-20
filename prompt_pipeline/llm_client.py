@@ -14,12 +14,20 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
+# Load environment variables from .env file if present
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    # python-dotenv not installed, continue without it
+    pass
+
 # Environment variable for API key
 OPENROUTER_API_KEY_ENV = "OPENROUTER_API_KEY"
 OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 # Default configuration
-DEFAULT_MODEL = "minimax/m2.5"
+DEFAULT_MODEL = "minimax/minimax-m2.5"
 DEFAULT_MAX_TOKENS = 4000
 DEFAULT_TIMEOUT = 120  # seconds
 
@@ -232,6 +240,16 @@ class OpenRouterClient:
             
             # Check for HTTP errors
             if response.status_code != 200:
+                # Try to get error details from response
+                error_details = ""
+                try:
+                    error_data = response.json()
+                    if 'error' in error_data:
+                        error_details = error_data['error'].get('message', str(error_data['error']))
+                except ValueError:
+                    # If we can't parse JSON, use the raw text
+                    error_details = response.text[:200] if response.text else "No error details"
+                
                 # Check if we should retry
                 if retry_count < MAX_RETRIES and response.status_code in [429, 500, 502, 503, 504]:
                     backoff_time = RETRY_BACKOFF_FACTORS[retry_count]
@@ -239,7 +257,7 @@ class OpenRouterClient:
                     return self.call_prompt(prompt, model, max_tokens, retry_count + 1)
                 
                 raise LLMCallError(
-                    f"HTTP error: {response.status_code}",
+                    f"HTTP error: {response.status_code} - {error_details}",
                     retry_count=retry_count,
                     last_status_code=response.status_code
                 )

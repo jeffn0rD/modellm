@@ -50,6 +50,9 @@ Thumbs.db
 coverage.json
 .nanocoder/
 agents/
+.env
+.env.local
+.env.*.local
 
 # Pipeline outputs
 pipeline_output/
