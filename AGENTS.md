@@ -10,14 +10,8 @@ AI coding agent instructions for **modellm**
 ## Key Files
 
 **Documentation:**
-- `developer_todo.md` -- master (human engineer) todo list
 - `agents/implementation_guide.md` -- Detailed implementation guide with specifications for tasks
-- `agents/tools/README.md` -- Context management tools and workflow
-- `doc/migration_proposal.md` -- Comprehensive implementation plan for prompt pipeline
 - `doc/workflow_guide.md` -- Usage workflow and examples
-- `doc/typedb_schema_2.tql` -- TypeDB schema (v3 syntax)
-- `doc/typedb_http_api.md` -- guide to the HTTP api
-- `doc/TypeQL3_REF.md` -- TypeQL version 3 reference
 
 **Configuration:**
 - `configuration/pipeline_config.yaml` -- Flexible step configuration for prompt pipeline
@@ -39,8 +33,6 @@ AI coding agent instructions for **modellm**
 
 **Agent Tools:**
 - `agents/tools/extract_context.py` -- Extract minimal context for a task
-- `agents/tools/build_task_context.py` -- Build named context files
-- `agents/tools/check_context_size.py` -- Analyze context window usage
 - `agents/tools/cli_syntax_checker.py` -- Validate CLI syntax and get hints
 - `agents/tools/workflow_guide.md` -- Standardized workflow patterns
 - `agents/tools/README.md` -- Tool usage guide
@@ -58,44 +50,40 @@ The implementation guide (`agents/implementation_guide.md`) is large and can exc
 
 ### Tool-Based Context Workflow
 
+## Tools Overview
+
+### 1. `extract_context.py`
+**Purpose**: Extract only the relevant code needed for a specific task.
+
+**Usage**:
 ```bash
-# Step 1: Extract minimal context
+# Extract a specific function
 python agents/tools/extract_context.py \
-  --task "Add tag replacement system" \
-  --files prompt_pipeline/prompt_manager.py:substitute_variables \
-          prompt_pipeline/step_executor.py:execute_step
+  --task "Add tag replacement" \
+  --files prompt_pipeline/prompt_manager.py:substitute_variables
 
-# Step 2: Check context size
-python agents/tools/check_context_size.py \
-  --context-file agents/context/task_xyz.txt \
-  --model gpt-4o
+# Extract multiple files/functions
+python agents/tools/extract_context.py \
+  --task "Fix validation errors" \
+  --files prompt_pipeline/validation/yaml_validator.py:validate \
+          prompt_pipeline/step_executor.py:execute_step \
+          configuration/pipeline_config.yaml
 
-# Step 3: If context is CRITICAL or WARNING, STOP and ask for task split
+# Save to file
+python agents/tools/extract_context.py \
+  --task "Add CLI inputs" \
+  --files prompt_pipeline_cli/commands/run_step.py \
+          prompt_pipeline_cli/commands/run_pipeline.py \
+  --output agents/context/task_123.txt
 ```
 
-### When to Stop and Split Tasks
+**Features**:
+- Extracts specific functions with their imports
+- Automatically includes configuration files based on keywords
+- Extracts relevant test files
+- Creates concise context with clear file boundaries
 
-**STOP the task immediately if:**
-1. Context size analysis shows CRITICAL or WARNING status
-2. Context file shows >70% of model limit
-3. You're working on >3 files at once
-4. You're stuck and context might be the issue
-5. The human engineer asks you to stop
 
-**How to stop:**
-1. Create a message explaining what you've completed and what remains
-2. Update task status (use `update_task` or indicate in message)
-3. Provide the context file path for review
-4. Wait for engineer to provide direction
-
-### Context Size Rules
-
-| Status | Token Usage | Action |
-|--------|-------------|--------|
-| OK | < 70% of limit | Proceed with task |
-| CAUTION | 70-80% | Continue, but be mindful |
-| WARNING | 80-90% | Stop and ask for task split |
-| CRITICAL | > 90% | STOP immediately |
 
 ## Task Management
 ## Task Creation *IMPORTANT*
@@ -108,7 +96,7 @@ python agents/tools/check_context_size.py \
 
 ### Before Starting Any Task
 
-**Follow the 5-Step Workflow (see agents/tools/workflow_guide.md for details):**
+**Follow the 3-Step Workflow (see agents/tools/workflow_guide.md for details):**
 
 1. **GET HINTS**: Check syntax before doing anything
    ```bash
@@ -127,17 +115,6 @@ python agents/tools/check_context_size.py \
      --task "Your task description" \
      --files prompt_pipeline/specific_file.py:specific_function
    ```
-
-4. **CHECK SIZE**: Ensure context is manageable
-   ```bash
-   python agents/tools/check_context_size.py \
-     --context-file agents/context/task_xyz.txt \
-     --model gpt-4o
-   ```
-
-5. **DECIDE**: 
-   - If status is **OK** (< 70%): Proceed with task
-   - If status is **WARNING** or **CRITICAL**: STOP and ask for task split
 
 **Additional steps:**
 - Review line numbers in the task description
@@ -162,34 +139,9 @@ All implementation tasks are tracked in `.nanocoder/tasks.json` and reference sp
 - Use small, focused commits
 - Test with the actual TypeDB server when possible
 
-### **STOPPING PROCEDURE (CRITICAL)**
-If context size becomes too large or you get stuck:
-
-1. **Check context size**
-   ```bash
-   python agents/tools/check_context_size.py \
-     --context-file agents/context/task_<id>.txt \
-     --model gpt-4o
-   ```
-
-2. **If status is CRITICAL or WARNING**:
-   - STOP the task immediately
-   - Do NOT continue working
-   - Create a message explaining:
-     - What you've completed
-     - What remains to be done
-     - Why you're stopping (context size, blocked, etc.)
-   - Provide the context file path for review
-
-3. **Wait for engineer direction**
-   - The engineer may split the task
-   - The engineer may provide clarification
-   - Do NOT proceed until you get direction
-
 ### After Task Completion
 - All tests must pass (`pytest tests/ -v`)
 - Security tests pass with malicious inputs
-- Performance benchmarks show improvement
 - Code coverage > 90% for new code
 - No deprecation warnings when running
 
@@ -205,11 +157,8 @@ If context size becomes too large or you get stuck:
   - Note unit tests and validations should be saved elsewhere
 
 ## Testing
-- All code needs at least 80% test coverage
 - Unit tests AND integration tests (against test server) are required
 - All newly generated code needs to pass all tests before the task can be considered complete
-- There is a TypeQL test database server at `http://localhost:8000` creds: admin/password
-  - It is a docker container for test purposes
 
 ```bash
 # Run all tests
@@ -223,13 +172,6 @@ pytest tests/ --cov=tools/typedb_v3_client --cov-report=html
 
 # Run performance benchmarks
 pytest tests/performance_tests.py -v --benchmark-only
-```
-
-### Viewing Implementation Guide
-```bash
-# View specific section
-head -60 agents/implementation_guide.md  # Task 1 spec
-head -135 agents/implementation_guide.md | tail -75  # Task 2-3 specs
 ```
 
 ### Task Management
