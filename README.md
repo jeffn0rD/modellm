@@ -1,443 +1,448 @@
-# TypeDBClient3
+# ModelLM: AI-Driven Application Modeling & Design
 
-Python client library for TypeDB v3 HTTP API.
+Modellm is an AI-driven application modeling and design system that transforms natural language specifications into structured knowledge graphs in TypeDB. Starting with a natural language (NL) specification, the system builds a conceptual model in TypeDB, which is then refined into a design model and finally an implementation model through an iterative approach with feedback from software engineers and stakeholders.
 
-## Installation
+## Overview
 
-```bash
-pip install TypeDBClient3
+The system connects specification requirements to concepts, designs, and implementation, enabling thorough auditing and dependency tracking. It employs a structured reasoning approach using TypeDB's knowledge graph capabilities to model software applications from initial concepts through to implementation details.
+
+### Key Features
+
+- **Natural Language to Knowledge Graph**: Convert NL specifications into structured TypeDB databases
+- **Iterative Refinement**: Multi-stage pipeline with stakeholder feedback loops
+- **Dependency Tracking**: Comprehensive tracking of relationships between requirements, concepts, and implementations
+- **Flexible Pipeline Configuration**: YAML-based configuration for customizable processing workflows
+- **Multi-Model Support**: Conceptual → Design → Implementation model progression
+- **AI-Driven Reasoning**: LLM-powered context compression and intelligent query generation
+
+## Architecture
+
+### System Components
+
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   NL Specification  │    │   Prompt Pipeline  │    │   TypeDB Database  │
+│     (Markdown)      │───▶│   (Multi-Step)     │───▶│  (Knowledge Graph) │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+       │                       │                       │
+       ▼                       ▼                       ▼┌─────────────────┐       ┌─────────────────┐       ┌─────────────────┐
+│   Stakeholder   │       │   LLM Client    │       │   Query Engine  │
+│    Feedback     │◀──────│  (OpenRouter)   │◀──────│  (TypeDB HTTP)  │
+└─────────────────┘       └─────────────────┘       └─────────────────┘
 ```
 
-Or install from source (this also installs the `prompt-pipeline` CLI command):
+### Pipeline Stages
 
-```bash
-pip install -e .
-```
+1. **Conceptual Model** (`step1` → `stepC3` → `stepC4` → `stepC5` → `stepD1`)
+   - Extract concepts from NL specification
+   - Define aggregations and message flows
+   - Identify requirements and constraints
+
+2. **Design Model** ([Future] `stepD2` → `stepD3` → `stepD4`)
+   - Architectural patterns and design decisions
+   - Interface definitions and system boundaries
+   - Technology stack selection
+
+3. **Implementation Model** ([Future] `stepI1` → `stepI2` → `stepI3`)
+   - Code generation templates
+   - Implementation-specific details
+   - Deployment configurations
 
 ## Quick Start
 
-```python
-from typedb_client3 import TypeDBClient, TransactionType
-
-# Connect to TypeDB server
-client = TypeDBClient(
-    base_url="http://localhost:8000",
-    username="admin",
-    password="password"
-)
-
-# Create a database
-client.create_database("my_database")
-
-# Load schema from file
-client.load_schema("my_database", "schema.tql")
-
-# Execute queries
-client.execute_query(
-    "my_database",
-    'insert $a isa actor, has actor-id "A1";',
-    TransactionType.WRITE
-)
-
-# Read data
-result = client.execute_query(
-    "my_database",
-    'match $a isa actor;',
-    TransactionType.READ
-)
-
-# Close connection
-client.close()
-```
-
-## Features
-
-- **Authentication**: JWT token-based authentication with secure token encryption
-- **Connection Pooling**: Optimized HTTP session with connection pooling and retries
-- **Query Builder**: Build TypeDB v3 queries programmatically with type safety
-- **Entity Classes**: Type-safe entity and relation definitions
-- **Query Patterns**: Pre-built query templates for common operations
-- **Query Execution**: One-shot queries for read, write, and schema transactions
-- **Transaction Support**: Execute multiple operations in a single transaction
-- **Database Management**: Create, delete, list, and check existence of databases
-- **Schema Operations**: Load and retrieve database schemas
-- **YAML/JSON Importer**: Import data from YAML or JSON files
-- **Prompt Pipeline**: CLI tool for transforming natural language specifications into TypeDB data
-
-## Prompt Pipeline CLI
-
-The `prompt-pipeline` command is a flexible CLI tool for transforming natural language specifications into structured data for TypeDB knowledge graphs.
-
 ### Installation
 
-The CLI is installed automatically when you install the package from source:
-
 ```bash
+# Install from source (includes CLI tools)
 pip install -e .
+
+# Or install TypeDB client separately
+pip install typedb-client3
 ```
 
-This registers the `prompt-pipeline` console script defined in `pyproject.toml`.
+### Basic Usage
 
-### Usage
+1. **Set up environment variables**:
+```bash
+export OPENROUTER_API_KEY="sk-or-..."      # For LLM processing
+export TYPEDB_URL="http://localhost:8000"  # TypeDB server
+export TYPEDB_USERNAME="admin"
+export TYPEDB_PASSWORD="password"
+```
+
+2. **Run the full pipeline**:
+```bash
+prompt-pipeline run-pipeline \
+  --nl-spec doc/todo_list_spec.md \
+  --output-dir pipeline_output/ \
+  --import-database my_app \
+  --wipe \
+  --model-level 1 \
+  --verbosity 2
+```
+
+3. **Run individual steps**:
+```bash
+# Generate initial YAML specification
+prompt-pipeline run-step step1 \
+  --nl-spec doc/todo_list_spec.md \
+  --output-dir yaml/
+
+# Extract concepts
+prompt-pipeline run-step stepC3 \
+  --input-yaml yaml/spec_1.yaml \
+  --output-dir concepts/
+
+# Import to TypeDB
+prompt-pipeline import \
+  --file concepts/concepts.json \
+  --database my_app
+```
+
+## CLI Reference
+
+### Core Commands
 
 ```bash
 # Show help
 prompt-pipeline --help
 
-# Run a specific pipeline step
-prompt-pipeline run-step --step step1 --input input.txt
-
-# Run the entire pipeline
+# Run complete pipeline
 prompt-pipeline run-pipeline --input input.txt
 
-# Validate configuration or data
+# Run specific step
+prompt-pipeline run-step --step step1 --input input.txt
+
+# Validate data/files
 prompt-pipeline validate --config configuration/pipeline_config.yaml
 
-# Import data from file
-prompt-pipeline import --file data.yaml --database mydb
+# Import data to TypeDB
+prompt-pipeline import --file data.json --database my_db
 
-# Show current configuration
+# Show configuration
 prompt-pipeline config --show
 ```
 
-### Configuration
-
-The pipeline uses `configuration/pipeline_config.yaml` by default. You can specify a different config file:
+### Configuration Options
 
 ```bash
-prompt-pipeline --config path/to/config.yaml run-pipeline --input input.txt
+# Verbosity levels
+prompt-pipeline -v 0  # Quiet
+prompt-pipeline -v 1  # Normal (default)
+prompt-pipeline -v 2  # Verbose
+prompt-pipeline -v 3  # Debug
+
+# Custom configuration
+prompt-pipeline --config custom_config.yaml run-pipeline --input spec.md
 ```
 
-### Verbosity Levels
+## Pipeline Configuration
 
-Control output verbosity:
+The system uses `configuration/pipeline_config.yaml` for step definitions and workflow configuration:
 
-```bash
-prompt-pipeline -v 0 run-pipeline   # Quiet
-prompt-pipeline -v 1 run-pipeline   # Normal (default)
-prompt-pipeline -v 2 run-pipeline   # Verbose
-prompt-pipeline -v 3 run-pipeline   # Debug
+```yaml
+# CLI input specifications
+cli_inputs:
+  - label: nl_spec
+    type: md
+    prompt: 'Enter your natural language specification:'
+    required: true
+    default_file: doc/todo_list_nl_spec.md
+
+# Pipeline steps
+steps:
+  step1:
+    name: "NL Specification Processing"
+    prompt_file: "prompt_step1_v2.md"
+    order: 1
+    inputs:
+      - label: nl_spec
+        type: md
+    outputs:
+      - file: "spec_1.yaml"
+        type: yaml
+    validation:
+      enabled: true
+      schema: "schemas/spec.schema.json"
+    persona: systems_architect
+
+  stepC3:
+    name: "Concept Extraction"
+    prompt_file: "prompt_step_C3.md"
+    order: 2
+    inputs:
+      - label: spec
+        type: yaml
+    outputs:
+      - file: "concepts.json"
+        type: json
+    compression: hierarchical  # Context compression strategy
 ```
 
-See `doc/workflow_guide.md` for detailed workflow examples.
+## Context Compression
 
-## Query Builder
+The system includes advanced context compression strategies to handle large specifications:
 
-Build TypeDB v3 queries programmatically:
+### Available Strategies
 
-```python
-from typedb_client3 import QueryBuilder, Variable
+- **`none`**: No compression, full context
+- **`hierarchical`**: Hierarchical concept compression
+- **`schema_only`**: Schema-level compression
+- **`concept_summary`**: Concept-based summarization
+- **`differential`**: Delta-based compression
+- **`full`**: Complete context preservation
 
-# Build a MATCH query
-query = (QueryBuilder()
-    .match()
-    .variable("x", "actor", {"actor-id": "A1"})
-    .fetch(["x"])
-    .build())
-# Result: 'match $x isa actor, has actor-id "A1"; fetch {"x": {$x.*}};'
+### Usage
 
-# Build an INSERT query
-query = (QueryBuilder()
-    .insert()
-    .variable("a", "actor", {
-        "actor-id": "A1",
-        "id-label": "User1",
-        "description": "Test user"
-    })
-    .build())
-# Result: 'insert $a isa actor, has actor-id "A1", has id-label "User1", has description "Test user";'
-
-# Build a relation with links
-query = (QueryBuilder()
-    .match()
-    .variable("p", "actor", {"actor-id": "A1"})
-    .variable("m", "message", {"message-id": "MSG1"})
-    .relation("messaging")
-        .links()
-        .role("producer", "$p")
-        .role("message", "$m")
-    .fetch(["m"])
-    .build())
+```yaml
+steps:
+  stepC3:
+    compression: hierarchical
+    compression_config:
+      max_tokens: 4000
+      preserve_relations: true
+      compression_ratio: 0.7
 ```
 
-## Entity Classes
+## TypeDB Integration
 
-Type-safe entity definitions:
+### Entity Model
 
-```python
-from typedb_client3.entities import Actor, Action, Message, TextBlock
+The system creates a comprehensive entity model including:
 
-# Create entities
-actor = Actor(
-    actor_id="A1",
-    id_label="User1",
-    description="Test actor",
-    justification="For testing"
-)
-
-# Generate INSERT query
-query = actor.to_insert_query()
-# Result: 'insert $a isa actor, has actor-id "A1", has id-label "User1", ...;'
-
-# Create relations
-from typedb_client3.entities import Messaging, Message
-actor = Actor(actor_id="A1", id_label="Test", description="", justification="")
-message = Message(message_id="M1", id_label="Test", description="", justification="")
-messaging = Messaging(producer=actor, consumer=actor, message=message)
-```
-
-### Available Entity Classes
-
-**Entities:**
-- `Actor` - Actor entity with ID, label, description
-- `Action` - Action entity
-- `Message` - Message entity
-- `DataEntity` - Generic data entity
-- `Requirement` - Requirement entity
-- `ActionAggregate` - Action aggregate entity
-- `MessageAggregate` - Message aggregate entity
-- `Constraint` - Constraint entity
-- `Category` - Category entity
-- `TextBlock` - Text block (goal/principle/criteria)
-- `Concept` - Concept entity
-- `SpecDocument` - Specification document
-- `SpecSection` - Specification section
+**Core Entities:**
+- `Actor` - System actors and users
+- `Action` - Actions and operations
+- `Message` - Messages and communications
+- `Concept` - Domain concepts
+- `Requirement` - System requirements
+- `Constraint` - Design constraints
+- `TextBlock` - Specification text segments
 
 **Relations:**
-- `Messaging` - Message producer-consumer relation
-- `Anchoring` - Concept anchoring to text block
-- `Membership` - Membership relation
-- `Outlining` - Section outlining relation
-- `Categorization` - Category categorization relation
-- `Requiring` - Requirement relation
-- `ConstrainedBy` - Constraint relation
+- `Messaging` - Message producer-consumer relationships
+- `Anchoring` - Concept-text anchoring
+- `Membership` - Entity membership
+- `Requiring` - Requirement relationships
 
-## Entity Manager
-
-Manage entities with a dedicated manager:
+### Query Examples
 
 ```python
-from typedb_client3 import TypeDBClient
-from typedb_client3.entity_manager import EntityManager
-from typedb_client3.entities import Actor
+from typedb_client3 import TypeDBClient, QueryBuilder
 
-client = TypeDBClient(base_url="http://localhost:8000", username="admin", password="password")
-em = EntityManager(client, "my_database")
+client = TypeDBClient(base_url="http://localhost:8000")
 
-# Insert entity
-actor = Actor(actor_id="A1", id_label="User1", description="Test", justification="")
-em.insert(actor)
+# Get all concepts related to a requirement
+query = '''
+match 
+  $r isa requirement, has requirement-id "REQ-001";
+  (required: $r, requiring: $s) isa requiring;
+  (anchored: $c, anchor: $s) isa anchoring;
+fetch {"concepts": $c.*};
+'''
 
-# Put entity (idempotent)
-em.put(actor)
-
-# Check if exists
-exists = em.exists(Actor, "A1")
-
-# Fetch entities
-actor = em.fetch_one(Actor, {"actor-id": "A1"})
-actors = em.fetch_all(Actor)
-
-# Delete entity
-em.delete(actor)
+result = client.execute_query("my_db", query)
 ```
 
-## Query Patterns
+## Workflows
 
-Pre-built query templates for common operations:
+### Scenario 1: Basic Pipeline (No Revision)
 
-```python
-from typedb_client3.query_patterns import QUERY_PATTERNS, QueryPattern
+For specifications without stakeholder review:
 
-# Get all available patterns
-print(QUERY_PATTERNS.keys())
-
-# Use a pattern
-pattern = QueryPattern.get("messages_by_producer")
-result = pattern.execute(client, "my_database", actor_id="A1")
+```bash
+prompt-pipeline run-pipeline \
+  --nl-spec your_spec.md \
+  --output-dir output/ \
+  --import-database your_app \
+  --wipe
 ```
 
-## Importer
+### Scenario 2: Iterative Development
 
-Import data from YAML or JSON files:
+With stakeholder feedback and refinement:
 
-```python
-from typedb_client3.importer import TypeDBImporter, create_importer
+```bash
+# Step 1: Generate initial YAML
+prompt-pipeline run-step step1 -i spec.md -o yaml/
 
-# Create importer
-importer = create_importer(
-    base_url="http://localhost:8000",
-    username="admin",
-    password="password"
-)
+# Step 2: Manual review and approval
+# ... Stakeholder reviews spec_1.yaml ...
 
-# Import from YAML
-importer.import_file("data.yaml", "my_database")
+# Step 3: Extract concepts from approved specification
+prompt-pipeline run-step stepC3 -i yaml/spec_1.yaml -o concepts/
 
-# Import from JSON
-importer.import_file("data.json", "my_database")
+# Step 4: Import to TypeDB
+prompt-pipeline import -f concepts/concepts.json -d app_db
 
-# Import from string
-importer.import_string(yaml_content, "my_database")
+# Step 5: Continue with design steps...
 ```
 
-## API Reference
+## Advanced Features
 
-### TypeDBClient
+### Custom Prompt Templates
 
-```python
-client = TypeDBClient(
-    base_url="http://localhost:8000",  # TypeDB server URL
-    username="admin",                  # Username (optional)
-    password="password",               # Password (optional)
-    timeout=30,                        # Request timeout in seconds
-    operation_timeouts={              # Optional per-operation timeouts
-        "read_operation": 30,
-        "write_operation": 60,
-        "schema_operation": 120
+Create custom prompt templates in the `prompts/` directory:
+
+```markdown
+<!-- prompts/prompt_custom.md -->
+# Custom Processing Step
+
+## Context
+{{ context }}
+
+## Requirements
+{{ requirements }}
+
+## Task
+Generate structured output based on the above context...
+```
+
+### Model Selection
+
+Configure different LLM models for different steps:
+
+```yaml
+steps:
+  step1:
+    model: "openai/gpt-4-turbo-preview"
+  stepC3:
+    model: "anthropic/claude-3-opus"
+    temperature: 0.1
+    max_tokens: 4000
+```
+
+### Validation Schemas
+
+Define JSON schemas for output validation:
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "concepts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "label": {"type": "string"},
+          "description": {"type": "string"}
+        },
+        "required": ["id", "label"]
+      }
     }
-)
+  },
+  "required": ["concepts"]
+}
 ```
 
-#### Database Operations
+## Future Development Roadmap
 
-```python
-# List all databases
-databases = client.list_databases()
+### Phase 1: Implementation Model (Current Focus)
+- [ ] Code generation from design models
+- [ ] Function-by-function constrained implementation
+- [ ] Integration with AI coding assistants
 
-# Check if database exists
-exists = client.database_exists("my_database")
+### Phase 2: Advanced Reasoning
+- [ ] Impact analysis queries
+- [ ] Bug tracing and localization
+- [ ] Iterative improvement cycles
 
-# Create a database
-client.create_database("my_database")
+### Phase 3: Tool Integration
+- [ ] Mermaid diagram generation from TypeDB models
+- [ ] Nanocoder MCP integration
+- [ ] VS Code extension
 
-# Connect (creates if not exists)
-client.connect_database("my_database")
+### Phase 4: Advanced Analytics
+- [ ] Dependency analysis and visualization
+- [ ] Change impact prediction
+- [ ] Automated optimization suggestions
 
-# Delete a database
-client.delete_database("my_database")
+## Development
+
+### Project Structure
+
+```
+modellm/
+├── prompt_pipeline/           # Core pipeline logic
+│   ├── compression/          # Context compression strategies
+│   ├── validation/           # JSON/YAML validation
+│   └── *.py                  # Core components
+├── prompt_pipeline_cli/      # CLI interface
+│   └── commands/             # CLI commands
+├── prompts/                  # LLM prompt templates
+├── schemas/                  # Validation schemas
+├── configuration/            # Pipeline configuration
+├── typedb_client3/           # TypeDB client library
+├── tests/                    # Test suite
+└── doc/                      # Documentation
 ```
 
-#### Query Execution
-
-```python
-# Execute a single query
-result = client.execute_query(
-    "my_database",
-    'match $a isa actor;',
-    TransactionType.READ  # or TransactionType.WRITE
-)
-
-# Execute multiple queries in one transaction
-result = client.execute_queries(
-    "my_database",
-    'insert $a isa actor, has actor-id "A1";',
-    'insert $b isa actor, has actor-id "A2";',
-    transaction_type=TransactionType.WRITE
-)
-
-# Execute with transaction context manager
-with client.with_transaction("my_database", TransactionType.WRITE) as tx:
-    tx.execute('insert $a isa actor, has actor-id "A1";')
-```
-
-#### Schema Operations
-
-```python
-# Load schema from file
-client.load_schema("my_database", "path/to/schema.tql")
-
-# Load schema from string
-schema = "define actor sub entity, has actor-id;"
-client.load_schema("my_database", schema)
-
-# Get current schema
-schema = client.get_schema("my_database")
-```
-
-#### Token Management
-
-```python
-# Get encrypted token for external storage
-encrypted = client.get_encrypted_token()
-
-# Set encrypted token (e.g., from previous session)
-client.set_encrypted_token(encrypted)
-
-# Get access log for audit
-log = client.get_token_access_log()
-```
-
-#### Cleanup
-
-```python
-# Close connection and clear sensitive data
-client.close()
-```
-
-### TransactionType
-
-```python
-from typedb_client3 import TransactionType
-
-TransactionType.READ   # For read queries
-TransactionType.WRITE # For write/insert/delete queries
-```
-
-### Validation Functions
-
-```python
-from typedb_client3.validation import (
-    validate_base_url,
-    validate_credentials,
-    validate_timeout,
-    validate_operation_timeouts
-)
-```
-
-### SecureTokenManager
-
-```python
-from typedb_client3 import SecureTokenManager
-
-manager = SecureTokenManager()
-encrypted = manager.store_token("jwt_token")
-token = manager.retrieve_token(encrypted)
-```
-
-### Exceptions
-
-```python
-from typedb_client3.exceptions import (
-    TypeDBError,
-    TypeDBConnectionError,
-    TypeDBAuthenticationError,
-    TypeDBQueryError,
-    TypeDBServerError,
-    TypeDBValidationError
-)
-```
-
-## Testing
+### Testing
 
 ```bash
 # Run all tests
 pytest tests/ -v
 
-# Run unit tests only (no server required)
-pytest tests/ -m unit
+# Run specific test categories
+pytest tests/ -m unit        # Unit tests only
+pytest tests/ -m integration # Integration tests
 
-# Run integration tests (requires live TypeDB server)
-pytest tests/ -m integration
+# Run with coverage
+pytest tests/ --cov=modellm --cov-report=html
 ```
+
+### Contributing
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature-name`
+3. Make changes with tests
+4. Run the test suite: `pytest tests/ -v`
+5. Submit a pull request
 
 ## Requirements
 
-- Python 3.8+
-- requests
-- cryptography (for token encryption)
-- pytest
+- **Python**: 3.8+
+- **TypeDB**: Version 3.x (HTTP API)
+- **OpenRouter API**: For LLM processing
+- **Dependencies**: Listed in `pyproject.toml`
+
+## Environment Setup
+
+1. **Install TypeDB**: [Download TypeDB 3.x](https://vaticle.com/typedb)
+2. **Set up OpenRouter**: Get API key from [OpenRouter](https://openrouter.ai/)
+3. **Install dependencies**: `pip install -e .`
+4. **Configure environment**: Create `.env` file or set environment variables
+
+## Learning Resources
+
+### Documentation
+- **Workflow Guide**: `doc/workflow_guide.md`
+- **API Reference**: `doc/API.md`
+- **Implementation Summary**: `doc/IMPLEMENTATION_SUMMARY.md`
+- **TypeDB Integration**: `doc/typedb_llm_reasoning.md`
+
+### Examples
+
+The `doc/` directory contains example specifications:
+- `todo_list_spec.md` - Complete NL specification example
+- `todo_list_spec_2.yaml` - YAML specification format
+- Various schema and configuration examples
 
 ## License
 
-MIT
+MIT License - see LICENSE file for details.
+
+## Support
+
+For issues and questions:
+- Check the documentation in `doc/` directory
+- Review example specifications
+- Run tests to verify installation
+- Create an issue in the repository
+
+---
+
+**Modellm** bridges the gap between natural language specifications and structured software modeling, enabling AI-driven software development with full traceability and reasoning capabilities.
