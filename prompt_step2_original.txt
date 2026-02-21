@@ -24,7 +24,82 @@ Input
 
 A YAML document of the form (schema example, not exhaustive):
 
+
+specification:
+  id: SPEC1
+  title: "..."
+  version: "0.1"
+  description: "..."
+  metadata:
+    source_style: "informal executive-style requirements"
+    intended_use: "stepwise refinement toward formal/domain model"
+    anchor_id_pattern: "AN<number>"
+    section_numbering: "hierarchical (1, 1.1, 1.2, ...)"
+    concept_assignment_rule: >
+      An Anchor can be related to more than one Concept, but a Concept should
+      be related to only one Anchor.
+
+  sections:
+    - section_id: S1
+      section_number: "1"
+      order: 1
+      title: "Overall Purpose and Context"
+      label: "OVERALL_CONTEXT"
+      text_blocks:
+        - anchor_id: AN1
+          label: "HIGH_LEVEL_PURPOSE"
+          type: "goal"
+          semantic_cues: [overall_purpose, business_context]
+          text: >
+            <original requirement text for this block>
+          concepts:
+            - concept_id: C1
+              name: "System_purpose"
+              description: "Overall reason the system is being developed."
+      sections:
+        - section_id: S2
+          section_number: "1.1"
+          order: 1
+          title: "Primary Users"
+          label: "PRIMARY_USERS"
+          text_blocks:
+            - anchor_id: AN2
+              label: "END_USER_ROLE"
+              type: "goal"
+              semantic_cues: [user_roles, end_users]
+              text: >
+                <original requirement text for this block>
+              concepts:
+                - concept_id: C2
+                  name: "End_user"
+                  description: "Typical person who will interact with the system."
+    - section_id: S3
+      section_number: "2"
+      order: 1
+      title: "Core Capabilities"
+      label: "CORE_CAPABILITIES"
+      text_blocks:
+        - anchor_id: AN3
+          label: "TASK_CREATION"
+          type: "capability"
+          semantic_cues: [task_creation, data_entry]
+          text: >
+            <original requirement text for this block>
+          concepts:
+            - concept_id: C3
+              name: "Task"
+              description: "A unit of work or activity to be tracked by the system."
+      sections:
+        # further nested sections as needed
+
+
+The `text_blocks[*].text` fields contain the original informal
+requirement fragments. The structure of `sections` and `text_blocks`
+has already organized them into a logical hierarchy.
+
+
 Output Requirements
+• Output **only** a markdown document. **No YAML, no extra explanations.**
 • Use `specification.title` and `version` to create a title block.
 - Example:
 
@@ -33,7 +108,11 @@ Output Requirements
 
   _Version 0.1_
   ```
+
+• Optionally include `specification.description` as an introductory
 paragraph under the main title.
+
+• Reflect the section hierarchy using headings:
 - Use `section_number` (if present) with `sections[*].title` to form
   headings such as:
   - `## 1. Overall Purpose and Context`
@@ -42,6 +121,8 @@ paragraph under the main title.
 - If `section_number` is missing or obviously inconsistent, derive a
   reasonable hierarchical numbering from the nesting and `order`, and
   still present headings in a numbered style.
+
+• Within each section (and subsection), process its `text_blocks` in a
 logical order:
 - For each `text_block`:
   - Use `anchor_id` **internally** only if it helps structure the
@@ -74,27 +155,36 @@ logical order:
   - Where helpful, group related text blocks under small
     sub-subheadings or bullet lists to improve readability, but do
     not invent new major sections that change the structure.
+
+• You may use `concepts[*].name` and `concepts[*].description` as
 **terminology hints** to keep vocabulary consistent:
 - Prefer stable, consistent names for domain concepts (e.g., “Task”,
   “End user”, “Notification”) when rewriting the text.
 - You do **not** need to list all concepts explicitly, but you may
   briefly mention or define particularly central concepts when this
   improves clarity for stakeholders.
+
+• Do not enumerate or expose internal IDs like `C1`, `AN3`, `S2` unless
 doing so clearly improves traceability and remains readable. The
 default is to **omit explicit IDs** from the stakeholder-facing
 markdown.
 
 
 Style Guidelines
+• Use a **neutral, professional** tone.
 • Aim for clarity over brevity, but avoid unnecessary verbosity.
+• Use:
 - Numbered headings mirroring the logical `section_number` hierarchy.
 - Bullet lists where they improve readability, especially when a
   section includes multiple related requirements or capabilities.
+• Where appropriate, expand very short fragments into full sentences so
 the document is self-contained, understandable, and suitable for
 non-technical stakeholders.
+• Maintain a clear distinction between:
 - Current required behavior (baseline capabilities and constraints).
 - High-level goals and rationale.
 - Future or nice-to-have capabilities.
+• Do not add design decisions (e.g., specific technologies, detailed
 architectures) unless they are explicitly or strongly implied by the
 original text.
 

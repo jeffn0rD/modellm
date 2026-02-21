@@ -7,7 +7,7 @@ and performing variable substitution in prompt templates.
 
 import os
 from pathlib import Path
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any, List, Optional, Tuple, Set
 
 from prompt_pipeline.tag_replacement import (
     TagReplacer,
@@ -17,6 +17,7 @@ from prompt_pipeline.tag_replacement import (
     InvalidTagError,
     TagReplacementError
 )
+from prompt_pipeline.preamble_generator import PreambleGenerator, InputDescriptor
 
 
 class PromptManager:
@@ -42,6 +43,7 @@ class PromptManager:
         self.config_path = config_path
         self.prompts_dir = prompts_dir
         self.steps_config = self._load_step_config()
+        self.preamble_generator = PreambleGenerator()
     
     def _load_step_config(self) -> Dict[str, Any]:
         """Load step configurations from YAML file.
@@ -362,7 +364,7 @@ class PromptManager:
             validate: If True, validate that all required tags are present.
         
         Returns:
-            Processed prompt string.
+            Processed prompt string with preamble prepended.
         
         Raises:
             MissingTagError: If validate=True and a required tag is missing.
@@ -372,12 +374,47 @@ class PromptManager:
         if prompt_file is None:
             raise ValueError(f"Step '{step_name}' not found in configuration")
         
+        # Get step configuration
+        step_config = self.get_step_config(step_name)
+        if step_config is None:
+            raise ValueError(f"Step '{step_name}' not found in configuration")
+        
+        # Generate preamble
+        persona = step_config.get('persona', 'software_engineer')
+        step_number = step_config.get('order')
+        inputs_config = step_config.get('inputs', [])
+        
+        # Create input descriptors from configuration
+        input_descriptors = [
+            InputDescriptor(
+                label=inp['label'],
+                compression=inp.get('compression', 'full'),
+                description=inp.get('description', ''),
+                type=inp.get('type', 'unknown')
+            )
+            for inp in inputs_config
+        ]
+        
+        # Generate preamble
+        preamble = self.preamble_generator.generate_preamble(
+            step_name=step_name,
+            step_number=step_number,
+            persona=persona,
+            inputs=input_descriptors
+        )
+        
+        # Load prompt template
         prompt = self.load_prompt(prompt_file)
-        return self.substitute_variables(prompt, variables, validate=validate)
+        
+        # Prepend preamble to prompt
+        full_prompt = preamble + prompt
+        
+        # Substitute variables
+        return self.substitute_variables(full_prompt, variables, validate=validate)
     
     def get_required_tags(self, step_name: str) -> Set[str]:
         """
-        Get all required tags from a step's prompt.
+        Get all required tags from a step's prompt (including preamble).
         
         Args:
             step_name: Name of the step.
@@ -392,6 +429,13 @@ class PromptManager:
         if prompt_file is None:
             raise ValueError(f"Step '{step_name}' not found in configuration")
         
+        # Get step configuration
+        step_config = self.get_step_config(step_name)
+        if step_config is None:
+            raise ValueError(f"Step '{step_name}' not found in configuration")
+        
+        # Generate preamble (which has no {{}} tags, so we can skip it for tag detection)
+        # But we still need to load the prompt
         prompt = self.load_prompt(prompt_file)
         replacer = TagReplacer(prompt)
         return replacer.get_required_tags()

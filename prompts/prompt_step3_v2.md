@@ -18,10 +18,7 @@ Your role now is step (3).
 GOAL
 
 Given:
-
-• An **edited formal markdown specification** that represents the
 current, authoritative view of the requirements, and
-• A **previous YAML specification** that contains sections,
 anchored text blocks, and concepts in the new schema,
 
 
@@ -53,116 +50,15 @@ text block (anchor) level (and optionally concept level).
 
 
 ⸻
-
-INPUTS
-
-You will be given:
-
-1. The edited formal markdown specification:
-
-
 {{spec_formal}}
-
-1. The previous YAML specification (in the new structure):
-
-
 {{spec}}
-
-
-Assumptions:
-
-
-• The previous YAML follows this general pattern (schema example,
-  not exhaustive):
-
-
-specification:
-  id: SPEC1
-  title: "..."
-  version: "0.1"
-  description: "..."
-  metadata:
-    source_style: "informal executive-style requirements"
-    intended_use: "stepwise refinement toward formal/domain model"
-    anchor_id_pattern: "AN<number>"
-    section_numbering: "hierarchical (1, 1.1, 1.2, ...)"
-    concept_assignment_rule: >
-      An Anchor can be related to more than one Concept, but a Concept should
-      be related to only one Anchor.
-
-  sections:
-    - section_id: S1
-      section_number: "1"
-      order: 1
-      title: "Overall Purpose and Context"
-      label: "OVERALL_CONTEXT"
-      text_blocks:
-        - anchor_id: AN1
-          label: "HIGH_LEVEL_PURPOSE"
-          type: "goal"
-          semantic_cues: [overall_purpose, business_context]
-          text: >
-            <original requirement text for this block>
-          concepts:
-            - concept_id: C1
-              name: "System_purpose"
-              description: "Overall reason the system is being developed."
-      sections:
-        - section_id: S2
-          section_number: "1.1"
-          order: 1
-          title: "Primary Users"
-          label: "PRIMARY_USERS"
-          text_blocks:
-            - anchor_id: AN2
-              label: "END_USER_ROLE"
-              type: "goal"
-              semantic_cues: [user_roles, end_users]
-              text: >
-                <original requirement text for this block>
-              concepts:
-                - concept_id: C2
-                  name: "End_user"
-                  description: "Typical person who will interact with the system."
-    - section_id: S3
-      section_number: "2"
-      order: 1
-      title: "Core Capabilities"
-      label: "CORE_CAPABILITIES"
-      text_blocks:
-        - anchor_id: AN3
-          label: "TASK_CREATION"
-          type: "capability"
-          semantic_cues: [task_creation, data_entry]
-          text: >
-            <original requirement text for this block>
-          concepts:
-            - concept_id: C3
-              name: "Task"
-              description: "A unit of work or activity to be tracked by the system."
-      sections:
-        # further nested sections as needed
-
-
-In the UPDATED YAML, we will extend the **text block** entries with:
-
-• `text_original`: (string; original client wording, if available)
-• `text_formal`: (string; current wording from the edited markdown)
-• `status`: `"unchanged"` | `"modified"` | `"new"` | `"deleted"`
-• `change_notes`: (string, brief, can be empty for `"unchanged"`)
-
-
-⸻
-
-UPDATE LOGIC AND MATCHING
+ AND MATCHING
 
 Treat the **edited formal markdown** as the authoritative description of
 what the system should do now.
 
 
 Use the **old YAML** as:
-
-• A source of:
 - Stable IDs (`section_id`, `anchor_id`, `concept_id`),
 - Original client text (`text` fields from the old YAML, assumed to
   be `text_original`),
@@ -175,9 +71,6 @@ You must reconcile the two as follows.
 1. Matching existing text blocks (anchors)
 
 For each `text_block` in the OLD YAML:
-
-1. **Try to find a corresponding requirement** in the edited markdown:
-
 - Match primarily on **meaning** (intent, main subject, scope).
 - Secondarily consider:
   - Similar phrasing or terminology.
@@ -228,8 +121,6 @@ in the edited markdown:
 If the edited markdown contains a **new requirement** that cannot be
 matched to any existing text block:
 
-• Create a new `text_block`:
-
 - Assign a new, globally unique `anchor_id` continuing the numbering
   sequence (e.g., if the old highest was `AN17`, next is `AN18`).
 - Create a new, globally unique `label` matching:
@@ -255,14 +146,10 @@ matched to any existing text block:
 
 For concepts within each text block:
 
-• If a concept clearly refers to the **same domain idea** as before:
-
 - Keep the same `concept_id` and `name`, even if the markdown uses
   slightly different phrasing.
 - You may refine the `description` slightly to reflect improved
   understanding, as long as you do not contradict the meaning.
-
-• If the edited markdown introduces a new domain idea that is not
 captured by any existing concept:
 
 - Create a new concept within the relevant text block:
@@ -271,8 +158,6 @@ captured by any existing concept:
     semantically appropriate.
   - Provide a brief `description` aligned with the meaning in the
     markdown.
-
-• If concepts become obsolete because their entire text block is
 marked `"deleted"`:
 
 - Keep them associated with that text block in the UPDATED YAML
@@ -282,9 +167,7 @@ marked `"deleted"`:
 
 
 4. Sections and hierarchy
-• The **edited markdown headings** define the new authoritative
 section hierarchy and order.
-• Adjust the `sections` nesting in the UPDATED YAML to reflect that
 hierarchy:
 
 - Use or adapt existing `section_id` values where the section still
@@ -299,8 +182,6 @@ hierarchy:
   - `label` to remain globally unique and semantically meaningful
     (you may update labels if the section’s meaning changed
     substantially; otherwise, keep them stable).
-
-• Reassign text blocks to sections as needed to align with the edited
 markdown structure, while preserving their IDs and status.
 
 
@@ -310,9 +191,6 @@ OUTPUT FORMAT
 
 You must output **two YAML documents**, in this order, separated by a
 clear marker comment line.
-
-1. **UPDATED YAML SPECIFICATION**
-
 - Use the same top-level structure as the previous YAML, but:
 
   - Update `title`, `description`, and `version` if appropriate
@@ -340,9 +218,6 @@ clear marker comment line.
     - `text_formal` if no original text is available.
   However, the primary fields going forward are `text_original` and
   `text_formal`.
-
-2. **DIFF YAML**
-
 A separate, concise summary of changes. For example:
 
 
@@ -369,17 +244,13 @@ diff:
 
    You may extend or slightly adjust the diff structure for clarity,
    but it should capture at minimum:
-
-• Which text blocks (anchors) are new / modified / deleted / unchanged.
 • Short, human-readable summaries of non-trivial changes.
-• Optionally, concept-level changes (new, modified descriptions,
 no longer used, etc.).
 
 
 ⸻
 
 STYLE AND CONSTRAINTS
-• Output **only YAML**, with:
 1. The UPDATED YAML spec, then
 2. A separator comment line, e.g.:
 
@@ -388,19 +259,11 @@ STYLE AND CONSTRAINTS
    ```
 
 3. The DIFF YAML.
-
-• Ensure the YAML is syntactically valid and consistently indented
 (2 spaces).
-
-• Be conservative when marking `"unchanged"` vs `"modified"`:
 
 - Mark as `"modified"` if the meaning or scope is plausibly changed,
   not just punctuation or trivial rephrasing.
-
-• Preserve stable IDs (`section_id`, `anchor_id`, `concept_id`) whenever
 the underlying meaning is preserved, even if the wording is improved.
-
-• Keep `change_notes` and diff summaries concise but clear, focusing on
 what changed from a requirements perspective (scope, conditions,
 clarifications).
 

@@ -1,285 +1,240 @@
-# Prompt Pipeline Configuration File
-# This file contains configuration for the prompt pipeline tool
-
-# CLI input specifications (interactive inputs)
-# These inputs are provided via command line or prompts
 cli_inputs:
-  - label: "nl_spec"
-    type: "md"
-    prompt: "Enter your natural language specification:"
-    required: true
-    default_file: "doc/todo_list_nl_spec.md"
-
-# External inputs (exogenous files)
-# These are files that are available to steps without being outputs of previous steps
+- label: nl_spec
+  type: md
+  prompt: 'Enter your natural language specification:'
+  required: true
+  default_file: doc/todo_list_nl_spec.md
 exogenous_inputs:
-  - file: "doc/todo_list_nl_spec.md"
-    label: "nl_spec"
-  - file: "schemas/concept.schema.json"
-    label: "concept_schema"
-
-# Output labels registry
-# Maps steps to their output labels for cross-step references
+- file: doc/todo_list_nl_spec.md
+  label: nl_spec
+- file: schemas/concept.schema.json
+  label: concept_schema
 output_labels:
-  - step: "step1"
-    label: "spec"
-  - step: "step2"
-    label: "spec_formal"
-  - step: "step3"
-    label: "revised_spec"
-  - step: "stepC3"
-    label: "concepts"
-  - step: "stepC4"
-    label: "aggregations"
-  - step: "stepC5"
-    label: "messages"
-  - step: "stepD1"
-    label: "requirements"
-
-# Steps configuration
+- step: step1
+  label: spec
+- step: step2
+  label: spec_formal
+- step: step3
+  label: revised_spec
+- step: stepC3
+  label: concepts
+- step: stepC4
+  label: aggregations
+- step: stepC5
+  label: messages
+- step: stepD1
+  label: requirements
 steps:
-  # Step 1: NL spec → YAML
   step1:
-    name: "step1"
-    prompt_file: "prompt_step1_v2.md"
+    name: step1
+    prompt_file: prompt_step1_v2.md
     order: 1
-    
-    # Input configuration using labels
     inputs:
-      - label: "nl_spec"
-        type: "md"
-        source: "cli"  # Comes from CLI input or exogenous_inputs
-        compression: "full"  # No compression for initial extraction
-        color: "cyan"
-    
-    # Output configuration (files are stored in RAW form)
+    - label: nl_spec
+      type: md
+      source: cli
+      compression: none
+      color: cyan
+      description: Natural language specification (markdown)
     outputs:
-      - file: "spec_1.yaml"
-        label: "spec"
-        type: "yaml"
-    
-    # Dependencies (inferred from input labels)
+    - file: spec_1.yaml
+      label: spec
+      type: yaml
     dependencies: []
-    
-    # Validation
     validation:
       schema: null
       enabled: false
-
-  # Step 2: YAML → Formal spec (revision cycle)
+    persona: systems_architect
   step2:
-    name: "step2"
-    prompt_file: "prompt_step2_v2.md"
+    name: step2
+    prompt_file: prompt_step2_v2.md
     order: 2
-    
     inputs:
-      - label: "spec"
-        type: "yaml"
-        source: "label:spec"  # References output from step1
-        compression: "full"
-        color: "green"
-    
+    - label: spec
+      type: yaml
+      source: label:spec
+      compression: anchor_index
+      color: green
+      description: 'anchor index format (AN1: definition, AN2: definition...)'
     outputs:
-      - file: "spec_formal.md"
-        label: "spec_formal"
-        type: "md"
-    
-    dependencies: ["step1"]
-    
+    - file: spec_formal.md
+      label: spec_formal
+      type: md
+    dependencies:
+    - step1
     validation:
       schema: null
       enabled: false
-
-  # Step 3: Revision cycle
+    persona: software_engineer
   step3:
-    name: "step3"
-    prompt_file: "prompt_step3_v2.md"
+    name: step3
+    prompt_file: prompt_step3_v2.md
     order: 3
-    
     inputs:
-      - label: "spec_formal"
-        type: "md"
-        source: "label:spec_formal"  # References output from step2
-        compression: "full"
-        color: "yellow"
-    
+    - label: spec_formal
+      type: md
+      source: label:spec_formal
+      compression: full
+      color: yellow
+      description: Formal markdown specification
     outputs:
-      - file: "revised_spec.md"
-        label: "revised_spec"
-        type: "md"
-    
-    dependencies: ["step2"]
-    
+    - file: revised_spec.md
+      label: revised_spec
+      type: md
+    dependencies:
+    - step2
     validation:
       schema: null
       enabled: false
-
-  # Step C3: Extract concepts
+    persona: software_engineer
   stepC3:
-    name: "stepC3"
-    prompt_file: "prompt_step_C3.md"
+    name: stepC3
+    prompt_file: prompt_step_C3.md
     order: 4
-    
     inputs:
-      - label: "spec"
-        type: "yaml"
-        source: "label:spec"  # References output from step1
-        compression: "full"  # Full spec needed for concept extraction
-        color: "magenta"
-    
+    - label: spec
+      type: yaml
+      source: label:spec
+      compression: anchor_index
+      color: magenta
+      description: 'anchor index format (AN1: definition, AN2: definition...)'
     outputs:
-      - file: "concepts.json"
-        label: "concepts"
-        type: "json"
-    
-    dependencies: ["step1"]
-    
+    - file: concepts.json
+      label: concepts
+      type: json
+    dependencies:
+    - step1
     validation:
-      schema: "schemas/concepts.schema.json"
+      schema: schemas/concepts.schema.json
       enabled: true
-
-  # Step C4: Define aggregations
+    persona: systems_architect
   stepC4:
-    name: "stepC4"
-    prompt_file: "prompt_step_C4.md"
+    name: stepC4
+    prompt_file: prompt_step_C4.md
     order: 5
-    
     inputs:
-      - label: "spec"
-        type: "yaml"
-        source: "label:spec"
-        compression: "full"
-        color: "cyan"
-      - label: "concepts"
-        type: "json"
-        source: "label:concepts"  # References output from stepC3
-        compression: "full"
-        color: "green"
-    
+    - label: spec
+      type: yaml
+      source: label:spec
+      compression: anchor_index
+      color: cyan
+      description: 'anchor index format (AN1: definition, AN2: definition...)'
+    - label: concepts
+      type: json
+      source: label:concepts
+      compression: concept_summary
+      color: green
+      description: concept summary format (markdown tables grouped by entity type)
     outputs:
-      - file: "aggregations.json"
-        label: "aggregations"
-        type: "json"
-    
-    dependencies: ["stepC3"]
-    
+    - file: aggregations.json
+      label: aggregations
+      type: json
+    dependencies:
+    - stepC3
     validation:
-      schema: "schemas/aggregations.schema.json"
+      schema: schemas/aggregations.schema.json
       enabled: true
-
-  # Step C5: Define messages
+    persona: software_engineer
   stepC5:
-    name: "stepC5"
-    prompt_file: "prompt_step_C5.md"
+    name: stepC5
+    prompt_file: prompt_step_C5.md
     order: 6
-    
     inputs:
-      - label: "spec"
-        type: "yaml"
-        source: "label:spec"
-        compression: "full"
-        color: "cyan"
-      - label: "concepts"
-        type: "json"
-        source: "label:concepts"
-        compression: "full"
-        color: "green"
-      - label: "aggregations"
-        type: "json"
-        source: "label:aggregations"  # References output from stepC4
-        compression: "full"
-        color: "yellow"
-    
+    - label: spec
+      type: yaml
+      source: label:spec
+      compression: anchor_index
+      color: cyan
+      description: 'anchor index format (AN1: definition, AN2: definition...)'
+    - label: concepts
+      type: json
+      source: label:concepts
+      compression: concept_summary
+      color: green
+      description: concept summary format (markdown tables grouped by entity type)
+    - label: aggregations
+      type: json
+      source: label:aggregations
+      compression: concept_summary
+      color: yellow
+      description: concept summary format (markdown tables grouped by entity type)
     outputs:
-      - file: "messages.json"
-        label: "messages"
-        type: "json"
-      - file: "messageAggregations.json"
-        label: "message_aggregations"
-        type: "json"
-    
-    dependencies: ["stepC3", "stepC4"]
-    
+    - file: messages.json
+      label: messages
+      type: json
+    - file: messageAggregations.json
+      label: message_aggregations
+      type: json
+    dependencies:
+    - stepC3
+    - stepC4
     validation:
-      schema: "schemas/messages.schema.json"
+      schema: schemas/messages.schema.json
       enabled: true
-
-  # Step D1: Extract requirements
+    persona: systems_architect
   stepD1:
-    name: "stepD1"
-    prompt_file: "prompt_step_D1.md"
+    name: stepD1
+    prompt_file: prompt_step_D1.md
     order: 7
-    
     inputs:
-      - label: "spec"
-        type: "yaml"
-        source: "label:spec"
-        compression: "full"
-        color: "cyan"
-      - label: "concepts"
-        type: "json"
-        source: "label:concepts"
-        compression: "full"
-        color: "green"
-      - label: "messages"
-        type: "json"
-        source: "label:messages"  # References output from stepC5
-        compression: "full"
-        color: "magenta"
-    
+    - label: spec
+      type: yaml
+      source: label:spec
+      compression: anchor_index
+      color: cyan
+      description: 'anchor index format (AN1: definition, AN2: definition...)'
+    - label: concepts
+      type: json
+      source: label:concepts
+      compression: concept_summary
+      color: green
+      description: concept summary format (markdown tables grouped by entity type)
+    - label: messages
+      type: json
+      source: label:messages
+      compression: concept_summary
+      color: magenta
+      description: concept summary format (markdown tables grouped by entity type)
     outputs:
-      - file: "requirements.json"
-        label: "requirements"
-        type: "json"
-    
-    dependencies: ["stepC3", "stepC5"]
-    
+    - file: requirements.json
+      label: requirements
+      type: json
+    dependencies:
+    - stepC3
+    - stepC5
     validation:
-      schema: "schemas/requirements.schema.json"
+      schema: schemas/requirements.schema.json
       enabled: true
-
-# Model levels for each step
-# Level 1: Cheapest/fastest (development)
-# Level 2: Balanced (regular use)
-# Level 3: Best (production)
-
+    persona: systems_engineer
 model_levels:
   step1:
-    1: "minimax/minimax-m2.5"
-    2: "xiaomi/mimo-v2-flash"
-    3: "moonshotai/kimi-k2-0905"
-
+    1: minimax/minimax-m2.5
+    2: xiaomi/mimo-v2-flash
+    3: moonshotai/kimi-k2-0905
   step2:
-    1: "minimax/minimax-m2.5"
-    2: "xiaomi/mimo-v2-flash"
-    3: "moonshotai/kimi-k2-0905"
-
+    1: minimax/minimax-m2.5
+    2: xiaomi/mimo-v2-flash
+    3: moonshotai/kimi-k2-0905
   step3:
-    1: "minimax/minimax-m2.5"
-    2: "xiaomi/mimo-v2-flash"
-    3: "moonshotai/kimi-k2-0905"
-
+    1: minimax/minimax-m2.5
+    2: xiaomi/mimo-v2-flash
+    3: moonshotai/kimi-k2-0905
   stepC3:
-    1: "qwen/qwen-2.5-72b"
-    2: "xiaomi/mimo-v2-flash"
-    3: "moonshotai/kimi-k2-0905"
-
+    1: qwen/qwen-2.5-72b
+    2: xiaomi/mimo-v2-flash
+    3: moonshotai/kimi-k2-0905
   stepC4:
-    1: "minimax/minimax-m2.5"
-    2: "xiaomi/mimo-v2-flash"
-    3: "moonshotai/kimi-k2-0905"
-
+    1: minimax/minimax-m2.5
+    2: xiaomi/mimo-v2-flash
+    3: moonshotai/kimi-k2-0905
   stepC5:
-    1: "qwen/qwen-2.5-72b"
-    2: "xiaomi/mimo-v2-flash"
-    3: "moonshotai/kimi-k2-0905"
-
+    1: qwen/qwen-2.5-72b
+    2: xiaomi/mimo-v2-flash
+    3: moonshotai/kimi-k2-0905
   stepD1:
-    1: "qwen/qwen-2.5-72b"
-    2: "xiaomi/mimo-v2-flash"
-    3: "moonshotai/kimi-k2-0905"
-
-# Development defaults
+    1: qwen/qwen-2.5-72b
+    2: xiaomi/mimo-v2-flash
+    3: moonshotai/kimi-k2-0905
 dev_defaults:
   model_level: 1
   verbosity: 2
