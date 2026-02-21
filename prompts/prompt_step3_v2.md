@@ -1,224 +1,183 @@
-You are an assistant that updates a structured YAML requirements model
-based on an edited formal markdown specification and a previous
-version of the YAML model.
+
+Your task is to reconcile an edited formal markdown specification against a previous YAML requirements model, producing an **updated YAML specification** and a **separate DIFF YAML** summarizing what changed.
 
 
-This is the third step in a pipeline:
-
-1. Informal client text → initial YAML (sections, text_blocks, concepts)
-2. YAML → formal markdown specification
-3. Edited formal markdown + previous YAML → UPDATED YAML + DIFF
-
-
-Your role now is step (3).
+The edited markdown is the **authoritative** description of current requirements. The previous YAML provides stable IDs, original client wording, and prior structure.
 
 
 ⸻
 
-GOAL
 
-Given:
-current, authoritative view of the requirements, and
-anchored text blocks, and concepts in the new schema,
+**1. Definitions**
 
 
-you must:
-
-1. Produce an **updated YAML specification** that:
-- Preserves stable IDs where meaning remains the same:
-  - `section_id`, `anchor_id`, `concept_id`
-- Uses **dual text fields** per text block (anchor):
-  - `text_original`: original client wording (from step 1, if available).
-  - `text_formal`: current formalized wording, aligned with the edited markdown.
-- Assigns a:
-  - `status` for each text block:
-    - `"unchanged"` – still present and essentially the same.
-    - `"modified"` – present but substantively edited/clarified.
-    - `"new"` – newly introduced requirement.
-    - `"deleted"` – requirement in old YAML no longer present in the
-      edited markdown (kept in YAML but marked deleted).
-  - `change_notes`: a brief explanation of the change (if any).
-- Maintains the section / text_block hierarchy in a way that reflects
-  the **edited markdown** as the authoritative structure.
-- Continues to respect:
-  - Global uniqueness of `section_id`, `anchor_id`, `concept_id`, and `label`.
-  - The existing section nesting structure (`sections` within sections).
-  - The notion that each text block is a narrow, coherent requirement “atom”.
-
-2. Produce a **separate DIFF YAML** that summarizes changes at the
-text block (anchor) level (and optionally concept level).
+**1.1 Pipeline Context**
 
 
-⸻
-{{spec_formal}}
-{{spec}}
- AND MATCHING
-
-Treat the **edited formal markdown** as the authoritative description of
-what the system should do now.
+This is step 3 of a three-step pipeline:
+1. Informal client text → initial YAML (sections, text blocks, concepts).
+2. YAML → formal markdown specification.
+3. Edited formal markdown + previous YAML → **updated YAML + DIFF** ← you are here.
 
 
-Use the **old YAML** as:
-- Stable IDs (`section_id`, `anchor_id`, `concept_id`),
-- Original client text (`text` fields from the old YAML, assumed to
-  be `text_original`),
-- Previous structure, ordering (`order`), and text block boundaries.
+**1.2 Anchors (AN\*)**
+• Text blocks identified by globally unique `anchor_id` values (e.g., `AN1`, `AN2`).
+• Each anchor represents a single coherent requirement atom.
+• Stable IDs must be preserved where meaning remains the same.
 
 
-You must reconcile the two as follows.
+**1.3 Concepts (C\*)**
+• Candidate domain terms attached to text blocks, identified by globally unique `concept_id` values.
+• Stable IDs must be preserved where meaning remains the same.
 
 
-1. Matching existing text blocks (anchors)
-
-For each `text_block` in the OLD YAML:
-- Match primarily on **meaning** (intent, main subject, scope).
-- Secondarily consider:
-  - Similar phrasing or terminology.
-  - Alignment with section/heading titles and hierarchy.
-  - Previous `label`, `type`, and `semantic_cues`.
-
-2. If a clear correspondence exists:
-
-- Reuse the same:
-  - `anchor_id`
-  - `label`
-  - `section_id` (though the section’s `section_number`, `order`,
-    or even parent section may change if the structure has changed).
-- Update or set:
-  - `text_original`:
-    - Use the original client-facing wording from the old YAML
-      `text` field (i.e., treat `text` from the old YAML as
-      `text_original`).
-  - `text_formal`:
-    - Extract the up-to-date requirement wording from the edited
-      markdown, paraphrased as needed to be consistent with the
-      markdown’s style, but not changing meaning.
-  - `status`:
-    - `"unchanged"` if the requirement is essentially the same in
-      meaning and scope, with at most minor rephrasing.
-    - `"modified"` if the requirement has changed in scope,
-      conditions, or important details, or the formal text is a
-      significant refinement/clarification.
-  - `change_notes`:
-    - For `"unchanged"`, may be an empty string or omitted.
-    - For `"modified"`, provide a brief explanation of what changed
-      (e.g., “Clarified who can create tasks and what fields are required.”).
-
-3. If a text block from the OLD YAML **no longer appears** in any form
-in the edited markdown:
-
-- Keep the `anchor_id` and `label` in the UPDATED YAML but set:
-  - `status: "deleted"`.
-- Retain `text_original` (from the old YAML) and optionally:
-  - Leave `text_formal` empty (`""`) or equal to the old `text`
-    if that aids traceability.
-- Add a `change_notes` explaining that it was removed or is no longer
-  in scope (e.g., “Requirement removed in revised markdown; no longer needed.”).
+**1.4 Sections (S\*)**
+• Hierarchical groupings identified by globally unique `section_id` values.
+• Stable IDs must be preserved where the section still represents the same conceptual area.
 
 
-2. Creating new text blocks
-
-If the edited markdown contains a **new requirement** that cannot be
-matched to any existing text block:
-
-- Assign a new, globally unique `anchor_id` continuing the numbering
-  sequence (e.g., if the old highest was `AN17`, next is `AN18`).
-- Create a new, globally unique `label` matching:
-  - `/^[A-Z_][a-zA-Z0-9_.]*$/`
-  - e.g., `TASK_PRIORITY_LEVELS`, `CUSTOM_REPORT_FILTERING`.
-- Place it under the appropriate `section` that corresponds to the
-  markdown heading.
-- Set:
-  - `type` and `semantic_cues` based on the content and classification
-    rules used in step 1 of the pipeline.
-  - `text_original`:
-    - Use the closest original client phrase if you can safely
-      identify it from memory or from context in the old YAML; if
-      that is not reliable, leave this as an empty string.
-  - `text_formal`:
-    - Use the current, authoritative wording from the edited markdown.
-  - `status: "new"`.
-  - `change_notes`: brief explanation, e.g., “New requirement added in
-    the edited specification regarding task archiving.”
-
-
-3. Concepts
-
-For concepts within each text block:
-
-- Keep the same `concept_id` and `name`, even if the markdown uses
-  slightly different phrasing.
-- You may refine the `description` slightly to reflect improved
-  understanding, as long as you do not contradict the meaning.
-captured by any existing concept:
-
-- Create a new concept within the relevant text block:
-  - Assign a new, globally unique `concept_id` (e.g., `C18`).
-  - Choose a `name` that fits `/^[A-Z_][a-zA-Z0-9_.]*$/` and is
-    semantically appropriate.
-  - Provide a brief `description` aligned with the meaning in the
-    markdown.
-marked `"deleted"`:
-
-- Keep them associated with that text block in the UPDATED YAML
-  (for traceability).
-- In the DIFF YAML, you may note that those concepts are no longer
-  used in any active requirement.
-
-
-4. Sections and hierarchy
-section hierarchy and order.
-hierarchy:
-
-- Use or adapt existing `section_id` values where the section still
-  represents the same conceptual area.
-- If a section is clearly new (no prior analogue), create a new
-  `section_id` (e.g., next `S<number>`).
-- Update:
-  - `section_number` strings to match the new heading numbering
-    (e.g., `"1"`, `"1.1"`, `"2"`, `"2.1.1"`).
-  - `order` to reflect each section’s position among its siblings.
-  - `title` to align with the markdown heading text.
-  - `label` to remain globally unique and semantically meaningful
-    (you may update labels if the section’s meaning changed
-    substantially; otherwise, keep them stable).
-markdown structure, while preserving their IDs and status.
+**1.5 Text Block Status Values**
+• `"unchanged"` – present and essentially the same in meaning and scope.
+• `"modified"` – present but substantively edited, clarified, or changed in scope or conditions.
+• `"new"` – newly introduced in the edited markdown with no prior analogue.
+• `"deleted"` – present in the old YAML but no longer appearing in the edited markdown.
 
 
 ⸻
 
-OUTPUT FORMAT
 
-You must output **two YAML documents**, in this order, separated by a
-clear marker comment line.
-- Use the same top-level structure as the previous YAML, but:
+**2. Reconciliation Rules**
 
-  - Update `title`, `description`, and `version` if appropriate
-    (e.g., bump minor version like `"0.2"`).
-  - Ensure `metadata` remains present and may be updated to reflect
-    the new step (if appropriate).
-  - Align `sections` hierarchy, `section_number`, and `order` with
-    the edited markdown.
 
-- For each `text_block`, include at least:
+**2.1 Matching Existing Text Blocks**
 
-  - `anchor_id`
-  - `label`
-  - `type`
-  - `semantic_cues`
-  - `text_original`
-  - `text_formal`
-  - `status`
-  - `change_notes`
-  - `concepts` (with `concept_id`, `name`, `description`)
 
-- To maintain compatibility with earlier stages, you may **also**
-  include a simple `text` field; if you do, set it equal to:
-    - Preferably `text_original` (to preserve client wording), or
-    - `text_formal` if no original text is available.
-  However, the primary fields going forward are `text_original` and
-  `text_formal`.
-A separate, concise summary of changes. For example:
+For each text block in the old YAML, attempt to match it to content in the edited markdown:
+• Match primarily on **meaning** (intent, main subject, scope).
+• Secondarily consider similar phrasing, terminology, section/heading alignment, and previous `label`, `type`, and `semantic_cues`.
+
+
+**2.2 When a Clear Match Exists**
+
+
+Reuse the same `anchor_id`, `label`, and `section_id` (even if the section's position or parent has changed). Update or set:
+
+• `text_original`: use the `text` field from the old YAML verbatim (treat it as the original client wording).
+• `text_formal`: extract the current authoritative wording from the edited markdown, paraphrased for consistency with the markdown's style without changing meaning.
+• `status`:
+- `"unchanged"` if meaning and scope are essentially the same, with at most minor rephrasing.
+- `"modified"` if scope, conditions, or important details have changed, or the formal text is a significant refinement.
+• `change_notes`:
+- For `"unchanged"`: may be an empty string or omitted.
+- For `"modified"`: brief explanation of what changed (e.g., "Clarified who can create tasks and what fields are required.").
+
+
+**2.3 When a Text Block No Longer Appears**
+
+
+Keep the `anchor_id` and `label` in the updated YAML but set:
+• `status: "deleted"`.
+• `text_original`: retain from the old YAML.
+• `text_formal`: leave as `""` or equal to the old `text` for traceability.
+• `change_notes`: explain the removal (e.g., "Requirement removed in revised markdown; no longer in scope.").
+
+
+**2.4 Creating New Text Blocks**
+
+
+If the edited markdown contains a requirement with no match in the old YAML:
+• Assign a new globally unique `anchor_id` continuing the numbering sequence (e.g., if the old highest was `AN17`, next is `AN18`).
+• Create a new globally unique `label` matching `/^[A-Z_][a-zA-Z0-9_.]*$/`.
+• Place it under the appropriate section corresponding to the markdown heading.
+• Set `type` and `semantic_cues` using the same classification rules as step 1 of the pipeline.
+• `text_original`: use the closest original client phrase if safely identifiable from the old YAML; otherwise leave as `""`.
+• `text_formal`: use the current authoritative wording from the edited markdown.
+• `status: "new"`.
+• `change_notes`: brief explanation (e.g., "New requirement added in the edited specification regarding task archiving.").
+
+
+⸻
+
+
+**3. Concept Reconciliation**
+
+
+**3.1 Existing Concepts**
+• Keep the same `concept_id` and `name` even if the markdown uses slightly different phrasing.
+• You may refine `description` slightly to reflect improved understanding, without contradicting the original meaning.
+
+
+**3.2 New Concepts**
+If the edited markdown implies a concept not captured by any existing concept:
+• Assign a new globally unique `concept_id` (continuing the sequence).
+• Choose a `name` matching `/^[A-Z_][a-zA-Z0-9_.]*$/`.
+• Provide a brief `description` aligned with the meaning in the markdown.
+
+
+**3.3 Concepts on Deleted Text Blocks**
+• Keep them associated with their text block in the updated YAML for traceability.
+• Note in the DIFF YAML that those concepts are no longer used in any active requirement.
+
+
+⸻
+
+
+**4. Section and Hierarchy Reconciliation**
+
+
+Use the edited markdown's heading structure as the authoritative section hierarchy and order:
+• Reuse existing `section_id` values where the section still represents the same conceptual area.
+• Create new `section_id` values (next `S<number>`) for sections with no prior analogue.
+• Update `section_number` strings to match the new heading numbering (e.g., `"1"`, `"1.1"`, `"2.1.1"`).
+• Update `order` to reflect each section's position among its siblings.
+• Update `title` to align with the markdown heading text.
+• Keep `label` stable unless the section's meaning changed substantially; if updated, ensure global uniqueness.
+• Place deleted text blocks within their original sections while preserving their IDs and status.
+
+
+⸻
+
+
+**5. Updated YAML Schema**
+
+
+The updated YAML must use the same top-level structure as the previous YAML, with these changes:
+
+• Update `title`, `description`, and `version` if appropriate (e.g., bump minor version to `"0.2"`).
+• Keep `metadata` present; update it to reflect this step if appropriate.
+• Align `sections` hierarchy, `section_number`, and `order` with the edited markdown.
+
+
+Each text block must include at minimum:
+
+
+- anchor_id: AN<number>
+  label: "SOME_LABEL"
+  type: "goal" | "capability" | "constraint" | "future-capability" | "other"
+  semantic_cues:
+    - cue_one
+  text_original: >
+    <original client wording from old YAML>
+  text_formal: >
+    <current authoritative wording from edited markdown>
+  status: "unchanged" | "modified" | "new" | "deleted"
+  change_notes: "..."
+  concepts:
+    - concept_id: C<number>
+      name: "..."
+      description: "..."
+
+
+For backward compatibility with earlier pipeline stages, you may also include a `text` field. If you do, set it equal to `text_original` (preferred) or `text_formal` if no original text is available.
+
+
+⸻
+
+
+**6. DIFF YAML Schema**
+
+
+The DIFF YAML is a concise, separate summary of changes at the anchor and concept level:
 
 
 diff:
@@ -242,39 +201,51 @@ diff:
       summary: "New concept for task recurrence pattern."
 
 
-   You may extend or slightly adjust the diff structure for clarity,
-   but it should capture at minimum:
-• Short, human-readable summaries of non-trivial changes.
-no longer used, etc.).
+Include at minimum:
+• Short human-readable summaries of all non-trivial changes.
+• Entries for new, modified, and deleted anchors.
+• Entries for new concepts and concepts no longer used in any active requirement.
+
+
+You may extend the diff structure for clarity, but keep it concise.
 
 
 ⸻
 
-STYLE AND CONSTRAINTS
-1. The UPDATED YAML spec, then
-2. A separator comment line, e.g.:
 
-   ```yaml
-   # --- DIFF BELOW ---
-   ```
+**7. Classification Rules**
 
-3. The DIFF YAML.
-(2 spaces).
-
-- Mark as `"modified"` if the meaning or scope is plausibly changed,
-  not just punctuation or trivial rephrasing.
-the underlying meaning is preserved, even if the wording is improved.
-what changed from a requirements perspective (scope, conditions,
-clarifications).
+• Mark as `"modified"` if meaning or scope is plausibly changed — not just punctuation or trivial rephrasing.
+• Mark as `"unchanged"` if the underlying meaning is preserved even if wording is improved.
+• `change_notes` should describe what changed from a requirements perspective (scope, conditions, clarifications), not stylistic differences.
 
 
 ⸻
 
-NOW PERFORM THE TASK
 
-Using the edited formal markdown and the old YAML provided above,
-produce:
+**8. Output Format**
 
-1. The UPDATED YAML specification (using the new section / text_block
-structure and dual text fields), and  
-2. The DIFF YAML as described.
+
+Produce two YAML documents in this order:
+
+1. The **updated YAML specification**.
+2. A separator comment line:
+```yaml
+# --- DIFF BELOW ---
+```
+3. The **DIFF YAML**.
+
+
+Both documents must use 2-space indentation and be syntactically valid YAML. Do not wrap output in code fences.
+
+
+⸻
+
+
+*** INPUT DATA ***
+
+
+{{spec_formal}}
+
+
+{{spec}}

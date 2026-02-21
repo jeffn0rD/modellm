@@ -1,87 +1,72 @@
 
-
-Prompt: “Step C3 – Extract Concepts from YAML Specification”
-
-You are assisting in **Step C3 – Extract Concepts** of a conceptualization pipeline.
-
-
-1. Overall task
-
-You will receive one or more YAML documents that together describe **a single software specification**, including:
-• For each anchor:
-- `text` (natural-language excerpt),
-- `type` (e.g., `goal`, `capability`, `constraint`, `future-capability`),
-- `semantic_cues`,
-- A list of **hint** concepts: `concepts: [{concept_id: Cn, name: "..."}]`.
-
-
-Your job is to extract **Concepts**: `Actors`, `Actions`, and `DataEntities` and output them as JSON according to the `Concepts.json` schema described below.
+Your task is to extract **Actors**, **Actions**, and **DataEntities** from the specification and output them as JSON according to the `Concepts.json` schema described below.
 
 
 Do **not** design UI flows, message protocols, or requirements here; those occur in later steps. Focus on a **technology-agnostic domain concept model**.
 
 
-You must produce a **two-part answer**:
-
-1. A brief human-readable **Reasoning** section.
-2. A **Final JSON** section which is either:
-- A JSON **array** of concept objects conforming to `Concepts.json`, or
-- A JSON **error object** if you cannot do so safely.
+⸻
 
 
+**1. Definitions and Criteria**
 
 
-
-2. Definitions and criteria
-
-2.1 Anchors (AN*)
-• Each anchor has an ID like `AN1`, `AN2`, etc., and contains `text`.
-• In this step:
-- **Do not create new anchor IDs.** Only use the `AN*` anchor IDs given in the YAML.
-- Every Concept should have at least one supporting anchor ID in its `anchors` list.
+**1.1 Anchors (AN\*)**
+• Each anchor has an ID like `AN1`, `AN2`, etc.
+• **Do not create new anchor IDs.** Only use the `AN*` anchor IDs given in the input.
+• Every concept should have at least one supporting anchor ID in its `anchors` list.
 
 
-2.2 Concept types
+**1.2 Concept Types**
+
 
 You must create three kinds of concepts:
-- Represents any active entity that can **initiate actions** or **produce/consume messages**.
-- Examples:
-  - End users (e.g., `EndUser`).
-  - Software components (e.g., `BrowserApp`, `LocalStorageEngine`, `SyncService`).
-  - External services (if mentioned).
-- Criteria:
-  - The spec describes it as doing something: initiating, responding, processing.
-  - It plays a meaningful role in the domain-level workflows.
-- An **Action** is an atomic operation or capability the system must support.
-- Actions are domain-level verbs such as `CreateTask`, `EditTask`, `DeleteTask`, `SetFilterByCategory`, `PersistViewPreferences`.
-- Criteria:
-  - The spec describes a discrete behavior (create, edit, delete, filter, sort, save, sync, etc.).
-  - It should be **as atomic as reasonable**: not a large feature bundle; small steps that can be composed later in aggregations and message flows.
-- In this step, focus on **domain-level** actions, not on concrete UI gestures (`click`, `tap`, etc.).
-- A **DataEntity** is a high-level conceptual “thing” the system stores, manipulates, or transfers.
-- Criteria:
-  - The spec describes it with identity and/or attributes (e.g., `Task`, `Category`, `ViewPreferences`, `Reminder`, `Tag`, `SavedView`, `AnalyticsSummary`, `SyncConfiguration`).
-  - It recurs across multiple operations or matters as a stable object in the domain.
-- Prefer **coarsely-grained entities**; detailed attributes/properties will be modeled later.
 
 
+**1. Actor** (type = `"Actor"`, IDs: `A1, A2, ...`)
+• Represents any active entity that can **initiate actions** or **produce/consume messages**.
+• Examples: end users (e.g., `EndUser`), software components (e.g., `BrowserApp`, `LocalStorageEngine`, `SyncService`), external services (if mentioned).
+• Criteria:
+- The spec describes it as doing something: initiating, responding, processing.
+- It plays a meaningful role in the domain-level workflows.
 
 
+**2. Action** (type = `"Action"`, IDs: `ACT1, ACT2, ...`)
+• An atomic operation or capability the system must support.
+• Domain-level verbs such as `CreateTask`, `EditTask`, `DeleteTask`, `SetFilterByCategory`, `PersistViewPreferences`.
+• Criteria:
+- The spec describes a discrete behavior (create, edit, delete, filter, sort, save, sync, etc.).
+- Should be **as atomic as reasonable**: not a large feature bundle; small steps that can be composed later.
+• Focus on **domain-level** actions, not on concrete UI gestures (`click`, `tap`, etc.).
 
-3. Schema you must follow (`Concepts.json`)
 
-The **normal successful output** is a JSON array, where each element conforms to:
+**3. DataEntity** (type = `"DataEntity"`, IDs: `DE1, DE2, ...`)
+• A high-level conceptual "thing" the system stores, manipulates, or transfers.
+• Examples: `Task`, `Category`, `ViewPreferences`, `Reminder`, `Tag`, `SavedView`, `AnalyticsSummary`, `SyncConfiguration`.
+• Criteria:
+- The spec describes it with identity and/or attributes.
+- It recurs across multiple operations or matters as a stable object in the domain.
+• Prefer **coarsely-grained entities**; detailed attributes/properties will be modeled later.
+
+
+⸻
+
+
+**2. Schema You Must Follow (`Concepts.json`)**
+
+
+The normal successful output is a JSON array where each element conforms to:
 
 
 {
   "type": "Actor | Action | DataEntity",
   "id": "A<number> | ACT<number> | DE<number>",
   "label": "string",
-  "categories": ["string", "..."],       // optional; may be omitted or empty
+  "categories": ["string", "..."],
   "description": "string",
-  "justification": "string",             // optional but recommended
-  "anchors": ["AN1", "AN2", "..."],      // optional but recommended; must be valid existing anchors if present
-  "sourceConceptIds": ["C1", "C2", "..."]// optional; concept_id hints from the input YAML that contributed
+  "justification": "string",
+  "anchors": ["AN1", "AN2", "..."],
+  "sourceConceptIds": ["C1", "C2", "..."]
 }
 
 
@@ -91,117 +76,127 @@ Constraints:
 - `categories` and `sourceConceptIds` can be omitted when not applicable.
 
 
+⸻
 
 
+**3. ID and Category Rules**
 
-4. ID and category rules
 
-4.1 ID allocation
-- Number Actors as `A1, A2, A3, ...` in a consistent, stable order.
-- Number Actions as `ACT1, ACT2, ACT3, ...`.
-- Number DataEntities as `DE1, DE2, DE3, ...`.
+**3.1 ID Allocation**
+• Number Actors as `A1, A2, A3, ...` in a consistent, stable order.
+• Number Actions as `ACT1, ACT2, ACT3, ...`.
+• Number DataEntities as `DE1, DE2, DE3, ...`.
 • You can choose any sensible ordering (e.g., by significance or first appearance), but be consistent within the single run.
 
 
-4.2 Categories
+**3.2 Categories**
+
 
 Use `categories` as an **array of strings** drawn from this vocabulary where appropriate:
-• `"future"` – Described only in future/nice-to-have features (anchors of `type: "future-capability"` or clearly labeled as “nice-to-have”).
+• `"core"` – Main domain objects and actions unless clearly future-only or excluded.
+• `"future"` – Described only in future/nice-to-have features or clearly labeled as "nice-to-have".
 • `"persistence"` – Related to data storage, autosave, local data residency, export/import.
 • `"sync"` – Related to multi-device synchronization.
 • `"excluded"` – Concepts explicitly out-of-scope for the current version.
 
 
 Mapping rules:
-• If anchors are under an “Out of Scope / Not Required” section → include `"excluded"` in `categories`.
+• If anchors are under an "Out of Scope / Not Required" section → include `"excluded"` in `categories`.
 • For multi-device sync → include `"sync"`.
-• For main domain objects and actions (e.g., Task, Category, CreateTask) → include `"core"` unless clearly future-only or excluded.
 • If you are not sure, you may omit `categories` or keep it empty.
 
 
+⸻
 
 
-
-5. Use of anchors and C* hints
-
-5.1 Anchors in `anchors` field
-• Each entry must be a valid `AN*` ID present in the YAML.
-• You may attach **multiple anchors** when a concept is supported across different parts of the spec (e.g., `Task` appears in many anchors).
+**4. Use of Anchors and C\* Hints**
 
 
-5.2 C* guidance concepts in `sourceConceptIds`
+**4.1 Anchors in `anchors` Field**
+• Each entry must be a valid `AN*` ID present in the input.
+• You may attach **multiple anchors** when a concept is supported across different parts of the spec.
+
+
+**4.2 C\* Guidance Concepts in `sourceConceptIds`**
 • Treat these as **hints**, not as final concepts:
 - You are **not** required to create a 1:1 mapping for each `C*`.
-- You may merge, generalize, or ignore them if they don’t meet Actor/Action/DataEntity criteria.
-- Add that `concept_id` string (e.g., `"C11"`) to `sourceConceptIds` for the resulting concept.
-- You may list multiple sourceConceptIds for one concept if relevant.
+- You may merge, generalize, or ignore them if they don't meet Actor/Action/DataEntity criteria.
+- Add the `concept_id` string (e.g., `"C11"`) to `sourceConceptIds` for the resulting concept.
+- You may list multiple `sourceConceptIds` for one concept if relevant.
 
 
+⸻
 
 
+**5. Inclusion / Exclusion of Concepts**
 
-6. Inclusion / exclusion of concepts
 • **Non-functional** anchors (performance, offline, privacy, usability):
 - Generally: do **not** create DataEntities or Actions solely to represent them.
 - Exception: if the text clearly implies an active component (e.g., an `OfflineSyncEngine`), you may introduce an Actor or DataEntity for it.
-- You may still create concepts to represent them (e.g., `MultiUserSupport`, `AuthenticationFeature`, `CollaborationCapability`).
+• **Out-of-scope concepts**:
+- You may still create concepts to represent them.
 - Mark them with `"excluded"` in `categories`.
-- Do create concepts for them (Actors, Actions, DataEntities) if they are meaningful.
-- Mark them appropriately with `"future"` and any other relevant categories (`"analytics"`, `"sync"`, etc.).
+• **Future concepts**:
+- Do create concepts for them if they are meaningful.
+- Mark them with `"future"` and any other relevant categories (e.g., `"sync"`).
 
 
+⸻
 
 
+**6. Handling Multiple Documents**
 
-7. Handling multiple YAML documents
-• IDs such as `section_id`, `anchor_id` (`AN*`), and `concept_id` (`C*`) are consistent and unique across these documents.
-
-
+• IDs such as `section_id`, `anchor_id` (`AN*`), and `concept_id` (`C*`) are consistent and unique across all documents provided.
 
 
+⸻
 
-8. Error handling
 
-You must choose between:- Output a valid JSON **array** of concept objects conforming to the schema above.- Output a **single JSON object** (not an array) with at least:
-  ```json
-  {
-    "status": "error",
-    "message": "Short human-readable explanation",
-    "details": {
-      "...": "Optional machine-readable diagnostics"
-    }
+**7. Error Handling**
+
+
+You must choose between:
+
+• A valid JSON **array** of concept objects conforming to the schema above, **or**
+• A **single JSON error object** (not an array):
+
+
+{
+  "status": "error",
+  "message": "Short human-readable explanation",
+  "details": {
+    "...": "Optional machine-readable diagnostics"
   }
-  ```
-- Use this only for **critical** issues:
-  - The YAML is structurally invalid or missing required parts.
-  - Anchors are inconsistent or impossible to interpret.
-  - You cannot follow the schema without obvious guessing.
+}
+
+
+Use the error object only for **critical** issues:
+• The input is structurally invalid or missing required parts.
+• Anchors are inconsistent or impossible to interpret.
+• You cannot follow the schema without obvious guessing.
 
 
 Do **not** mix concept objects and error fields in the same top-level JSON structure.
 
 
+⸻
 
 
+**8. Output Format**
 
-9. Output format and structure
 
 Your response must have two clearly separated parts:
 
-1. A **Reasoning** section in natural language:
-- Summarize:
-  - Main Actors you identified.
-  - Main DataEntities.
-  - Main Actions.
-  - Any notable decisions (generalizations, exclusions, ambiguous points).
-- This section is for humans and will not be parsed by machines.
 
-2. A **Final JSON** section that contains **only** JSON:
-- Either:
-  - A JSON array of concept objects, or
-  - A JSON error object with `status: "error"`, etc.
-- The JSON must be syntactically valid (no comments, no trailing commas).
-- Do not wrap it in Markdown code fences in a way that adds non-JSON characters unless your execution environment strips them. If you must use fences, ensure the content inside is pure JSON.
+**Part 1 – Reasoning** (natural language):
+• Summarize the main Actors, DataEntities, and Actions you identified.
+• Note any notable decisions (generalizations, exclusions, ambiguous points).
+• This section is for humans and will not be parsed by machines.
+
+
+**Part 2 – Final JSON** (JSON only):
+• Either a JSON array of concept objects, or a JSON error object.
+• Must be syntactically valid (no comments, no trailing commas).
 
 
 Suggested structure:
@@ -213,7 +208,11 @@ Reasoning:
 Final JSON:
 <your JSON array or error object here>
 
-*** YAML INPUT FILE ***
+
+⸻
+
+
+*** INPUT DATA ***
+
 
 {{spec}}
-
