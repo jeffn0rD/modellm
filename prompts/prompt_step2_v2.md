@@ -218,4 +218,4 @@ Now, given the following YAML specification, produce the corresponding
 markdown specification according to these instructions:
 
 
-<<<YAML_SPECIFICATION>>>
+{{spec}}

@@ -274,11 +274,20 @@ Final MessageAggregations JSON:
 
 
 
+
+{{spec}}
+
 *** Concepts.json ***
 
 
 
+
+{{concepts}}
+
 *** Aggregation.json ***
 
 
+
+
+{{aggregations}}
 

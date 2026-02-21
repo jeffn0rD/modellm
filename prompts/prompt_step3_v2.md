@@ -61,12 +61,12 @@ You will be given:
 1. The edited formal markdown specification:
 
 
-<<<FORMAL_MARKDOWN_SPEC>>>
+{{spec_formal}}
 
 1. The previous YAML specification (in the new structure):
 
 
-<<<OLD_YAML_SPEC>>>
+{{spec}}
 
 
 Assumptions:

@@ -257,3 +257,6 @@ Final JSON:
 <your JSON array or error object here>
 
 *** YAML INPUT FILE ***
+
+{{spec}}
+

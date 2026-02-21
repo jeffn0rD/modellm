@@ -304,17 +304,15 @@ Final Requirements JSON:
 
 *** Specification YAML***
 
-
+{{spec}}
 
 ** Concepts.json ***
 
-
+{{concepts}}
 
 ** Message.json ***
 
-
-
-
+{{messages}}
 
 
 

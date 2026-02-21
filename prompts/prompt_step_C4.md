@@ -254,6 +254,9 @@ Final JSON:
 *** SPEC YAML ***
 
 
+
+{{spec}}
+
 *** CONCEPTS JSON ***
 
 
@@ -264,4 +267,7 @@ Final JSON:
 
 
 
+
+
+{{concepts}}
 

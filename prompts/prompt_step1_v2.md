@@ -23,7 +23,7 @@ Input
 Informal specification (client-style, loosely formatted, possibly a mix of goals, constraints, wish list items):
 
 
-<<<INPUT_SPEC>>>
+{{nl_spec}}
 
 
 Output Requirements
