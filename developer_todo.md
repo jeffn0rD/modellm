@@ -7,23 +7,30 @@
 
   ** DO NOT PLAN OR CREATE TASKS FOR ANYTHING AFTER THIS POINT **    
   ## TASKS THAT NEED DETAILED PLANNING AND SPECIFICATION (FUTURE)
-  - need to streamlining the prompt pipeline to go from NL informal specification to typedb database
-    - prompts are in `prompts` folder.
-    - nanocoder integration would be great. possibly a MCP call?
-      - nanocoder github project: https://github.com/Nano-Collective/nanocoder
-      - create a folder and start nanocoder within that path
-      - copy/create the NL application specification file in subfolder `./spec`
-      - run first stage of pipeline `prompt_step1_v2.md`.  This would be the MCP call
-        - the prompt processed by a (openrouter) call to LLM (model as parameter in MCP call?)
-        - yaml file returned by LLM, validated and then needs to go into the `./spec` folder
-        - repeated calls for the other steps, json outputs would go to `./spec/json`
-        - typedb import with typedb_import.py tool (yaml and json files).  another MCP call?
-        - this gets to conceptual model phase.  refinement and implementation are next (see below)
+  - graph generation (mermaid) from typedb model
+    - first is the 'conceptual model'
+    - will have to keep updating as we get into design and implementation model
+
+  - nanocoder integration would be great. possibly a MCP call?
+    - nanocoder github project: https://github.com/Nano-Collective/nanocoder
+    - create a folder and start nanocoder within that path
+    - copy/create the NL application specification file in subfolder `./spec`
+    - run first stage of pipeline `prompt_step1_v2.md`.  This would be the MCP call
+      - the prompt processed by a (openrouter) call to LLM (model as parameter in MCP call?)
+      - yaml file returned by LLM, validated and then needs to go into the `./spec` folder
+      - repeated calls for the other steps, json outputs would go to `./spec/json`
+      - typedb import with typedb_import.py tool (yaml and json files).  another MCP call?
+      - this gets to conceptual model phase.  refinement and implementation are next (see below)
     - an alternative would to use `nanocoder run` from the commandline (or a python CLI) as a batch to process the NL spec and create the typedb database
   - next step is to figure out how to integrate the database with LLM agentic reasoning
     - the database now stands as a 'conceptual model' for a software application.  a design to begin fleshing out the architecture and implementation needs to be specified.
     - part of this will be the ability to query the database in a sensical way.  Maybe a list of common queries should be developed, e.g., 'What are the sequence of messages related to action X?'; 'What concepts are affected by a change to text block X in the specification?'; 'What other concepts are needed to implement requirement X?'; etc.
     - information on LLM interaction with typeDB here: doc\typedb_llm_reasoning.md
+
+  - design modeling
+
+  - implementation
+    - one function at a time spec
 
 ## DONE
 X  - need to create a library to facilitate typedb v3 database operations
