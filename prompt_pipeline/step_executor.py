@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Optional, Union
 
 from prompt_pipeline.llm_client import OpenRouterClient
 from prompt_pipeline.prompt_manager import PromptManager
-from prompt_pipeline.tag_replacement import TagReplacer, MissingTagError
+from prompt_pipeline.tag_replacement import TagReplacer
 from prompt_pipeline.terminal_utils import (
     Spinner,
     print_colored,
@@ -147,20 +147,10 @@ class StepExecutor:
         if not step_config:
             raise StepExecutionError(f"Step '{step_name}' not found in configuration")
 
-        # Load prompt from configured file
-        prompt_file = step_config.get("prompt_file")
-        if not prompt_file:
-            raise StepExecutionError(
-                f"Step '{step_name}' has no prompt_file configured"
-            )
-
-        self._log(f"Loading prompt: {prompt_file}")
-        prompt = self.prompt_manager.load_prompt(prompt_file)
-
+        # Prepare variables for substitution using new input format
         # Get inputs array from step config
         inputs_config = step_config.get("inputs", [])
         
-        # Prepare variables for substitution using new input format
         variables = self._prepare_variables_from_config(
             inputs_config=inputs_config,
             cli_inputs=cli_inputs,
@@ -170,9 +160,27 @@ class StepExecutor:
         )
         self._log(f"Prompt variables prepared from {len(variables)} inputs")
 
-        # Substitute variables in prompt using TagReplacer
-        filled_prompt = self._substitute_tags(prompt, variables, step_config)
-        self._log(f"Prompt variables substituted")
+        # In force mode, add empty strings for missing tags
+        if self.force:
+            # Get required tags from prompt
+            prompt_file = step_config.get("prompt_file")
+            if prompt_file:
+                prompt_template = self.prompt_manager.load_prompt(prompt_file)
+                replacer = TagReplacer(prompt_template)
+                required_tags = replacer.get_required_tags()
+                # Add empty string for any missing tags
+                for tag in required_tags:
+                    if tag not in variables:
+                        variables[tag] = ""
+
+        # Load prompt with preamble and substitute variables
+        # Use get_prompt_with_variables which generates preamble and substitutes variables
+        filled_prompt = self.prompt_manager.get_prompt_with_variables(
+            step_name=step_name,
+            variables=variables,
+            validate=not self.force  # Skip validation if force mode
+        )
+        self._log(f"Prompt loaded with preamble and variables substituted")
 
         # Get model for this step
         model = self._get_model_for_step(step_name)
@@ -422,46 +430,6 @@ class StepExecutor:
         # This will be enhanced when compression strategies are implemented
         self._log(f"Compression '{compression}' not implemented, using full content")
         return content
-
-    def _substitute_tags(
-        self,
-        prompt: str,
-        variables: Dict[str, Any],
-        step_config: Dict[str, Any],
-    ) -> str:
-        """Substitute tags in prompt using TagReplacer.
-
-        Args:
-            prompt: Prompt template with {{tag}} placeholders.
-            variables: Dictionary mapping labels to content.
-            step_config: Step configuration.
-
-        Returns:
-            Filled prompt with substituted content.
-        """
-        replacer = TagReplacer(prompt)
-        
-        # Validate all required tags have replacements
-        required_tags = replacer.get_required_tags()
-        missing_tags = required_tags - set(variables.keys())
-        
-        if missing_tags:
-            if self.force:
-                # In force mode, add missing tags with empty string
-                for tag in missing_tags:
-                    variables[tag] = ""
-            else:
-                # Raise error for missing tags
-                for tag in missing_tags:
-                    raise MissingTagError(tag)
-        
-        # Perform substitution
-        try:
-            filled_prompt = replacer.replace_all(variables)
-        except Exception as e:
-            raise StepExecutionError(f"Failed to substitute variables: {e}")
-        
-        return filled_prompt
 
     def _save_outputs(
         self,
