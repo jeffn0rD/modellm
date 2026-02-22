@@ -111,6 +111,22 @@ def run_pipeline(
         click.echo(f"[DRY RUN] Model level: {model_level}")
         click.echo(f"[DRY RUN] Import database: {import_database}")
         click.echo(f"[DRY RUN] Wipe database: {wipe_database}")
+        
+        # Show label-based inputs/outputs
+        prompt_manager = PromptManager(config_path)
+        for step_name in prompt_manager.get_all_step_names():
+            step_config = prompt_manager.get_step_config(step_name)
+            if step_config:
+                inputs_config = step_config.get("inputs", [])
+                outputs_config = step_config.get("outputs", [])
+                if inputs_config or outputs_config:
+                    click.echo(f"[DRY RUN] Step {step_name}:")
+                    if inputs_config:
+                        inputs_str = ", ".join([f"{i.get('label', '?')}" for i in inputs_config])
+                        click.echo(f"[DRY RUN]   Inputs: {inputs_str}")
+                    if outputs_config:
+                        outputs_str = ", ".join([f"{o.get('label', '?')}" for o in outputs_config])
+                        click.echo(f"[DRY RUN]   Outputs: {outputs_str}")
         return
 
     # Initialize components

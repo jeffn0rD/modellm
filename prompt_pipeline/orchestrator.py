@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from prompt_pipeline.llm_client import OpenRouterClient
+from prompt_pipeline.label_registry import LabelRegistry
 from prompt_pipeline.prompt_manager import PromptManager
 from prompt_pipeline.step_executor import StepExecutor, StepExecutionError
 
@@ -17,6 +18,7 @@ class PipelineOrchestrator:
     - Running full pipeline
     - Running individual steps
     - Input discovery and preparation
+    - Label-based dependency resolution
     - TypeDB import integration
     - Wipe database option
     """
@@ -56,6 +58,8 @@ class PipelineOrchestrator:
         self.wipe_database = wipe_database
         self.verbose = verbose
         self.steps = self._load_and_sort_steps()
+        self.label_registry = LabelRegistry()
+        self._initialize_label_registry()
 
     def _load_and_sort_steps(self) -> List[Dict[str, Any]]:
         """Load and sort steps by order field.
@@ -71,6 +75,18 @@ class PipelineOrchestrator:
         if self.verbose:
             print(f"[Orchestrator] {message}")
 
+    def _initialize_label_registry(self) -> None:
+        """Initialize label registry from pipeline configuration.
+        
+        Loads output labels from the configuration and registers them
+        in the label registry with placeholder paths. Actual file paths
+        will be updated as steps execute.
+        """
+        config = self.prompt_manager.get_config()
+        if config and "output_labels" in config:
+            self.label_registry.merge_from_config(config)
+            self._log(f"Initialized label registry with {len(self.label_registry)} labels")
+    
     async def run_pipeline(
         self,
         nl_spec_path: Path,
@@ -86,11 +102,11 @@ class PipelineOrchestrator:
         Raises:
             StepExecutionError: If any step fails.
         """
-        outputs: Dict[str, Path] = {}
-        current_file = nl_spec_path
-
         self._log("Starting pipeline execution...")
         print("Starting pipeline execution...")
+
+        # Register the initial NL spec as an exogenous input with label "nl_spec"
+        exogenous_inputs = {"nl_spec": nl_spec_path}
 
         for step in self.steps:
             step_name = step["name"]
@@ -104,23 +120,29 @@ class PipelineOrchestrator:
             print(f"  Executing {step_name}...")
             self._log(f"Executing step: {step_name}")
 
-            # Prepare inputs for this step
-            inputs = self._prepare_inputs(step, outputs, current_file)
-
-            # Execute step
+            # Execute step with label registry
             try:
-                output_path = await self.step_executor.execute_step(
-                    step_name,
-                    inputs,
+                output_paths = await self.step_executor.execute_step(
+                    step_name=step_name,
+                    cli_inputs={},
+                    exogenous_inputs=exogenous_inputs,
+                    previous_outputs=self._get_previous_outputs(step_name),
                 )
             except StepExecutionError as e:
                 print(f"  Error in {step_name}: {e}")
                 raise
 
-            # Track output
-            outputs[step_name] = output_path
-            current_file = output_path
-            self._log(f"Step {step_name} complete: {output_path}")
+            # Update label registry with actual output paths
+            for label, output_path in output_paths.items():
+                self.label_registry.update_label_file(label, output_path)
+                self._log(f"Registered output: {label} -> {output_path}")
+
+            # Update exogenous_inputs with outputs from this step
+            # (these become available for subsequent steps)
+            for label, output_path in output_paths.items():
+                exogenous_inputs[label] = output_path
+
+            self._log(f"Step {step_name} complete")
 
         print("Pipeline execution complete!")
         self._log("Pipeline execution complete")
@@ -129,6 +151,12 @@ class PipelineOrchestrator:
         if self.import_database:
             await self.import_to_typedb(self.output_dir)
 
+        # Return all outputs from registry
+        outputs = {}
+        for label, info in self.label_registry._labels.items():
+            if info.file_path.exists() and info.file_path != nl_spec_path:
+                outputs[label] = info.file_path
+
         return outputs
 
     async def run_step(
@@ -136,7 +164,7 @@ class PipelineOrchestrator:
         step_name: str,
         inputs: Optional[Dict[str, Path]] = None,
     ) -> Path:
-        """Run a single step.
+        """Run a single step (backward compatibility wrapper).
 
         Args:
             step_name: Name of step to run.
@@ -148,18 +176,64 @@ class PipelineOrchestrator:
         Raises:
             StepExecutionError: If step fails.
         """
+        output_paths = await self.run_step_with_inputs(
+            step_name=step_name,
+            cli_inputs={},
+            exogenous_inputs=inputs or {},
+            previous_outputs=self._get_previous_outputs(step_name),
+        )
+        
+        # Return the first output path (for backward compatibility)
+        if output_paths:
+            first_output = list(output_paths.values())[0]
+            self._log(f"Step {step_name} complete: {first_output}")
+            return first_output
+        
+        raise StepExecutionError(f"No outputs generated for step {step_name}")
+
+    async def run_step_with_inputs(
+        self,
+        step_name: str,
+        cli_inputs: Optional[Dict[str, str]] = None,
+        exogenous_inputs: Optional[Dict[str, Path]] = None,
+        previous_outputs: Optional[Dict[str, Path]] = None,
+    ) -> Dict[str, Path]:
+        """Run a single step with the new input format.
+
+        Args:
+            step_name: Name of step to run.
+            cli_inputs: CLI input values (from --input-file, --input-prompt, --input-text).
+            exogenous_inputs: Exogenous input files (from config or CLI overrides).
+            previous_outputs: Outputs from previous steps (for label resolution).
+
+        Returns:
+            Dictionary mapping output labels to output file paths.
+
+        Raises:
+            StepExecutionError: If step fails.
+        """
         self._log(f"Running single step: {step_name}")
         print(f"Executing step: {step_name}")
 
-        # If no inputs provided, try to discover them
-        if inputs is None:
-            step_config = self.prompt_manager.get_step_config(step_name)
-            if step_config:
-                inputs = self._discover_inputs(step_config)
+        # Execute step
+        try:
+            output_paths = await self.step_executor.execute_step(
+                step_name=step_name,
+                cli_inputs=cli_inputs or {},
+                exogenous_inputs=exogenous_inputs or {},
+                previous_outputs=previous_outputs or {},
+            )
+        except StepExecutionError as e:
+            print(f"  Error in {step_name}: {e}")
+            raise
 
-        output_path = await self.step_executor.execute_step(step_name, inputs)
-        self._log(f"Step {step_name} complete: {output_path}")
-        return output_path
+        # Update label registry with actual output paths
+        for label, output_path in output_paths.items():
+            self.label_registry.update_label_file(label, output_path)
+            self._log(f"Registered output: {label} -> {output_path}")
+
+        self._log(f"Step {step_name} complete")
+        return output_paths
 
     def _prepare_inputs(
         self,
@@ -240,6 +314,43 @@ class PipelineOrchestrator:
 
         return inputs
 
+    def _get_previous_outputs(self, current_step: str) -> Dict[str, Path]:
+        """Get outputs from all steps before the current step.
+        
+        This is used to provide previous_outputs to the step executor,
+        which can then resolve label references.
+        
+        Args:
+            current_step: Name of the current step.
+            
+        Returns:
+            Dictionary mapping labels to output file paths for all
+            steps that have executed before the current step.
+        """
+        previous_outputs = {}
+        
+        # Get the order of the current step
+        current_order = None
+        for step in self.steps:
+            if step["name"] == current_step:
+                current_order = step.get("order", 0)
+                break
+        
+        if current_order is None:
+            return previous_outputs
+        
+        # Collect outputs from all steps with lower order
+        for label, info in self.label_registry._labels.items():
+            # Skip if this is the NL spec input (not an output)
+            if info.file_path == Path():
+                continue
+            
+            # Only include outputs from steps that come before the current step
+            if info.order < current_order and info.file_path.exists():
+                previous_outputs[label] = info.file_path
+        
+        return previous_outputs
+    
     def _find_file(
         self,
         outputs: Dict[str, Path],

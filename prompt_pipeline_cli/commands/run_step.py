@@ -237,9 +237,23 @@ def run_step(
 
     # Run step
     try:
-        output_path = asyncio.run(orchestrator.run_step(step_name, inputs))
+        # Convert inputs to the new format
+        exogenous_inputs = {}
+        for label, file_path in inputs.items():
+            exogenous_inputs[label] = Path(file_path)
+        
+        output_paths = asyncio.run(
+            orchestrator.run_step_with_inputs(
+                step_name=step_name,
+                cli_inputs={},
+                exogenous_inputs=exogenous_inputs,
+            )
+        )
+        
         print_success(f"Step {format_step(step_name)} completed successfully!")
-        print_info(f"Output: {output_path}")
+        print_info("Outputs:")
+        for label, output_path in output_paths.items():
+            print_info(f"  {label}: {output_path}")
     except Exception as e:
         print_error(f"Step {format_step(step_name)} failed!")
         raise click.ClickException(f"Step execution failed: {e}")
