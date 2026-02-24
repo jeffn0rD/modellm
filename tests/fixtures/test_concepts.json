@@ -1,0 +1,1259 @@
+[
+  {
+    "type": "Actor",
+    "id": "A1",
+    "label": "EndUser",
+    "categories": [
+      "core"
+    ],
+    "description": "A single person using the application to manage personal to-do tasks on a desktop or laptop browser.",
+    "justification": "Described as a single user who wants a lightweight personal task manager and interacts with tasks, categories, filters, sorting, and preferences.",
+    "anchors": [
+      "AN1",
+      "AN2",
+      "AN3",
+      "AN4",
+      "AN5",
+      "AN6",
+      "AN7",
+      "AN8",
+      "AN9"
+    ],
+    "sourceConceptIds": [
+      "C1",
+      "C5",
+      "C7",
+      "C22"
+    ]
+  },
+  {
+    "type": "Actor",
+    "id": "A2",
+    "label": "TodoApplication",
+    "categories": [
+      "core"
+    ],
+    "description": "The local browser-based to-do list application that stores and manages tasks and user preferences on the user’s machine.",
+    "justification": "Described as a browser-based to-do list app that runs locally, stores data locally, and automatically saves changes.",
+    "anchors": [
+      "AN1",
+      "AN2",
+      "AN8",
+      "AN9",
+      "AN10",
+      "AN13"
+    ],
+    "sourceConceptIds": [
+      "C1",
+      "C2",
+      "C3",
+      "C9",
+      "C10",
+      "C31",
+      "C32",
+      "C33",
+      "C34",
+      "C36",
+      "C42"
+    ]
+  },
+  {
+    "type": "Actor",
+    "id": "A3",
+    "label": "SyncEngine",
+    "categories": [
+      "future",
+      "sync"
+    ],
+    "description": "An optional component responsible for synchronizing task data across multiple devices in an opt-in, privacy-preserving way.",
+    "justification": "Future capability mentions syncing data across multiple devices while keeping privacy and local-first behavior, implying an active synchronization mechanism.",
+    "anchors": [
+      "AN24"
+    ],
+    "sourceConceptIds": [
+      "C73",
+      "C74",
+      "C75"
+    ]
+  },
+  {
+    "type": "Actor",
+    "id": "A4",
+    "label": "SuggestionEngine",
+    "categories": [
+      "future",
+      "analytics"
+    ],
+    "description": "A future analytical component that generates smart suggestions for which tasks to do next based on task attributes and past behavior.",
+    "justification": "Future smart suggestions feature suggests tasks to do next based on due dates, priority, or past behavior, which implies an active recommendation mechanism.",
+    "anchors": [
+      "AN25"
+    ],
+    "sourceConceptIds": [
+      "C76",
+      "C77",
+      "C78",
+      "C79"
+    ]
+  },
+  {
+    "type": "DataEntity",
+    "id": "DE1",
+    "label": "Task",
+    "categories": [
+      "core"
+    ],
+    "description": "A to-do item managed by the application, with at least a title and optionally a description, due date, completion status, and other attributes.",
+    "justification": "Tasks are the central items in the to-do list, created, edited, completed, deleted, filtered, sorted, and persisted.",
+    "anchors": [
+      "AN2",
+      "AN3",
+      "AN5",
+      "AN6",
+      "AN7",
+      "AN11"
+    ],
+    "sourceConceptIds": [
+      "C7",
+      "C10",
+      "C11",
+      "C12",
+      "C13",
+      "C14",
+      "C21",
+      "C24",
+      "C38",
+      "C39"
+    ]
+  },
+  {
+    "type": "DataEntity",
+    "id": "DE2",
+    "label": "Category",
+    "categories": [
+      "core"
+    ],
+    "description": "A simple list or label such as Work or Personal used to organize tasks, with its own lifecycle including creation, renaming, and deletion.",
+    "justification": "The specification describes organizing tasks into simple lists or categories and managing those categories.",
+    "anchors": [
+      "AN4",
+      "AN7"
+    ],
+    "sourceConceptIds": [
+      "C15",
+      "C16",
+      "C17",
+      "C18",
+      "C19",
+      "C27"
+    ]
+  },
+  {
+    "type": "DataEntity",
+    "id": "DE3",
+    "label": "TaskListView",
+    "categories": [
+      "core",
+      "ui"
+    ],
+    "description": "The main UI representation showing all tasks in a list that is easy to scan and interact with.",
+    "justification": "The main list view is explicitly described as showing all tasks and being easy to scan and interact with, and is referenced again for layout customization and saved views.",
+    "anchors": [
+      "AN5",
+      "AN20",
+      "AN26"
+    ],
+    "sourceConceptIds": [
+      "C20",
+      "C21",
+      "C60",
+      "C83"
+    ]
+  },
+  {
+    "type": "DataEntity",
+    "id": "DE4",
+    "label": "FilterSettings",
+    "categories": [
+      "core",
+      "ui"
+    ],
+    "description": "The configuration of filters applied to the task list, including completion status and category filters, which can be remembered between sessions.",
+    "justification": "Filtering by completion status and category is specified, and user preferences for filters should be remembered to provide a useful default view.",
+    "anchors": [
+      "AN7",
+      "AN8"
+    ],
+    "sourceConceptIds": [
+      "C26",
+      "C27",
+      "C31",
+      "C33"
+    ]
+  },
+  {
+    "type": "DataEntity",
+    "id": "DE5",
+    "label": "SortSettings",
+    "categories": [
+      "core",
+      "ui"
+    ],
+    "description": "The configuration of sort options for tasks, such as sorting by creation time, due date, or title, which can be persisted and reused.",
+    "justification": "Sorting by different criteria is described, and sorting preferences should be remembered as part of the default view.",
+    "anchors": [
+      "AN7",
+      "AN8"
+    ],
+    "sourceConceptIds": [
+      "C28",
+      "C29",
+      "C30",
+      "C32",
+      "C33"
+    ]
+  },
+  {
+    "type": "DataEntity",
+    "id": "DE6",
+    "label": "DefaultViewConfiguration",
+    "categories": [
+      "core",
+      "ui"
+    ],
+    "description": "The saved combination of filters, sorting, and possibly layout that determines how the app opens in a useful default view.",
+    "justification": "The app should remember preferences for filters and sorting so it opens in a useful default view, and future features reference saved views and user-defined layouts.",
+    "anchors": [
+      "AN8",
+      "AN20",
+      "AN26"
+    ],
+    "sourceConceptIds": [
+      "C31",
+      "C32",
+      "C33",
+      "C60",
+      "C61",
+      "C83"
+    ]
+  },
+  {
+    "type": "DataEntity",
+    "id": "DE7",
+    "label": "LocalTaskStore",
+    "categories": [
+      "core",
+      "persistence"
+    ],
+    "description": "The locally stored collection of tasks and related configuration that persists between browser sessions on the user’s machine.",
+    "justification": "All data remains on the local machine, with local data storage and automatic saving to ensure tasks persist between sessions.",
+    "anchors": [
+      "AN2",
+      "AN9",
+      "AN10",
+      "AN13"
+    ],
+    "sourceConceptIds": [
+      "C3",
+      "C9",
+      "C10",
+      "C34",
+      "C36",
+      "C42"
+    ]
+  },
+  {
+    "type": "DataEntity",
+    "id": "DE8",
+    "label": "TaskPriority",
+    "categories": [
+      "future"
+    ],
+    "description": "A simple priority level assigned to a task, such as Low, Medium, or High, often represented with visual cues.",
+    "justification": "Future wish list includes task priorities with simple priority levels and visual cues.",
+    "anchors": [
+      "AN17",
+      "AN25"
+    ],
+    "sourceConceptIds": [
+      "C52",
+      "C53",
+      "C78"
+    ]
+  },
+  {
+    "type": "DataEntity",
+    "id": "DE9",
+    "label": "Reminder",
+    "categories": [
+      "future"
+    ],
+    "description": "A local reminder associated with a task’s due date, potentially triggering a pop-up or system notification.",
+    "justification": "Future feature specifies local reminders for due dates to avoid forgetting tasks.",
+    "anchors": [
+      "AN18"
+    ],
+    "sourceConceptIds": [
+      "C54"
+    ]
+  },
+  {
+    "type": "DataEntity",
+    "id": "DE10",
+    "label": "Notification",
+    "categories": [
+      "future"
+    ],
+    "description": "A local pop-up or system notification used to alert the user about reminders or due tasks.",
+    "justification": "Reminders and notifications include pop-up and system notifications for due dates.",
+    "anchors": [
+      "AN18"
+    ],
+    "sourceConceptIds": [
+      "C55",
+      "C56"
+    ]
+  },
+  {
+    "type": "DataEntity",
+    "id": "DE11",
+    "label": "RecurringTask",
+    "categories": [
+      "future"
+    ],
+    "description": "A task configured to repeat automatically according to a recurrence pattern such as daily, weekly, monthly, or custom.",
+    "justification": "The spec describes recurring tasks with the ability to set tasks to repeat according to patterns.",
+    "anchors": [
+      "AN19"
+    ],
+    "sourceConceptIds": [
+      "C57",
+      "C58"
+    ]
+  },
+  {
+    "type": "DataEntity",
+    "id": "DE12",
+    "label": "RecurrencePattern",
+    "categories": [
+      "future"
+    ],
+    "description": "The schedule pattern for a recurring task, such as daily, weekly, monthly, or a custom pattern.",
+    "justification": "Future capability explicitly lists recurrence patterns including daily, weekly, monthly, and custom.",
+    "anchors": [
+      "AN19"
+    ],
+    "sourceConceptIds": [
+      "C58"
+    ]
+  },
+  {
+    "type": "DataEntity",
+    "id": "DE13",
+    "label": "Tag",
+    "categories": [
+      "future"
+    ],
+    "description": "A label attached to tasks, in addition to categories, that supports richer organization and flexible grouping.",
+    "justification": "Richer organization includes tags in addition to categories.",
+    "anchors": [
+      "AN20"
+    ],
+    "sourceConceptIds": [
+      "C59"
+    ]
+  },
+  {
+    "type": "DataEntity",
+    "id": "DE14",
+    "label": "SavedView",
+    "categories": [
+      "future",
+      "ui"
+    ],
+    "description": "A stored configuration of filters, sorting, and possibly layout that can be recalled, such as Today, This Week, or High Priority.",
+    "justification": "Future feature describes saved views like Today, This Week, and High Priority.",
+    "anchors": [
+      "AN20"
+    ],
+    "sourceConceptIds": [
+      "C60",
+      "C61"
+    ]
+  },
+  {
+    "type": "DataEntity",
+    "id": "DE15",
+    "label": "TaskExportFile",
+    "categories": [
+      "future",
+      "persistence"
+    ],
+    "description": "A simple file containing exported task data used for backup or transferring tasks between machines.",
+    "justification": "Data export/import feature mentions exporting tasks to a simple file format and importing them back.",
+    "anchors": [
+      "AN21"
+    ],
+    "sourceConceptIds": [
+      "C62",
+      "C63",
+      "C64"
+    ]
+  },
+  {
+    "type": "DataEntity",
+    "id": "DE16",
+    "label": "SearchQuery",
+    "categories": [
+      "future"
+    ],
+    "description": "A free-text expression and optional filters used to search across task titles and descriptions.",
+    "justification": "Search capability specifies free-text search across titles and descriptions, possibly with filters like only incomplete.",
+    "anchors": [
+      "AN22"
+    ],
+    "sourceConceptIds": [
+      "C65",
+      "C66",
+      "C67",
+      "C68"
+    ]
+  },
+  {
+    "type": "DataEntity",
+    "id": "DE17",
+    "label": "AnalyticsSummary",
+    "categories": [
+      "future",
+      "analytics"
+    ],
+    "description": "A collection of simple statistics about tasks, such as tasks completed per week, overdue counts, streaks, and basic chart data.",
+    "justification": "Analytics/insights feature specifies simple stats like tasks completed per week, overdue counts, streaks, and basic charts.",
+    "anchors": [
+      "AN23"
+    ],
+    "sourceConceptIds": [
+      "C69",
+      "C70",
+      "C71",
+      "C72"
+    ]
+  },
+  {
+    "type": "DataEntity",
+    "id": "DE18",
+    "label": "SyncConfiguration",
+    "categories": [
+      "future",
+      "sync"
+    ],
+    "description": "Settings that control opt-in multi-device synchronization and how privacy and local-first behavior are maintained.",
+    "justification": "Multi-device sync is described as optional/opt-in and must keep privacy and local-first behavior, implying user-controlled sync settings.",
+    "anchors": [
+      "AN24"
+    ],
+    "sourceConceptIds": [
+      "C73",
+      "C74",
+      "C75"
+    ]
+  },
+  {
+    "type": "DataEntity",
+    "id": "DE19",
+    "label": "SuggestionRule",
+    "categories": [
+      "future",
+      "analytics"
+    ],
+    "description": "Criteria used by the suggestion mechanism to recommend tasks, based on due dates, priority, and past behavior.",
+    "justification": "Smart suggestions are based on due dates, priority, and past behavior, implying configurable or implicit rules.",
+    "anchors": [
+      "AN25"
+    ],
+    "sourceConceptIds": [
+      "C77",
+      "C78",
+      "C79"
+    ]
+  },
+  {
+    "type": "DataEntity",
+    "id": "DE20",
+    "label": "ThemeSettings",
+    "categories": [
+      "future",
+      "ui"
+    ],
+    "description": "User-selected appearance options including light or dark mode and customizable colors.",
+    "justification": "Theming and customization include light/dark mode and customizable colors.",
+    "anchors": [
+      "AN26"
+    ],
+    "sourceConceptIds": [
+      "C80",
+      "C81",
+      "C82"
+    ]
+  },
+  {
+    "type": "DataEntity",
+    "id": "DE21",
+    "label": "LayoutConfiguration",
+    "categories": [
+      "future",
+      "ui"
+    ],
+    "description": "User-defined configuration for the layout of the main task view.",
+    "justification": "Future feature mentions user-defined layouts for the main task view.",
+    "anchors": [
+      "AN26"
+    ],
+    "sourceConceptIds": [
+      "C83"
+    ]
+  },
+  {
+    "type": "DataEntity",
+    "id": "DE22",
+    "label": "UserAccount",
+    "categories": [
+      "excluded"
+    ],
+    "description": "A multi-user account or login identity, explicitly not required for this single-user application.",
+    "justification": "The app is for a single user with no logins or accounts, and multi-user features are explicitly out of scope.",
+    "anchors": [
+      "AN2",
+      "AN14"
+    ],
+    "sourceConceptIds": [
+      "C5",
+      "C6",
+      "C45"
+    ]
+  },
+  {
+    "type": "DataEntity",
+    "id": "DE23",
+    "label": "AuthenticationCredential",
+    "categories": [
+      "excluded"
+    ],
+    "description": "Credentials such as passwords or tokens that would be used for authentication, explicitly not required in this version.",
+    "justification": "Authentication is explicitly listed as not required.",
+    "anchors": [
+      "AN14"
+    ],
+    "sourceConceptIds": [
+      "C46"
+    ]
+  },
+  {
+    "type": "DataEntity",
+    "id": "DE24",
+    "label": "SharedList",
+    "categories": [
+      "excluded"
+    ],
+    "description": "A task list shared among multiple users for collaboration, explicitly out of scope.",
+    "justification": "Collaboration or shared lists are listed as not required.",
+    "anchors": [
+      "AN15"
+    ],
+    "sourceConceptIds": [
+      "C47",
+      "C48"
+    ]
+  },
+  {
+    "type": "DataEntity",
+    "id": "DE25",
+    "label": "ExternalIntegrationConfiguration",
+    "categories": [
+      "excluded"
+    ],
+    "description": "Settings or connections for integrating the to-do application with external services or technologies, excluded in the first version.",
+    "justification": "Integration with specific external services or technologies in the first version is explicitly excluded.",
+    "anchors": [
+      "AN1",
+      "AN16"
+    ],
+    "sourceConceptIds": [
+      "C4",
+      "C51"
+    ]
+  },
+  {
+    "type": "Action",
+    "id": "ACT1",
+    "label": "CreateTask",
+    "categories": [
+      "core"
+    ],
+    "description": "Allow the user to create a new task with at least a title and optionally a description and due date.",
+    "justification": "The specification states the user can create simple to-do items with a title, description, and optional due date.",
+    "anchors": [
+      "AN3"
+    ],
+    "sourceConceptIds": [
+      "C11",
+      "C12",
+      "C13",
+      "C14"
+    ]
+  },
+  {
+    "type": "Action",
+    "id": "ACT2",
+    "label": "EditTask",
+    "categories": [
+      "core"
+    ],
+    "description": "Allow the user to modify an existing task’s attributes such as title, description, due date, or category.",
+    "justification": "Task editing is explicitly mentioned as a core capability.",
+    "anchors": [
+      "AN6"
+    ],
+    "sourceConceptIds": [
+      "C23"
+    ]
+  },
+  {
+    "type": "Action",
+    "id": "ACT3",
+    "label": "DeleteTask",
+    "categories": [
+      "core"
+    ],
+    "description": "Allow the user to remove an existing task from the application.",
+    "justification": "Deleting tasks is listed alongside editing and completion management.",
+    "anchors": [
+      "AN6"
+    ],
+    "sourceConceptIds": [
+      "C25"
+    ]
+  },
+  {
+    "type": "Action",
+    "id": "ACT4",
+    "label": "SetTaskCompletionStatus",
+    "categories": [
+      "core"
+    ],
+    "description": "Allow the user to mark tasks as complete or incomplete and update their completion status.",
+    "justification": "The user should be able to mark tasks complete or incomplete, and completion status is referenced in filtering.",
+    "anchors": [
+      "AN6",
+      "AN7"
+    ],
+    "sourceConceptIds": [
+      "C24",
+      "C26"
+    ]
+  },
+  {
+    "type": "Action",
+    "id": "ACT5",
+    "label": "CreateCategory",
+    "categories": [
+      "core"
+    ],
+    "description": "Allow the user to create new categories or lists for organizing tasks.",
+    "justification": "The user can create categories used for organizing tasks.",
+    "anchors": [
+      "AN4"
+    ],
+    "sourceConceptIds": [
+      "C15",
+      "C17"
+    ]
+  },
+  {
+    "type": "Action",
+    "id": "ACT6",
+    "label": "RenameCategory",
+    "categories": [
+      "core"
+    ],
+    "description": "Allow the user to change the name of an existing category.",
+    "justification": "Renaming categories is mentioned as part of basic category lifecycle.",
+    "anchors": [
+      "AN4"
+    ],
+    "sourceConceptIds": [
+      "C16",
+      "C18"
+    ]
+  },
+  {
+    "type": "Action",
+    "id": "ACT7",
+    "label": "DeleteCategory",
+    "categories": [
+      "core"
+    ],
+    "description": "Allow the user to delete an existing category.",
+    "justification": "Deleting categories is explicitly mentioned.",
+    "anchors": [
+      "AN4"
+    ],
+    "sourceConceptIds": [
+      "C19"
+    ]
+  },
+  {
+    "type": "Action",
+    "id": "ACT8",
+    "label": "AssignTaskToCategory",
+    "categories": [
+      "core"
+    ],
+    "description": "Allow the user to organize tasks by assigning them to categories or lists.",
+    "justification": "Tasks are organized into simple lists or categories, implying assigning tasks to categories.",
+    "anchors": [
+      "AN4"
+    ],
+    "sourceConceptIds": [
+      "C15"
+    ]
+  },
+  {
+    "type": "Action",
+    "id": "ACT9",
+    "label": "ViewTaskList",
+    "categories": [
+      "core",
+      "ui"
+    ],
+    "description": "Display all relevant tasks in the main list view for the user to scan and interact with.",
+    "justification": "Showing all tasks in a main list view that is easy to scan and interact with is a core capability.",
+    "anchors": [
+      "AN5"
+    ],
+    "sourceConceptIds": [
+      "C20",
+      "C21",
+      "C22"
+    ]
+  },
+  {
+    "type": "Action",
+    "id": "ACT10",
+    "label": "FilterTasksByCompletionStatus",
+    "categories": [
+      "core",
+      "ui"
+    ],
+    "description": "Allow the user to filter tasks in the list by completion status, such as all, only incomplete, or only completed.",
+    "justification": "Filtering by completion status is one of the listed basic filtering capabilities.",
+    "anchors": [
+      "AN7"
+    ],
+    "sourceConceptIds": [
+      "C26"
+    ]
+  },
+  {
+    "type": "Action",
+    "id": "ACT11",
+    "label": "FilterTasksByCategory",
+    "categories": [
+      "core",
+      "ui"
+    ],
+    "description": "Allow the user to filter the visible tasks by selected category.",
+    "justification": "Filtering by category is listed as part of basic filtering.",
+    "anchors": [
+      "AN7"
+    ],
+    "sourceConceptIds": [
+      "C27"
+    ]
+  },
+  {
+    "type": "Action",
+    "id": "ACT12",
+    "label": "SortTasksByCreationTime",
+    "categories": [
+      "core",
+      "ui"
+    ],
+    "description": "Allow the user to sort tasks in the list according to their creation time.",
+    "justification": "Sorting by creation time is explicitly mentioned.",
+    "anchors": [
+      "AN7"
+    ],
+    "sourceConceptIds": [
+      "C28"
+    ]
+  },
+  {
+    "type": "Action",
+    "id": "ACT13",
+    "label": "SortTasksByDueDate",
+    "categories": [
+      "core",
+      "ui"
+    ],
+    "description": "Allow the user to sort tasks in the list according to their due date.",
+    "justification": "Sorting by due date is explicitly mentioned.",
+    "anchors": [
+      "AN7"
+    ],
+    "sourceConceptIds": [
+      "C29"
+    ]
+  },
+  {
+    "type": "Action",
+    "id": "ACT14",
+    "label": "SortTasksByTitle",
+    "categories": [
+      "core",
+      "ui"
+    ],
+    "description": "Allow the user to sort tasks in the list alphabetically by their title.",
+    "justification": "Sorting by title is explicitly mentioned.",
+    "anchors": [
+      "AN7"
+    ],
+    "sourceConceptIds": [
+      "C30"
+    ]
+  },
+  {
+    "type": "Action",
+    "id": "ACT15",
+    "label": "PersistFilterSettings",
+    "categories": [
+      "core",
+      "persistence",
+      "ui"
+    ],
+    "description": "Automatically remember the user’s chosen filter settings for use in subsequent sessions.",
+    "justification": "The app should remember the user’s preferences for filters so it opens in a useful default view.",
+    "anchors": [
+      "AN8",
+      "AN9"
+    ],
+    "sourceConceptIds": [
+      "C31",
+      "C33",
+      "C34"
+    ]
+  },
+  {
+    "type": "Action",
+    "id": "ACT16",
+    "label": "PersistSortSettings",
+    "categories": [
+      "core",
+      "persistence",
+      "ui"
+    ],
+    "description": "Automatically remember the user’s chosen sorting options for use in subsequent sessions.",
+    "justification": "The app should remember the user’s preferences for sorting so it opens in a useful default view.",
+    "anchors": [
+      "AN8",
+      "AN9"
+    ],
+    "sourceConceptIds": [
+      "C32",
+      "C33",
+      "C34"
+    ]
+  },
+  {
+    "type": "Action",
+    "id": "ACT17",
+    "label": "ConfigureDefaultView",
+    "categories": [
+      "core",
+      "ui"
+    ],
+    "description": "Determine and store the combination of filters and sorting that defines the user’s default view when the app opens.",
+    "justification": "Remembering preferences for filters and sorting so the app opens in a useful default view implies configuring a default view.",
+    "anchors": [
+      "AN8"
+    ],
+    "sourceConceptIds": [
+      "C31",
+      "C32",
+      "C33"
+    ]
+  },
+  {
+    "type": "Action",
+    "id": "ACT18",
+    "label": "AutosaveChanges",
+    "categories": [
+      "core",
+      "persistence"
+    ],
+    "description": "Save changes to tasks and preferences automatically without requiring the user to click an explicit Save button.",
+    "justification": "The specification requires automatic saving and explicitly states that there should be no Save button.",
+    "anchors": [
+      "AN9"
+    ],
+    "sourceConceptIds": [
+      "C34",
+      "C35"
+    ]
+  },
+  {
+    "type": "Action",
+    "id": "ACT19",
+    "label": "AssignTaskPriority",
+    "categories": [
+      "future"
+    ],
+    "description": "Allow the user to set or change the priority level of a task, such as Low, Medium, or High.",
+    "justification": "Task priorities with simple priority levels are described as a future feature.",
+    "anchors": [
+      "AN17"
+    ],
+    "sourceConceptIds": [
+      "C52"
+    ]
+  },
+  {
+    "type": "Action",
+    "id": "ACT20",
+    "label": "ConfigurePriorityVisualCue",
+    "categories": [
+      "future",
+      "ui"
+    ],
+    "description": "Display or configure visual cues corresponding to different task priority levels.",
+    "justification": "Future feature mentions visual cues associated with priority levels.",
+    "anchors": [
+      "AN17"
+    ],
+    "sourceConceptIds": [
+      "C53"
+    ]
+  },
+  {
+    "type": "Action",
+    "id": "ACT21",
+    "label": "ConfigureReminder",
+    "categories": [
+      "future"
+    ],
+    "description": "Allow the user to set up local reminders for task due dates.",
+    "justification": "Local reminders for due dates are specified under future features.",
+    "anchors": [
+      "AN18"
+    ],
+    "sourceConceptIds": [
+      "C54"
+    ]
+  },
+  {
+    "type": "Action",
+    "id": "ACT22",
+    "label": "TriggerNotification",
+    "categories": [
+      "future"
+    ],
+    "description": "Generate a pop-up or system notification when a reminder or due date condition is met.",
+    "justification": "Future feature mentions pop-up or system notifications for reminders.",
+    "anchors": [
+      "AN18"
+    ],
+    "sourceConceptIds": [
+      "C55",
+      "C56"
+    ]
+  },
+  {
+    "type": "Action",
+    "id": "ACT23",
+    "label": "DefineRecurrencePattern",
+    "categories": [
+      "future"
+    ],
+    "description": "Allow the user to specify how often a recurring task repeats, such as daily, weekly, monthly, or custom patterns.",
+    "justification": "The ability to set tasks to repeat with specified patterns is part of the recurring tasks feature.",
+    "anchors": [
+      "AN19"
+    ],
+    "sourceConceptIds": [
+      "C57",
+      "C58"
+    ]
+  },
+  {
+    "type": "Action",
+    "id": "ACT24",
+    "label": "ApplyRecurrenceToTask",
+    "categories": [
+      "future"
+    ],
+    "description": "Attach a recurrence pattern to a task so that new instances are generated according to the schedule.",
+    "justification": "Recurring tasks imply applying recurrence patterns to specific tasks.",
+    "anchors": [
+      "AN19"
+    ],
+    "sourceConceptIds": [
+      "C57"
+    ]
+  },
+  {
+    "type": "Action",
+    "id": "ACT25",
+    "label": "AssignTagToTask",
+    "categories": [
+      "future"
+    ],
+    "description": "Allow the user to tag tasks with one or more tags to support richer organization.",
+    "justification": "Richer organization includes tags in addition to categories, implying assigning tags to tasks.",
+    "anchors": [
+      "AN20"
+    ],
+    "sourceConceptIds": [
+      "C59"
+    ]
+  },
+  {
+    "type": "Action",
+    "id": "ACT26",
+    "label": "CreateSavedView",
+    "categories": [
+      "future",
+      "ui"
+    ],
+    "description": "Allow the user to define and save a view configuration, such as Today, This Week, or High Priority.",
+    "justification": "Saved views are mentioned as a future feature with examples like Today and This Week.",
+    "anchors": [
+      "AN20"
+    ],
+    "sourceConceptIds": [
+      "C60",
+      "C61"
+    ]
+  },
+  {
+    "type": "Action",
+    "id": "ACT27",
+    "label": "ExportTasksToFile",
+    "categories": [
+      "future",
+      "persistence"
+    ],
+    "description": "Export task data to a simple file format for backup or transferring between machines.",
+    "justification": "Data export/import specifies exporting tasks to a simple file format.",
+    "anchors": [
+      "AN21"
+    ],
+    "sourceConceptIds": [
+      "C62",
+      "C64"
+    ]
+  },
+  {
+    "type": "Action",
+    "id": "ACT28",
+    "label": "ImportTasksFromFile",
+    "categories": [
+      "future",
+      "persistence"
+    ],
+    "description": "Import tasks from a previously exported file into the application.",
+    "justification": "Data export/import specifies importing tasks back from a file.",
+    "anchors": [
+      "AN21"
+    ],
+    "sourceConceptIds": [
+      "C63",
+      "C64"
+    ]
+  },
+  {
+    "type": "Action",
+    "id": "ACT29",
+    "label": "SearchTasks",
+    "categories": [
+      "future"
+    ],
+    "description": "Perform a free-text search across task titles and descriptions, optionally with filters such as only incomplete tasks.",
+    "justification": "Search feature describes free-text search across titles and descriptions with possible filters.",
+    "anchors": [
+      "AN22"
+    ],
+    "sourceConceptIds": [
+      "C65",
+      "C66",
+      "C67",
+      "C68"
+    ]
+  },
+  {
+    "type": "Action",
+    "id": "ACT30",
+    "label": "ComputeAnalyticsSummary",
+    "categories": [
+      "future",
+      "analytics"
+    ],
+    "description": "Calculate simple statistics about tasks, such as tasks completed per week, overdue counts, and completion streaks.",
+    "justification": "Analytics/insights feature lists the desired statistics.",
+    "anchors": [
+      "AN23"
+    ],
+    "sourceConceptIds": [
+      "C69",
+      "C70",
+      "C71"
+    ]
+  },
+  {
+    "type": "Action",
+    "id": "ACT31",
+    "label": "RenderAnalyticsCharts",
+    "categories": [
+      "future",
+      "analytics",
+      "ui"
+    ],
+    "description": "Display basic charts that visualize the task analytics summary.",
+    "justification": "The feature mentions maybe basic charts as part of analytics and insights.",
+    "anchors": [
+      "AN23"
+    ],
+    "sourceConceptIds": [
+      "C72"
+    ]
+  },
+  {
+    "type": "Action",
+    "id": "ACT32",
+    "label": "EnableMultiDeviceSync",
+    "categories": [
+      "future",
+      "sync"
+    ],
+    "description": "Allow the user to opt in to synchronizing data across multiple devices and configure sync options.",
+    "justification": "Multi-device sync is described as optional/opt-in with privacy and local-first behavior.",
+    "anchors": [
+      "AN24"
+    ],
+    "sourceConceptIds": [
+      "C73",
+      "C74"
+    ]
+  },
+  {
+    "type": "Action",
+    "id": "ACT33",
+    "label": "SynchronizeDataAcrossDevices",
+    "categories": [
+      "future",
+      "sync"
+    ],
+    "description": "Exchange and reconcile task data between multiple devices such as home and work PCs while preserving privacy and local-first principles.",
+    "justification": "Sync data across multiple devices is explicitly described, along with preserving privacy and local-first behavior.",
+    "anchors": [
+      "AN24"
+    ],
+    "sourceConceptIds": [
+      "C73",
+      "C75"
+    ]
+  },
+  {
+    "type": "Action",
+    "id": "ACT34",
+    "label": "GenerateSmartSuggestions",
+    "categories": [
+      "future",
+      "analytics"
+    ],
+    "description": "Produce suggestions for which tasks the user should do next based on due dates, priority, and past behavior.",
+    "justification": "Smart suggestions feature explicitly describes suggesting tasks based on due dates, priority, or past behavior.",
+    "anchors": [
+      "AN25"
+    ],
+    "sourceConceptIds": [
+      "C76",
+      "C77",
+      "C78",
+      "C79"
+    ]
+  },
+  {
+    "type": "Action",
+    "id": "ACT35",
+    "label": "SelectTheme",
+    "categories": [
+      "future",
+      "ui"
+    ],
+    "description": "Allow the user to choose between light and dark modes for the application.",
+    "justification": "Theming and customization include light/dark mode as options.",
+    "anchors": [
+      "AN26"
+    ],
+    "sourceConceptIds": [
+      "C80",
+      "C81"
+    ]
+  },
+  {
+    "type": "Action",
+    "id": "ACT36",
+    "label": "CustomizeColors",
+    "categories": [
+      "future",
+      "ui"
+    ],
+    "description": "Allow the user to customize the colors used in the application interface.",
+    "justification": "Customizable colors are explicitly mentioned under theming and customization.",
+    "anchors": [
+      "AN26"
+    ],
+    "sourceConceptIds": [
+      "C82"
+    ]
+  },
+  {
+    "type": "Action",
+    "id": "ACT37",
+    "label": "CustomizeMainViewLayout",
+    "categories": [
+      "future",
+      "ui"
+    ],
+    "description": "Allow the user to define or adjust the layout of the main task view.",
+    "justification": "User-defined layouts for the main task view are specified as a nice-to-have feature.",
+    "anchors": [
+      "AN26"
+    ],
+    "sourceConceptIds": [
+      "C83"
+    ]
+  },
+  {
+    "type": "Action",
+    "id": "ACT38",
+    "label": "OperateOffline",
+    "categories": [
+      "core",
+      "nonfunctional"
+    ],
+    "description": "Run the application and perform all core operations without requiring a network connection after installation.",
+    "justification": "The application must work entirely offline with no network needed after installation.",
+    "anchors": [
+      "AN1",
+      "AN10",
+      "AN13"
+    ],
+    "sourceConceptIds": [
+      "C3",
+      "C36",
+      "C37",
+      "C42"
+    ]
+  }
+]

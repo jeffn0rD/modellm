@@ -30,8 +30,14 @@ class ConceptSummaryCompressionStrategy(CompressionStrategy):
     Compression ratio: ~0.4-0.5 (50-60% reduction)
     """
     
-    # Entity type groupings
+    # Entity type groupings (both singular and plural forms)
     ENTITY_TYPES = ["Actors", "Actions", "DataEntities", "Categories"]
+    ENTITY_TYPE_MAP = {
+        "Actor": "Actors",
+        "Action": "Actions",
+        "DataEntity": "DataEntities",
+        "Category": "Categories",
+    }
     
     LEVEL_CONFIG = {
         1: {"include_description": True, "include_relationships": True, "max_desc_length": 200},
@@ -198,11 +204,13 @@ class ConceptSummaryCompressionStrategy(CompressionStrategy):
         Returns:
             Markdown-formatted concept summary.
         """
-        # Group concepts by type
+        # Group concepts by type (convert to plural form)
         by_type: dict[str, list[dict[str, Any]]] = {}
         
         for concept in concepts:
-            concept_type = concept.get("type", "Unknown")
+            singular_type = concept.get("type", "Unknown")
+            # Convert to plural form if mapping exists
+            concept_type = self.ENTITY_TYPE_MAP.get(singular_type, singular_type)
             if concept_type not in by_type:
                 by_type[concept_type] = []
             by_type[concept_type].append(concept)

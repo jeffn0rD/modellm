@@ -1,5 +1,5 @@
 """
-Full compression strategy (no compression).
+Zero compression strategy (no compression).
 
 This strategy returns the content as-is without any compression.
 Use this as a baseline or when no compression is needed.
@@ -13,7 +13,7 @@ from prompt_pipeline.compression.strategies.base import (
 )
 
 
-class FullCompressionStrategy(CompressionStrategy):
+class ZeroCompressionStrategy(CompressionStrategy):
     """
     No compression strategy.
     
@@ -26,7 +26,7 @@ class FullCompressionStrategy(CompressionStrategy):
     @property
     def name(self) -> str:
         """Return the name of the compression strategy."""
-        return "full"
+        return "zero"
     
     @property
     def description(self) -> str:

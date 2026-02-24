@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
+from prompt_pipeline.compression import CompressionManager, CompressionContext, CompressionConfig
 from prompt_pipeline.llm_client import OpenRouterClient
 from prompt_pipeline.prompt_manager import PromptManager
 from prompt_pipeline.tag_replacement import TagReplacer
@@ -151,7 +152,7 @@ class StepExecutor:
         # Get inputs array from step config
         inputs_config = step_config.get("inputs", [])
         
-        variables = self._prepare_variables_from_config(
+        variables, compression_metrics = self._prepare_variables_from_config(
             inputs_config=inputs_config,
             cli_inputs=cli_inputs,
             exogenous_inputs=exogenous_inputs,
@@ -194,6 +195,21 @@ class StepExecutor:
             print_header("PROMPT", Color.CYAN)
             # Print prompt with encoding error handling
             safe_print(format_prompt(filled_prompt))
+            
+            # Display compression metrics if available
+            if compression_metrics:
+                print_header("COMPRESSION METRICS", Color.YELLOW)
+                total_original = sum(m.get("original_length", 0) for m in compression_metrics.values())
+                total_compressed = sum(m.get("compressed_length", 0) for m in compression_metrics.values())
+                overall_ratio = total_compressed / total_original if total_original > 0 else 1.0
+                
+                print_info(f"Overall compression: {total_original} -> {total_compressed} ({overall_ratio:.3f} ratio)")
+                for label, metrics in compression_metrics.items():
+                    strategy = metrics.get("strategy", "none")
+                    if strategy != "none":
+                        ratio = metrics.get("compression_ratio", 1.0)
+                        print_info(f"  {label}: {strategy} ({ratio:.3f} ratio)")
+            
             print_header(f"Calling model: {format_model(model)}", Color.MAGENTA)
         
         # Show progress indicator
@@ -262,7 +278,7 @@ class StepExecutor:
         exogenous_inputs: Dict[str, Path],
         previous_outputs: Dict[str, Path],
         step_config: Dict[str, Any],
-    ) -> Dict[str, Any]:
+    ) -> tuple[Dict[str, Any], Dict[str, Any]]:
         """Prepare variables for prompt substitution from new input format.
 
         Args:
@@ -273,9 +289,10 @@ class StepExecutor:
             step_config: Step configuration.
 
         Returns:
-            Dictionary mapping labels to content for substitution.
+            Tuple of (variables_dict, compression_metrics_dict)
         """
         variables = {}
+        compression_metrics = {}
         
         for input_spec in inputs_config:
             label = input_spec.get("label")
@@ -294,10 +311,11 @@ class StepExecutor:
                 step_config=step_config,
             )
             
-            # Apply compression if specified (placeholder - full compression returns content as-is)
+            # Apply compression if specified
             if content is not None:
-                compressed_content = self._apply_compression(content, compression, input_type)
+                compressed_content, metrics = self._apply_compression(content, compression, input_type, label)
                 variables[label] = compressed_content
+                compression_metrics[label] = metrics
             elif self.force:
                 # If force mode and input missing, substitute empty string
                 variables[label] = ""
@@ -306,7 +324,7 @@ class StepExecutor:
                     f"Missing required input for label '{label}' from source '{source}'"
                 )
         
-        return variables
+        return variables, compression_metrics
 
     def _resolve_input_content(
         self,
@@ -338,6 +356,15 @@ class StepExecutor:
         Returns:
             Content string or None if not found.
         """
+        # Check CLI inputs first (highest priority)
+        if label in cli_inputs:
+            return cli_inputs[label]
+        
+        # Check exogenous inputs (second priority)
+        if label in exogenous_inputs:
+            file_path = exogenous_inputs[label]
+            return self._load_file_content(file_path, input_type)
+        
         # Source is in format "label:NAME" for previous step outputs
         if source.startswith("label:"):
             ref_label = source[6:]  # Remove "label:" prefix
@@ -358,16 +385,6 @@ class StepExecutor:
                 file_path = exogenous_inputs[label]
                 return self._load_file_content(file_path, input_type)
             return None
-        
-        # Default: try to resolve from various sources
-        # First check CLI inputs
-        if label in cli_inputs:
-            return cli_inputs[label]
-        
-        # Then check exogenous inputs
-        if label in exogenous_inputs:
-            file_path = exogenous_inputs[label]
-            return self._load_file_content(file_path, input_type)
         
         # Finally check previous outputs
         if label in previous_outputs:
@@ -407,29 +424,71 @@ class StepExecutor:
         content: str,
         compression: str,
         input_type: str,
-    ) -> str:
+        label: Optional[str] = None,
+    ) -> tuple[str, dict]:
         """Apply compression to content.
-
-        Currently supports 'full' (no compression) as placeholder.
-        Full compression returns content as-is.
 
         Args:
             content: Content to compress.
             compression: Compression strategy name.
             input_type: Input type (md, json, yaml, text).
+            label: Optional label for the input (for better logging).
 
         Returns:
-            Compressed content.
+            Tuple of (compressed_content, metrics_dict)
         """
-        # Placeholder: full compression returns content as-is
-        # Actual compression strategies will be implemented in later tasks
+        # Handle no compression
         if compression in ("full", "none", None, ""):
-            return content
+            return content, {
+                "original_length": len(content),
+                "compressed_length": len(content),
+                "compression_ratio": 1.0,
+                "strategy": "none",
+            }
         
-        # For now, return content as-is for unknown compression strategies
-        # This will be enhanced when compression strategies are implemented
-        self._log(f"Compression '{compression}' not implemented, using full content")
-        return content
+        # Apply compression using CompressionManager
+        try:
+            # Create compression manager
+            manager = CompressionManager()
+            
+            # Create compression context
+            context = CompressionContext(
+                content_type=input_type,
+                label=label or "input",
+                level=2,  # Default to medium compression
+            )
+            
+            # Apply compression
+            result = manager.compress(content, compression, context)
+            
+            # Build metrics
+            metrics = {
+                "original_length": result.original_length,
+                "compressed_length": result.compressed_length,
+                "compression_ratio": result.compression_ratio,
+                "strategy": compression,
+            }
+            
+            # Log compression metrics
+            if self.verbose:
+                self._log(
+                    f"Applied '{compression}' compression: "
+                    f"{result.original_length} -> {result.compressed_length} "
+                    f"({result.compression_ratio:.3f} ratio)"
+                )
+            
+            return result.content, metrics
+            
+        except Exception as e:
+            # If compression fails, log and return original content
+            self._log(f"Compression '{compression}' failed: {e}, using full content")
+            return content, {
+                "original_length": len(content),
+                "compressed_length": len(content),
+                "compression_ratio": 1.0,
+                "strategy": "none",
+                "error": str(e),
+            }
 
     def _save_outputs(
         self,

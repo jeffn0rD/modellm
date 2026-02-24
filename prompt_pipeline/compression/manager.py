@@ -14,7 +14,7 @@ from prompt_pipeline.compression.strategies.base import (
     CompressionResult,
 )
 from prompt_pipeline.compression.strategies import (
-    FullCompressionStrategy,
+    ZeroCompressionStrategy,
     AnchorIndexCompressionStrategy,
     ConceptSummaryCompressionStrategy,
     HierarchicalCompressionStrategy,
@@ -27,7 +27,7 @@ from prompt_pipeline.compression.strategies import (
 class CompressionConfig:
     """Configuration for compression operations."""
     
-    strategy: str = "full"
+    strategy: str = "zero"
     """Name of the compression strategy to use."""
     
     level: int = 1
@@ -61,7 +61,7 @@ class CompressionMetrics:
     original_length: int = 0
     compressed_length: int = 0
     compression_ratio: float = 1.0
-    strategy_used: str = "full"
+    strategy_used: str = "zero"
     level: int = 1
     metadata: Optional[Dict[str, Any]] = None
     
@@ -109,7 +109,7 @@ class CompressionManager:
     def _register_default_strategies(self) -> None:
         """Register the default compression strategies."""
         strategies = [
-            FullCompressionStrategy(),
+            ZeroCompressionStrategy(),
             AnchorIndexCompressionStrategy(),
             ConceptSummaryCompressionStrategy(),
             HierarchicalCompressionStrategy(),
@@ -459,7 +459,7 @@ class CompressionManager:
         """
         # Very small content - no compression needed
         if original_length < 1000:
-            return "full"
+            return "zero"
         
         # Large content with specific target
         if target_compression is not None:
@@ -481,7 +481,7 @@ class CompressionManager:
                     return "hierarchical"
             else:
                 # Light compression
-                return "full"
+                return "zero"
         
         # Default recommendations based on content type
         if content_type == "yaml":
@@ -491,7 +491,7 @@ class CompressionManager:
         elif content_type == "md":
             return "hierarchical"
         else:
-            return "full"
+            return "zero"
     
     def compose_strategies(
         self,

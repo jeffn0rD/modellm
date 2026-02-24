@@ -10,7 +10,7 @@ from prompt_pipeline.compression.strategies.base import (
     CompressionResult,
     CompressionContext,
 )
-from prompt_pipeline.compression.strategies.full import FullCompressionStrategy
+from prompt_pipeline.compression.strategies.zero_compression import ZeroCompressionStrategy
 from prompt_pipeline.compression.strategies.anchor_index import AnchorIndexCompressionStrategy
 from prompt_pipeline.compression.strategies.concept_summary import ConceptSummaryCompressionStrategy
 from prompt_pipeline.compression.strategies.hierarchical import HierarchicalCompressionStrategy
@@ -26,7 +26,7 @@ __all__ = [
     "CompressionStrategy",
     "CompressionResult",
     "CompressionContext",
-    "FullCompressionStrategy",
+    "ZeroCompressionStrategy",
     "AnchorIndexCompressionStrategy",
     "ConceptSummaryCompressionStrategy",
     "HierarchicalCompressionStrategy",

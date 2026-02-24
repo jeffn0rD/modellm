@@ -2,7 +2,7 @@
 Compression strategies for the prompt pipeline.
 
 Each strategy implements a different compression approach:
-- full: No compression (returns content as-is)
+- zero: No compression (returns content as-is)
 - anchor_index: Extract anchor definitions from YAML specs
 - concept_summary: Generate concept summary tables from JSON
 - hierarchical: Layered compression with summaries
@@ -11,7 +11,7 @@ Each strategy implements a different compression approach:
 """
 
 from prompt_pipeline.compression.strategies.base import CompressionStrategy
-from prompt_pipeline.compression.strategies.full import FullCompressionStrategy
+from prompt_pipeline.compression.strategies.zero_compression import ZeroCompressionStrategy
 from prompt_pipeline.compression.strategies.anchor_index import AnchorIndexCompressionStrategy
 from prompt_pipeline.compression.strategies.concept_summary import ConceptSummaryCompressionStrategy
 from prompt_pipeline.compression.strategies.hierarchical import HierarchicalCompressionStrategy
@@ -20,7 +20,7 @@ from prompt_pipeline.compression.strategies.differential import DifferentialComp
 
 __all__ = [
     "CompressionStrategy",
-    "FullCompressionStrategy",
+    "ZeroCompressionStrategy",
     "AnchorIndexCompressionStrategy",
     "ConceptSummaryCompressionStrategy",
     "HierarchicalCompressionStrategy",

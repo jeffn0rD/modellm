@@ -39,7 +39,7 @@ class PreambleGenerator:
     # Format descriptions for different compression types
     COMPRESSION_DESCRIPTIONS = {
         "none": "Complete {type}",
-        "full": "Complete {type}",
+        "zero": "Complete {type}",
         "anchor_index": "anchor index format (AN1: definition, AN2: definition...)",
         "concept_summary": "concept summary format (markdown tables grouped by entity type)",
         "hierarchical": "hierarchical format",
@@ -121,17 +121,21 @@ class PreambleGenerator:
         # Get the base type description
         type_desc = self.TYPE_DESCRIPTIONS.get(inp.type, inp.type)
         
+        # If a description is provided, use it
+        if inp.description:
+            return inp.description
+        
         # Get compression description
         compression_desc = self.COMPRESSION_DESCRIPTIONS.get(
             inp.compression, 
             f"{inp.compression} format"
         )
         
-        # For uncompressed formats, mention the format
-        if inp.compression in ["none", "full"]:
-            return f"{type_desc} ({compression_desc})"
+        # For uncompressed formats, just show the type
+        if inp.compression in ["none", "zero"]:
+            return type_desc
         else:
-            # For compressed formats, just describe the format
+            # For compressed formats, describe the format
             # (the model knows the format, just needs to know how to parse it)
             return compression_desc
     

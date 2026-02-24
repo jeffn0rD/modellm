@@ -1,0 +1,675 @@
+specification:
+  id: SPEC1
+  title: "Browser-Based Local To-Do List Application"
+  version: "0.1"
+  description: >
+    A simple, single-user, browser-based to-do list application that runs entirely
+    locally on a user's PC without requiring external online services. The app provides
+    basic task management capabilities including creation, organization, filtering, and
+    persistence, with all data stored locally.
+
+  metadata:
+    source_style: "informal executive-style requirements"
+    intended_use: "stepwise refinement toward formal/domain model"
+    anchor_id_pattern: "AN<number>"
+    section_numbering: "hierarchical (1, 1.1, 1.2, ...)"
+    concept_assignment_rule: >
+      An Anchor can be related to more than one Concept, but a Concept should
+      be related to only one Anchor.
+
+  sections:
+    - section_id: S1
+      section_number: "1"
+      order: 1
+      title: "Overall Purpose and Context"
+      label: "OVERALL_PURPOSE_CONTEXT"
+      text_blocks:
+        - anchor_id: AN1
+          label: "PRIMARY_APPLICATION_PURPOSE"
+          type: "goal"
+          semantic_cues:
+            - application_purpose
+            - local_execution
+            - browser_based
+            - offline_first
+          text: >
+            We need a simple, browser-based to-do list app that runs locally on a user's PC and doesn't depend on any external online services.
+          concepts:
+            - concept_id: C1
+              name: "Todo_list_application"
+              description: "The browser-based application for managing to-do items locally."
+            - concept_id: C2
+              name: "Local_execution_environment"
+              description: "The user's PC where the application runs without external dependencies."
+
+        - anchor_id: AN2
+          label: "TARGET_USER_PROFILE"
+          type: "goal"
+          semantic_cues:
+            - single_user
+            - no_authentication
+            - personal_use
+            - lightweight_tool
+          text: >
+            The app is for a single user (no logins or accounts) who just wants a lightweight personal task manager.
+          concepts:
+            - concept_id: C3
+              name: "Single_user"
+              description: "The individual person using the application for personal task management."
+            - concept_id: C4
+              name: "User_session"
+              description: "A usage session without requiring login or account authentication."
+
+        - anchor_id: AN3
+          label: "DEPLOYMENT_AND_PERSISTENCE"
+          type: "capability"
+          semantic_cues:
+            - browser_compatibility
+            - local_storage
+            - data_persistence
+            - desktop_platform
+          text: >
+            It should open in a standard web browser (desktop/laptop) and keep all data stored locally so that tasks persist between sessions.
+          concepts:
+            - concept_id: C5
+              name: "Web_browser"
+              description: "Standard desktop/laptop web browser used to run the application."
+            - concept_id: C6
+              name: "Local_data_storage"
+              description: "Local storage mechanism for persisting task data between sessions."
+            - concept_id: C7
+              name: "Task_persistence"
+              description: "The capability to retain task data across application sessions."
+
+    - section_id: S2
+      section_number: "2"
+      order: 2
+      title: "Core Capabilities"
+      label: "CORE_CAPABILITIES"
+      sections:
+        - section_id: S3
+          section_number: "2.1"
+          order: 1
+          title: "Task Creation and Management"
+          label: "TASK_CREATION_MANAGEMENT"
+          text_blocks:
+            - anchor_id: AN4
+              label: "CREATE_TODO_ITEMS"
+              type: "capability"
+              semantic_cues:
+                - task_creation
+                - data_entry
+                - task_attributes
+                - optional_fields
+              text: >
+                Let the user create simple to-do items with at least a title; ideally also a description and an optional due date.
+              concepts:
+                - concept_id: C8
+                  name: "Todo_item"
+                  description: "An individual task or to-do entry created by the user."
+                - concept_id: C9
+                  name: "Task_title"
+                  description: "The required title field of a to-do item."
+                - concept_id: C10
+                  name: "Task_description"
+                  description: "An optional description field providing additional details about the task."
+                - concept_id: C11
+                  name: "Task_due_date"
+                  description: "An optional due date field indicating when the task should be completed."
+
+            - anchor_id: AN5
+              label: "TASK_EDITING"
+              type: "capability"
+              semantic_cues:
+                - task_modification
+                - data_update
+                - user_interaction
+              text: >
+                Let the user edit tasks, mark them complete/incomplete, and delete them.
+              concepts:
+                - concept_id: C12
+                  name: "Task_edit_action"
+                  description: "The action of modifying an existing task's properties."
+                - concept_id: C13
+                  name: "Task_completion_status"
+                  description: "A status indicator showing whether a task is complete or incomplete."
+                - concept_id: C14
+                  name: "Task_deletion_action"
+                  description: "The action of permanently removing a task from the system."
+
+        - section_id: S4
+          section_number: "2.2"
+          order: 2
+          title: "Task Organization"
+          label: "TASK_ORGANIZATION"
+          text_blocks:
+            - anchor_id: AN6
+              label: "CATEGORY_ORGANIZATION"
+              type: "capability"
+              semantic_cues:
+                - task_categorization
+                - list_organization
+                - category_management
+                - user_defined_structure
+              text: >
+                Allow basic organization of tasks into simple lists or categories (e.g., Work, Personal), and let the user create/rename/delete these categories.
+              concepts:
+                - concept_id: C15
+                  name: "Task_category"
+                  description: "A user-defined grouping or list for organizing related tasks (e.g., Work, Personal)."
+                - concept_id: C16
+                  name: "Category_creation_action"
+                  description: "The action of creating a new task category."
+                - concept_id: C17
+                  name: "Category_rename_action"
+                  description: "The action of changing the name of an existing category."
+                - concept_id: C18
+                  name: "Category_deletion_action"
+                  description: "The action of removing a category from the system."
+
+        - section_id: S5
+          section_number: "2.3"
+          order: 3
+          title: "Task Viewing and Display"
+          label: "TASK_VIEWING_DISPLAY"
+          text_blocks:
+            - anchor_id: AN7
+              label: "MAIN_LIST_VIEW"
+              type: "capability"
+              semantic_cues:
+                - task_display
+                - list_view
+                - user_interface
+                - task_scanning
+              text: >
+                Show all tasks in a main list view that is easy to scan and interact with.
+              concepts:
+                - concept_id: C19
+                  name: "Main_task_list_view"
+                  description: "The primary user interface displaying all tasks in a scannable list format."
+                - concept_id: C20
+                  name: "Task_display_item"
+                  description: "A visual representation of a task within the list view."
+
+        - section_id: S6
+          section_number: "2.4"
+          order: 4
+          title: "Filtering and Sorting"
+          label: "FILTERING_SORTING"
+          text_blocks:
+            - anchor_id: AN8
+              label: "COMPLETION_STATUS_FILTER"
+              type: "capability"
+              semantic_cues:
+                - task_filtering
+                - completion_status
+                - view_customization
+              text: >
+                Filter by completion status (all / only incomplete / only completed).
+              concepts:
+                - concept_id: C21
+                  name: "Completion_status_filter"
+                  description: "A filter allowing users to view all tasks, only incomplete tasks, or only completed tasks."
+
+            - anchor_id: AN9
+              label: "CATEGORY_FILTER"
+              type: "capability"
+              semantic_cues:
+                - task_filtering
+                - category_based
+                - view_customization
+              text: >
+                Filter by category.
+              concepts:
+                - concept_id: C22
+                  name: "Category_filter"
+                  description: "A filter allowing users to view tasks belonging to specific categories."
+
+            - anchor_id: AN10
+              label: "TASK_SORTING"
+              type: "capability"
+              semantic_cues:
+                - task_sorting
+                - sort_criteria
+                - view_customization
+              text: >
+                Sort by creation time, due date, or title.
+              concepts:
+                - concept_id: C23
+                  name: "Task_sort_criteria"
+                  description: "The criteria by which tasks can be ordered: creation time, due date, or title."
+                - concept_id: C24
+                  name: "Task_creation_time"
+                  description: "The timestamp when a task was created, used for sorting."
+
+            - anchor_id: AN11
+              label: "PREFERENCE_PERSISTENCE"
+              type: "capability"
+              semantic_cues:
+                - user_preferences
+                - settings_persistence
+                - default_view
+              text: >
+                Remember the user's preferences for filters/sorting so the app opens in a useful default view.
+              concepts:
+                - concept_id: C25
+                  name: "User_filter_preferences"
+                  description: "Saved user preferences for filter settings that persist across sessions."
+                - concept_id: C26
+                  name: "User_sort_preferences"
+                  description: "Saved user preferences for sort settings that persist across sessions."
+
+        - section_id: S7
+          section_number: "2.5"
+          order: 5
+          title: "Data Persistence"
+          label: "DATA_PERSISTENCE"
+          text_blocks:
+            - anchor_id: AN12
+              label: "AUTOMATIC_SAVE"
+              type: "capability"
+              semantic_cues:
+                - automatic_persistence
+                - data_saving
+                - user_experience
+                - no_manual_save
+              text: >
+                Save changes automatically; the user shouldn't have to click a "Save" button.
+              concepts:
+                - concept_id: C27
+                  name: "Automatic_save_mechanism"
+                  description: "The system capability to automatically persist changes without requiring explicit user save actions."
+
+    - section_id: S8
+      section_number: "3"
+      order: 3
+      title: "Non-Functional Expectations"
+      label: "NON_FUNCTIONAL_EXPECTATIONS"
+      text_blocks:
+        - anchor_id: AN13
+          label: "OFFLINE_OPERATION"
+          type: "constraint"
+          semantic_cues:
+            - offline_capability
+            - no_network_dependency
+            - local_operation
+          text: >
+            Everything works offline; no network needed after installation.
+          concepts:
+            - concept_id: C28
+              name: "Offline_operation_requirement"
+              description: "The constraint that all functionality must work without network connectivity after initial installation."
+
+        - anchor_id: AN14
+          label: "PERFORMANCE_RESPONSIVENESS"
+          type: "constraint"
+          semantic_cues:
+            - performance_requirement
+            - responsiveness
+            - scalability
+            - typical_usage
+          text: >
+            Reasonably fast and responsive for typical personal usage (up to a few thousand tasks).
+          concepts:
+            - concept_id: C29
+              name: "Performance_requirement"
+              description: "The expectation that the application remains fast and responsive for typical personal use cases."
+            - concept_id: C30
+              name: "Task_volume_capacity"
+              description: "The expected capacity to handle up to a few thousand tasks efficiently."
+
+        - anchor_id: AN15
+          label: "USABILITY_SIMPLICITY"
+          type: "constraint"
+          semantic_cues:
+            - usability_requirement
+            - intuitive_interface
+            - user_experience
+            - no_documentation_needed
+          text: >
+            Simple, intuitive UI that most users can figure out without documentation.
+          concepts:
+            - concept_id: C31
+              name: "Usability_requirement"
+              description: "The constraint that the user interface must be simple and intuitive enough to use without documentation."
+
+        - anchor_id: AN16
+          label: "DATA_PRIVACY_LOCAL"
+          type: "constraint"
+          semantic_cues:
+            - data_privacy
+            - local_data_only
+            - no_network_transmission
+            - security_requirement
+          text: >
+            All data remains on the local machine; no background syncing or sending data over the network.
+          concepts:
+            - concept_id: C32
+              name: "Data_privacy_requirement"
+              description: "The constraint that all user data must remain on the local machine with no network transmission."
+            - concept_id: C33
+              name: "No_background_sync"
+              description: "The explicit prohibition of background data synchronization or network communication."
+
+    - section_id: S9
+      section_number: "4"
+      order: 4
+      title: "Out of Scope"
+      label: "OUT_OF_SCOPE"
+      text_blocks:
+        - anchor_id: AN17
+          label: "NO_MULTI_USER"
+          type: "constraint"
+          semantic_cues:
+            - excluded_feature
+            - no_authentication
+            - single_user_only
+          text: >
+            Multi-user features or authentication.
+          concepts:
+            - concept_id: C34
+              name: "Multi_user_exclusion"
+              description: "The explicit exclusion of multi-user capabilities and authentication features."
+
+        - anchor_id: AN18
+          label: "NO_COLLABORATION"
+          type: "constraint"
+          semantic_cues:
+            - excluded_feature
+            - no_sharing
+            - single_user_only
+          text: >
+            Collaboration or shared lists.
+          concepts:
+            - concept_id: C35
+              name: "Collaboration_exclusion"
+              description: "The explicit exclusion of collaboration features and shared list capabilities."
+
+        - anchor_id: AN19
+          label: "NO_MOBILE_SPECIFIC"
+          type: "constraint"
+          semantic_cues:
+            - excluded_feature
+            - desktop_only
+            - platform_limitation
+          text: >
+            Mobile-specific design or native mobile apps (desktop browser use is sufficient).
+          concepts:
+            - concept_id: C36
+              name: "Mobile_platform_exclusion"
+              description: "The explicit exclusion of mobile-specific design and native mobile applications."
+
+        - anchor_id: AN20
+          label: "NO_EXTERNAL_INTEGRATIONS"
+          type: "constraint"
+          semantic_cues:
+            - excluded_feature
+            - no_integrations
+            - standalone_application
+          text: >
+            Integration with specific external services or technologies in the first version.
+          concepts:
+            - concept_id: C37
+              name: "External_integration_exclusion"
+              description: "The explicit exclusion of integrations with external services or technologies in the initial version."
+
+    - section_id: S10
+      section_number: "5"
+      order: 5
+      title: "Future Wish List"
+      label: "FUTURE_WISH_LIST"
+      sections:
+        - section_id: S11
+          section_number: "5.1"
+          order: 1
+          title: "Task Priorities"
+          label: "FUTURE_TASK_PRIORITIES"
+          text_blocks:
+            - anchor_id: AN21
+              label: "PRIORITY_LEVELS"
+              type: "future-capability"
+              semantic_cues:
+                - task_prioritization
+                - priority_levels
+                - visual_indicators
+                - future_enhancement
+              text: >
+                Simple priority levels (e.g., Low / Medium / High) with visual cues.
+              concepts:
+                - concept_id: C38
+                  name: "Task_priority_level"
+                  description: "A future capability to assign priority levels (Low, Medium, High) to tasks."
+                - concept_id: C39
+                  name: "Priority_visual_cue"
+                  description: "Visual indicators in the UI to represent task priority levels."
+
+        - section_id: S12
+          section_number: "5.2"
+          order: 2
+          title: "Reminders and Notifications"
+          label: "FUTURE_REMINDERS_NOTIFICATIONS"
+          text_blocks:
+            - anchor_id: AN22
+              label: "LOCAL_REMINDERS"
+              type: "future-capability"
+              semantic_cues:
+                - notification_system
+                - due_date_reminders
+                - local_notifications
+                - future_enhancement
+              text: >
+                Local reminders for due dates (pop-up or system notification) so tasks don't get forgotten.
+              concepts:
+                - concept_id: C40
+                  name: "Task_reminder"
+                  description: "A future capability to provide local reminders for tasks with due dates."
+                - concept_id: C41
+                  name: "System_notification"
+                  description: "Pop-up or system-level notifications to alert users about upcoming or overdue tasks."
+
+        - section_id: S13
+          section_number: "5.3"
+          order: 3
+          title: "Recurring Tasks"
+          label: "FUTURE_RECURRING_TASKS"
+          text_blocks:
+            - anchor_id: AN23
+              label: "TASK_RECURRENCE"
+              type: "future-capability"
+              semantic_cues:
+                - recurring_tasks
+                - task_scheduling
+                - recurrence_patterns
+                - future_enhancement
+              text: >
+                Ability to set tasks to repeat (daily, weekly, monthly, custom patterns).
+              concepts:
+                - concept_id: C42
+                  name: "Recurring_task"
+                  description: "A future capability allowing tasks to repeat on a schedule."
+                - concept_id: C43
+                  name: "Recurrence_pattern"
+                  description: "The schedule definition for recurring tasks (daily, weekly, monthly, custom)."
+
+        - section_id: S14
+          section_number: "5.4"
+          order: 4
+          title: "Richer Organization"
+          label: "FUTURE_RICHER_ORGANIZATION"
+          text_blocks:
+            - anchor_id: AN24
+              label: "TAGS_AND_SAVED_VIEWS"
+              type: "future-capability"
+              semantic_cues:
+                - task_tagging
+                - saved_views
+                - advanced_organization
+                - future_enhancement
+              text: >
+                Tags in addition to categories, plus saved views (e.g., "Today", "This Week", "High Priority").
+              concepts:
+                - concept_id: C44
+                  name: "Task_tag"
+                  description: "A future capability to add tags to tasks for flexible organization beyond categories."
+                - concept_id: C45
+                  name: "Saved_view"
+                  description: "Predefined or custom views for filtering tasks (e.g., Today, This Week, High Priority)."
+
+        - section_id: S15
+          section_number: "5.5"
+          order: 5
+          title: "Data Export and Import"
+          label: "FUTURE_DATA_EXPORT_IMPORT"
+          text_blocks:
+            - anchor_id: AN25
+              label: "EXPORT_IMPORT_CAPABILITY"
+              type: "future-capability"
+              semantic_cues:
+                - data_export
+                - data_import
+                - backup_capability
+                - data_portability
+                - future_enhancement
+              text: >
+                Export tasks to a simple file format, and import them back (for backup or moving between machines).
+              concepts:
+                - concept_id: C46
+                  name: "Task_export_action"
+                  description: "A future capability to export tasks to a file format for backup or transfer."
+                - concept_id: C47
+                  name: "Task_import_action"
+                  description: "A future capability to import tasks from a file back into the application."
+                - concept_id: C48
+                  name: "Export_file_format"
+                  description: "The file format used for exporting and importing task data."
+
+        - section_id: S16
+          section_number: "5.6"
+          order: 6
+          title: "Search"
+          label: "FUTURE_SEARCH"
+          text_blocks:
+            - anchor_id: AN26
+              label: "TEXT_SEARCH"
+              type: "future-capability"
+              semantic_cues:
+                - search_capability
+                - text_search
+                - filtered_search
+                - future_enhancement
+              text: >
+                Free-text search across titles and descriptions, possibly with filters (e.g., only incomplete).
+              concepts:
+                - concept_id: C49
+                  name: "Task_search_capability"
+                  description: "A future capability to perform free-text search across task titles and descriptions."
+                - concept_id: C50
+                  name: "Search_filter"
+                  description: "Additional filters that can be applied to search results (e.g., only incomplete tasks)."
+
+        - section_id: S17
+          section_number: "5.7"
+          order: 7
+          title: "Analytics and Insights"
+          label: "FUTURE_ANALYTICS_INSIGHTS"
+          text_blocks:
+            - anchor_id: AN27
+              label: "TASK_ANALYTICS"
+              type: "future-capability"
+              semantic_cues:
+                - analytics
+                - task_statistics
+                - reporting
+                - data_visualization
+                - future_enhancement
+              text: >
+                Simple stats like tasks completed per week, overdue counts, streaks, maybe basic charts.
+              concepts:
+                - concept_id: C51
+                  name: "Task_completion_statistics"
+                  description: "Analytics showing tasks completed over time periods (e.g., per week)."
+                - concept_id: C52
+                  name: "Overdue_task_count"
+                  description: "A metric tracking the number of overdue tasks."
+                - concept_id: C53
+                  name: "Completion_streak"
+                  description: "A metric tracking consecutive periods of task completion activity."
+                - concept_id: C54
+                  name: "Analytics_chart"
+                  description: "Visual charts displaying task statistics and trends."
+
+        - section_id: S18
+          section_number: "5.8"
+          order: 8
+          title: "Multi-Device Sync"
+          label: "FUTURE_MULTI_DEVICE_SYNC"
+          text_blocks:
+            - anchor_id: AN28
+              label: "OPTIONAL_SYNC"
+              type: "future-capability"
+              semantic_cues:
+                - data_synchronization
+                - multi_device
+                - optional_feature
+                - privacy_preserving
+                - future_enhancement
+              text: >
+                Sync data across multiple devices (e.g., home and work PC), while keeping privacy and local-first behavior.
+              concepts:
+                - concept_id: C55
+                  name: "Multi_device_sync"
+                  description: "An optional future capability to synchronize task data across multiple devices."
+                - concept_id: C56
+                  name: "Privacy_preserving_sync"
+                  description: "Synchronization mechanism that maintains privacy and local-first principles."
+
+        - section_id: S19
+          section_number: "5.9"
+          order: 9
+          title: "Smart Suggestions"
+          label: "FUTURE_SMART_SUGGESTIONS"
+          text_blocks:
+            - anchor_id: AN29
+              label: "TASK_SUGGESTIONS"
+              type: "future-capability"
+              semantic_cues:
+                - intelligent_suggestions
+                - task_prioritization
+                - behavior_analysis
+                - future_enhancement
+              text: >
+                Suggest tasks to do next based on due dates, priority, or past behavior.
+              concepts:
+                - concept_id: C57
+                  name: "Task_suggestion_engine"
+                  description: "A future intelligent system that suggests which tasks to work on next."
+                - concept_id: C58
+                  name: "Suggestion_criteria"
+                  description: "The factors used to generate suggestions (due dates, priority, past behavior)."
+
+        - section_id: S20
+          section_number: "5.10"
+          order: 10
+          title: "Theming and Customization"
+          label: "FUTURE_THEMING_CUSTOMIZATION"
+          text_blocks:
+            - anchor_id: AN30
+              label: "UI_CUSTOMIZATION"
+              type: "future-capability"
+              semantic_cues:
+                - ui_theming
+                - customization
+                - visual_preferences
+                - future_enhancement
+              text: >
+                Light/dark mode, customizable colors, and maybe user-defined layouts for the main task view.
+              concepts:
+                - concept_id: C59
+                  name: "UI_theme"
+                  description: "A future capability to switch between light and dark display modes."
+                - concept_id: C60
+                  name: "Color_customization"
+                  description: "User ability to customize interface colors."
+                - concept_id: C61
+                  name: "Layout_customization"
+                  description: "User ability to define custom layouts for the main task view."

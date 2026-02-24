@@ -82,7 +82,7 @@ class PipelineOrchestrator:
         in the label registry with placeholder paths. Actual file paths
         will be updated as steps execute.
         """
-        config = self.prompt_manager.get_config()
+        config = self.prompt_manager.steps_config
         if config and "output_labels" in config:
             self.label_registry.merge_from_config(config)
             self._log(f"Initialized label registry with {len(self.label_registry)} labels")
