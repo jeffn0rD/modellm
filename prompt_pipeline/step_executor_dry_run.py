@@ -179,7 +179,10 @@ def construct_prompt_without_api_call(
         
         if content is not None:
             # Apply compression if specified
-            compressed_content, metrics = _apply_compression(content, compression, input_type, label)
+            compression_params = input_spec.get("compression_params", {})
+            compressed_content, metrics = _apply_compression(
+                content, compression, input_type, label, compression_params
+            )
             variables[label] = compressed_content
             compression_metrics[label] = metrics
         elif force:
@@ -375,6 +378,7 @@ def _apply_compression(
     compression: str,
     input_type: str,
     label: Optional[str] = None,
+    compression_params: Optional[Dict[str, Any]] = None,
 ) -> tuple[str, dict]:
     """Apply compression to content.
     
@@ -383,6 +387,7 @@ def _apply_compression(
         compression: Compression strategy name.
         input_type: Input type (md, json, yaml, text).
         label: Optional label for the input (for better logging).
+        compression_params: Optional compression parameters (e.g., truncation_length).
     
     Returns:
         Tuple of (compressed_content, metrics_dict)
@@ -401,6 +406,10 @@ def _apply_compression(
             strategy=compression,
             level=2,  # Default to medium compression
         )
+        
+        # Extract truncation_length from compression_params if provided
+        if compression_params and "truncation_length" in compression_params:
+            config.truncation_length = compression_params["truncation_length"]
         
         # Create compression context
         context = CompressionContext(

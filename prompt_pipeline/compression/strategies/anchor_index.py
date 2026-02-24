@@ -63,7 +63,7 @@ class AnchorIndexCompressionStrategy(CompressionStrategy):
         Returns:
             CompressionResult with the anchor index.
         """
-        anchors = self._extract_anchors(content, context.level)
+        anchors = self._extract_anchors(content, context)
         
         if not anchors:
             # No anchors found, return full content
@@ -136,19 +136,20 @@ class AnchorIndexCompressionStrategy(CompressionStrategy):
         return ["yaml", "yml", "json", "md", "text"]
     
     def _extract_anchors(
-        self, content: str, level: int
+        self, content: str, context: CompressionContext
     ) -> dict[str, dict[str, Any]]:
         """
         Extract anchor definitions from content.
         
         Args:
             content: The content to extract from.
-            level: Compression level (1-3).
+            context: Context information for the compression.
         
         Returns:
             Dictionary of anchor_id -> anchor_info.
         """
         anchors: dict[str, dict[str, Any]] = {}
+        level = context.level
         
         # Try to parse as YAML using PyYAML
         try:
@@ -183,9 +184,20 @@ class AnchorIndexCompressionStrategy(CompressionStrategy):
                         label_value = obj.get('label', None)
                         type_value = obj.get('type', None)
                         
+                        # Get truncation length from context, or use level-based defaults
+                        truncation_length = None
+                        if context.extra and "truncation_length" in context.extra:
+                            truncation_length = context.extra["truncation_length"]
+                        
                         # For level 1, include more context
                         # For level 3, include minimal context
-                        if level == 1:
+                        if truncation_length is not None:
+                            # Use custom truncation length
+                            if len(text_value) > truncation_length:
+                                display_value = text_value[:truncation_length] + "..."
+                            else:
+                                display_value = text_value
+                        elif level == 1:
                             # Include full value
                             display_value = text_value
                         elif level == 2:
@@ -347,9 +359,20 @@ class AnchorIndexCompressionStrategy(CompressionStrategy):
                     if not text_value:
                         text_value = f"[Anchor {anchor_id} - no text found]"
                     
+                    # Get truncation length from context, or use level-based defaults
+                    truncation_length = None
+                    if context.extra and "truncation_length" in context.extra:
+                        truncation_length = context.extra["truncation_length"]
+                    
                     # For level 1, include more context
                     # For level 3, include minimal context
-                    if level == 1:
+                    if truncation_length is not None:
+                        # Use custom truncation length
+                        if len(text_value) > truncation_length:
+                            display_value = text_value[:truncation_length] + "..."
+                        else:
+                            display_value = text_value
+                    elif level == 1:
                         # Include full value
                         display_value = text_value
                     elif level == 2:

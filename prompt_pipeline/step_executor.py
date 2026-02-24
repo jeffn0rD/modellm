@@ -299,6 +299,7 @@ class StepExecutor:
             input_type = input_spec.get("type", "text")
             source = input_spec.get("source", "cli")
             compression = input_spec.get("compression", "full")
+            compression_params = input_spec.get("compression_params", {})
             
             # Resolve content based on source type
             content = self._resolve_input_content(
@@ -313,7 +314,9 @@ class StepExecutor:
             
             # Apply compression if specified
             if content is not None:
-                compressed_content, metrics = self._apply_compression(content, compression, input_type, label)
+                compressed_content, metrics = self._apply_compression(
+                    content, compression, input_type, label, compression_params
+                )
                 variables[label] = compressed_content
                 compression_metrics[label] = metrics
             elif self.force:
@@ -425,6 +428,7 @@ class StepExecutor:
         compression: str,
         input_type: str,
         label: Optional[str] = None,
+        compression_params: Optional[Dict[str, Any]] = None,
     ) -> tuple[str, dict]:
         """Apply compression to content.
 
@@ -433,6 +437,7 @@ class StepExecutor:
             compression: Compression strategy name.
             input_type: Input type (md, json, yaml, text).
             label: Optional label for the input (for better logging).
+            compression_params: Optional compression parameters (e.g., truncation_length).
 
         Returns:
             Tuple of (compressed_content, metrics_dict)
@@ -451,6 +456,16 @@ class StepExecutor:
             # Create compression manager
             manager = CompressionManager()
             
+            # Create compression config
+            config = CompressionConfig(
+                strategy=compression,
+                level=2,  # Default to medium compression
+            )
+            
+            # Extract truncation_length from compression_params if provided
+            if compression_params and "truncation_length" in compression_params:
+                config.truncation_length = compression_params["truncation_length"]
+            
             # Create compression context
             context = CompressionContext(
                 content_type=input_type,
@@ -459,7 +474,7 @@ class StepExecutor:
             )
             
             # Apply compression
-            result = manager.compress(content, compression, context)
+            result = manager.compress(content, config)
             
             # Build metrics
             metrics = {

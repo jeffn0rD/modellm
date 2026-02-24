@@ -36,6 +36,9 @@ class CompressionConfig:
     preserve_full: bool = False
     """Whether to preserve full content alongside compressed version."""
     
+    truncation_length: Optional[int] = None
+    """Custom truncation length for strategies that support it. If None, uses strategy defaults."""
+    
     metadata: Optional[Dict[str, Any]] = None
     """Additional strategy-specific configuration."""
     
@@ -43,6 +46,8 @@ class CompressionConfig:
         """Validate configuration."""
         if self.level < 1 or self.level > 3:
             raise ValueError(f"Compression level must be between 1 and 3, got {self.level}")
+        if self.truncation_length is not None and self.truncation_length < 0:
+            raise ValueError(f"Truncation length must be non-negative, got {self.truncation_length}")
         if self.level == 1:
             # Light compression - typically use less aggressive strategies
             pass
@@ -385,12 +390,23 @@ class CompressionManager:
         label = context.get("label") if context else None
         extra = context.get("extra") if context else None
         
+        # Build extra context with truncation_length if specified
+        extra_context = {}
+        if config.truncation_length is not None:
+            extra_context["truncation_length"] = config.truncation_length
+        
+        if config.metadata:
+            extra_context.update(config.metadata)
+        
+        if extra:
+            extra_context.update(extra)
+        
         return CompressionContext(
             content_type=content_type,
             label=label,
             level=config.level,
             preserve_full=config.preserve_full,
-            extra={**config.metadata, **(extra or {})} if config.metadata else extra,
+            extra=extra_context if extra_context else None,
         )
     
     def _validate_content_type(
