@@ -112,7 +112,7 @@ class TestCLIDryRun:
         assert result.returncode != 0
         
         # Should show missing input error
-        assert "Missing required input" in result.stderr or "Missing required input" in result.stdout
+        assert "MISSING INPUT ERROR" in result.stderr or "MISSING INPUT ERROR" in result.stdout
     
     def test_dry_run_with_force_flag(self):
         """Test that --dry-run-prompt with --force works without all inputs."""

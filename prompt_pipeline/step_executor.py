@@ -2,6 +2,7 @@
 
 import json
 import os
+import re
 import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
@@ -31,8 +32,10 @@ from prompt_pipeline.validation import (
     ValidationResult,
     YAMLValidator,
     AggregationsValidator,
+    YAMLSchemaValidator,
 )
 from prompt_pipeline.validation.json_validator import JSONValidator
+import yaml
 
 
 def safe_print(text: str) -> None:
@@ -226,44 +229,76 @@ class StepExecutor:
         
         self._log(f"LLM response received ({len(response)} chars)")
 
-        # Save outputs and collect output paths with labels
-        output_paths = self._save_outputs(response, step_config)
+        # Get output labels from step config
+        output_configs = step_config.get("outputs", [])
+        output_paths = {}
 
-        self._log(f"Output saved to: {list(output_paths.values())}")
+        # Process each output
+        for output_config in output_configs:
+            output_label = output_config.get('label')
+            
+            # Get filename and type from data_entities
+            data_entity = self.prompt_manager.get_data_entity(output_label)
+            if not data_entity:
+                raise StepExecutionError(
+                    f"No data_entity defined for output label '{output_label}'"
+                )
+            
+            filename = data_entity.get('filename')
+            output_type = data_entity.get('type')
+            
+            # Convert response if needed (e.g., JSON to YAML)
+            processed_response = self._convert_response_if_needed(
+                response, output_label
+            )
+            
+            # Save to file
+            output_path = self.output_dir / filename
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            with open(output_path, 'w', encoding='utf-8') as f:
+                f.write(processed_response)
+            
+            output_paths[output_label] = output_path
+            self._log(f"Saved output '{output_label}' to {filename}")
 
         # Validate output if not skipped
-        if not self.skip_validation:
-            self._log("Validating output...")
-            validation_result = self._validate_output(response, step_config)
-            if not validation_result.is_valid():
-                # Build detailed error message
-                error_details = []
-                if validation_result.errors:
-                    error_details.append("Errors:")
-                    for error in validation_result.errors:
-                        error_details.append(f"  - {error}")
-                if validation_result.warnings:
-                    error_details.append("Warnings:")
-                    for warning in validation_result.warnings:
-                        error_details.append(f"  ⚠ {warning}")
+        if not self.skip_validation and step_config.get('validation', {}).get('enabled', False):
+            self._log("Validating outputs...")
+            
+            # Validate each output
+            for output_config in output_configs:
+                output_label = output_config.get('label')
+                output_path = output_paths[output_label]
+                data_entity = self.prompt_manager.get_data_entity(output_label)
+                output_type = data_entity.get('type')
                 
-                error_msg = f"Validation failed for {step_name}\n" + "\n".join(error_details)
+                validation_result = self._validate_output(
+                    output_path, output_type, data_entity, step_name
+                )
                 
-                if self.skip_validation:
-                    # Development mode: warn but continue
-                    self._log(f"Warning: {error_msg}")
-                else:
-                    # Production mode: fail (but file is already saved)
+                if not validation_result.is_valid:
+                    # Output is already saved (as requested)
+                    error_details = []
+                    if validation_result.errors:
+                        error_details.append("Errors:")
+                        for error in validation_result.errors:
+                            error_details.append(f"  - {error}")
+                    
+                    error_msg = f"Step '{step_name}' failed validation for output '{output_label}'\n" + "\n".join(error_details)
+                    
+                    print_error(
+                        f"✗ Validation failed for {output_label}!\n"
+                        f"  Output saved to: {output_path}\n"
+                        f"  Errors:\n" + "\n".join(validation_result.errors)
+                    )
+                    
                     raise StepExecutionError(
                         error_msg,
                         validation_result.errors,
                         validation_result.warnings,
                     )
-            else:
-                self._log("Validation passed")
-        else:
-            self._log("Validation skipped")
-
+        
         return output_paths
 
     def _log(self, message: str) -> None:
@@ -643,99 +678,207 @@ class StepExecutor:
 
         return model
 
-    def _validate_output(
+    def _extract_json_from_response(
         self,
-        content: str,
-        step_config: Dict[str, Any],
-    ) -> ValidationResult:
-        """Validate step output based on configured schema.
+        response: str,
+        output_label: str,
+    ) -> str:
+        """
+        Extract JSON from LLM response if it contains reasoning section.
+
+        Some prompts output reasoning followed by JSON in format:
+        **Part 1 – Reasoning**: ...
+        **Part 2 – Final JSON**:
+        <json>
 
         Args:
-            content: Output content to validate.
-            step_config: Step configuration.
+            response: LLM response string.
+            output_label: Output label for this response.
+
+        Returns:
+            Extracted JSON string.
+        """
+        # Try to find JSON markers in the response
+        # Common patterns:
+        # - "Final JSON:" or "**Part 2 – Final JSON**:"
+        # - "Final JSON array:" or just JSON starting with [ or {
+        
+        json_patterns = [
+            r'\*\*Part 2 – Final JSON\*\*:?\s*(\{[\s\S]*\}|\[[\s\S]*\])',
+            r'Final JSON:?\s*(\{[\s\S]*\}|\[[\s\S]*\])',
+            r'Final JSON array:?\s*(\{[\s\S]*\}|\[[\s\S]*\])',
+            r'JSON Response:?\s*(\{[\s\S]*\}|\[[\s\S]*\])',
+        ]
+        
+        for pattern in json_patterns:
+            match = re.search(pattern, response, re.IGNORECASE | re.DOTALL)
+            if match:
+                json_str = match.group(1).strip()
+                # Validate it's actually valid JSON
+                try:
+                    json.loads(json_str)
+                    return json_str
+                except json.JSONDecodeError:
+                    continue
+        
+        # If no pattern matched, try to find valid JSON in the response
+        # Look for first { or [ and try to parse from there
+        for i, char in enumerate(response):
+            if char in '{[':
+                try:
+                    json_str = response[i:]
+                    json.loads(json_str)
+                    return json_str
+                except json.JSONDecodeError:
+                    continue
+        
+        # If still no JSON found, check if response itself is valid JSON
+        try:
+            json.loads(response)
+            return response
+        except json.JSONDecodeError:
+            # No valid JSON found
+            return None
+    
+    def _convert_response_if_needed(
+        self,
+        response: str,
+        output_label: str,
+    ) -> str:
+        """
+        Convert LLM response if conversion is required.
+        E.g., JSON back to YAML.
+
+        Args:
+            response: LLM response string.
+            output_label: Output label for this response.
+
+        Returns:
+            Processed response string.
+        """
+        # Get data entity for this output label
+        data_entity = self.prompt_manager.get_data_entity(output_label)
+        if not data_entity:
+            return response
+        
+        # Check if we need to convert based on data_entity type
+        output_type = data_entity.get('type')
+        
+        # For JSON outputs, extract JSON from response if needed
+        if output_type == 'json':
+            extracted_json = self._extract_json_from_response(response, output_label)
+            if extracted_json:
+                return extracted_json
+        
+        # For YAML outputs that were converted to JSON, convert back
+        if output_type == 'yaml':
+            # First, try to extract JSON from the response
+            extracted_json = self._extract_json_from_response(response, output_label)
+            if extracted_json:
+                response = extracted_json
+            
+            # Parse response as JSON and convert to YAML
+            try:
+                json_data = json.loads(response)
+                
+                # Convert to YAML
+                yaml_output = yaml.safe_dump(
+                    json_data,
+                    default_flow_style=False,
+                    allow_unicode=True,
+                    sort_keys=False,
+                )
+                
+                return yaml_output
+                
+            except json.JSONDecodeError:
+                # Response is not JSON, might be a non-JSON error message
+                # Save the raw response anyway (with .raw.json suffix for debugging)
+                raw_path = self.output_dir / f"{output_label}.raw.json"
+                raw_path.parent.mkdir(parents=True, exist_ok=True)
+                with open(raw_path, 'w', encoding='utf-8') as f:
+                    f.write(response)
+                self._log(f"Response for '{output_label}' is not valid JSON, saved raw response to {raw_path}")
+                
+                # Re-raise with descriptive error
+                raise StepExecutionError(
+                    f"LLM response for '{output_label}' is not valid JSON.\n"
+                    f"Raw response saved to: {raw_path}\n"
+                    f"Note: The model may have returned an error message or non-JSON output.\n"
+                    f"Check the raw response for details.",
+                    errors=["Invalid JSON response from LLM"],
+                    warnings=[f"Raw response saved to {raw_path}"]
+                )
+            except Exception as e:
+                raise StepExecutionError(
+                    f"Error converting JSON to YAML for '{output_label}': {e}",
+                    errors=[f"Conversion error: {e}"]
+                )
+        
+        # For other types, return response as-is
+        return response
+
+    def _validate_output(
+        self,
+        output_path: Path,
+        output_type: str,
+        data_entity: Dict[str, Any],
+        step_name: str,
+    ) -> ValidationResult:
+        """
+        Validate an output file based on type and schema.
+
+        Args:
+            output_path: Path to output file.
+            output_type: Type of output (yaml, json, md, text).
+            data_entity: Data entity configuration from config.
+            step_name: Step name for context.
 
         Returns:
             ValidationResult with errors and warnings.
         """
-        output_type = step_config.get("output_type")
-
-        if output_type == "yaml":
-            validator = YAMLValidator()
-            return validator.validate(content)
-
-        elif output_type == "json":
-            schema_path = step_config.get("json_schema")
-
-            # Select appropriate validator based on output file
-            output_file = step_config.get("output_file", "")
-
-            if "concepts" in output_file:
-                validator = ConceptsValidator(schema_path)
-            elif "aggregations" in output_file:
-                validator = AggregationsValidator(schema_path)
-            elif "messages" in output_file:
-                validator = MessagesValidator(schema_path)
-            elif "requirements" in output_file:
-                validator = RequirementsValidator(schema_path)
+        if output_type == 'yaml':
+            yaml_schema = data_entity.get('yaml_schema')
+            if yaml_schema:
+                validator = YAMLSchemaValidator()
+                return validator.validate_yaml_file(
+                    output_path,
+                    Path(yaml_schema)
+                )
             else:
-                validator = JSONValidator(schema_path)
-
-            return validator.validate(content)
-
-        elif output_type == "md":
-            # Markdown validation - minimal
+                # YAML without schema - basic syntax check
+                validator = YAMLValidator()
+                return validator.validate_file(output_path)
+        
+        elif output_type == 'json':
+            schema_file = data_entity.get('schema')
+            if schema_file:
+                validator = JSONValidator(schema_file)
+                return validator.validate_file(output_path)
+            else:
+                # JSON without schema - basic syntax check
+                validator = JSONValidator()
+                return validator.validate_file(output_path)
+        
+        elif output_type == 'md' or output_type == 'text':
+            # Markdown/text - minimal validation (check not empty)
             result = ValidationResult()
-            if not content.strip():
-                result.add_error("Empty markdown content")
-            result.passed = result.is_valid()
+            try:
+                content = output_path.read_text(encoding='utf-8')
+                if not content.strip():
+                    result.add_error(f"Empty {output_type} content")
+                result.passed = result.is_valid()
+            except Exception as e:
+                result.add_error(f"Could not read file: {e}")
+                result.passed = False
             return result
-
+        
         else:
-            # Unknown type - just check not empty
-            result = ValidationResult()
-            if not content.strip():
-                result.add_error("Empty output")
-            result.passed = result.is_valid()
-            return result
-
-    def _handle_multiple_outputs(
-        self,
-        content: str,
-        step_config: Dict[str, Any],
-        primary_output: Path,
-    ) -> None:
-        """Handle steps that produce multiple output files.
-
-        Args:
-            content: LLM response content.
-            step_config: Step configuration.
-            primary_output: Primary output path.
-        """
-        output_files = step_config.get("output_files", [])
-
-        try:
-            data = json.loads(content)
-
-            if isinstance(data, dict):
-                # Split into multiple files based on config
-                for output_spec in output_files:
-                    if isinstance(output_spec, dict):
-                        key = output_spec.get("key")
-                        filename = output_spec.get("filename")
-                        if key and filename and key in data:
-                            file_path = self.output_dir / filename
-                            file_path.write_text(
-                                json.dumps(data[key], indent=2), encoding="utf-8"
-                            )
-                            self._log(f"Saved {key} to {filename}")
-            else:
-                # Single JSON object, save to primary output
-                primary_output.write_text(content, encoding="utf-8")
-
-        except json.JSONDecodeError:
-            # Not JSON or parse error, save to primary output
-            primary_output.write_text(content, encoding="utf-8")
-            self._log("Could not parse multiple outputs, saved to primary file")
+            # Unknown type - pass for now
+            return ValidationResult(
+                is_valid=True,
+                message=f"No validation for type '{output_type}'"
+            )
 
 
 # Convenience function for CLI

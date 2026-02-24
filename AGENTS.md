@@ -14,8 +14,51 @@ AI coding agent instructions for **modellm**
 - `doc/workflow_guide.md` -- Usage workflow and examples
 
 **Configuration:**
-- `configuration/pipeline_config.yaml` -- Flexible step configuration for prompt pipeline
+- `configuration/pipeline_config.yaml` -- Pipeline configuration with data_entities and steps
 - `pyproject.toml` -- Updated with prompt-pipeline CLI tool
+- `agents/context/migration_guide.md` -- Migration guide for new config format
+
+**New Configuration Features:**
+- `data_entities` section: Centralized data artifact definitions (type, filename, description, schema, compression strategies)
+- Automatic description lookup: Descriptions pulled from data_entities based on compression strategy
+- YAML schema validation: YAML files can be validated against JSON schemas
+- `yaml_as_json` compression strategy: Converts YAML to JSON for prompt input
+
+**Before/After Configuration:**
+
+Before (redundant descriptions):
+```yaml
+steps:
+  stepC3:
+    inputs:
+      - label: spec
+        compression: none
+        description: 'anchor index format...'  # WRONG!
+```
+
+After (centralized data_entities):
+```yaml
+data_entities:
+  spec:
+    type: yaml
+    filename: spec_1.yaml
+    yaml_schema: schemas/spec_yaml_schema.json
+    compression_strategies:
+      yaml_as_json:
+        description: "YAML converted to JSON format"
+
+steps:
+  stepC3:
+    inputs:
+      - label: spec
+        compression: yaml_as_json  # Auto-pulls description
+```
+
+**Key Benefits:**
+1. No redundant descriptions - single source of truth in data_entities
+2. Schema-aware prompts - YAML schemas automatically included in prompts
+3. Consistent compression descriptions - linked to compression strategies
+4. Automatic validation - YAML schemas validated after step execution
 
 **Prompt Pipeline Library:**
 - `prompt_pipeline/llm_client.py` -- OpenRouter API client

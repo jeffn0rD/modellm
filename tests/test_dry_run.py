@@ -88,7 +88,7 @@ class TestDryRunPromptConstruction:
         
     def test_construct_prompt_missing_input(self):
         """Test that missing required input raises ValueError."""
-        with pytest.raises(ValueError, match="Missing required input"):
+        with pytest.raises(ValueError, match="MISSING INPUT ERROR"):
             construct_prompt_without_api_call(
                 step_name="step1",
                 cli_inputs={},  # nl_spec is missing

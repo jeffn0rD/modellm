@@ -16,6 +16,7 @@ class InputDescriptor:
     compression: str
     description: str
     type: str
+    schema_path: Optional[str] = None
 
 
 class PreambleGenerator:
@@ -99,6 +100,22 @@ class PreambleGenerator:
             for inp in inputs:
                 description = self._format_input_description(inp)
                 preamble_lines.append(f"  - {inp.label}: {description}")
+                
+                # Add schema if present (as JSON dump)
+                if inp.schema_path:
+                    schema_path = inp.schema_path
+                    try:
+                        # Load and dump the schema as JSON
+                        import json
+                        import os
+                        if os.path.exists(schema_path):
+                            with open(schema_path, 'r', encoding='utf-8') as f:
+                                schema = json.load(f)
+                            schema_json = json.dumps(schema, indent=2, ensure_ascii=False)
+                            preamble_lines.append(f"    Schema:\n{schema_json}")
+                    except Exception as e:
+                        # If schema can't be loaded, just show the path
+                        preamble_lines.append(f"    Schema: {schema_path}")
             
             preamble_lines.append("")
         

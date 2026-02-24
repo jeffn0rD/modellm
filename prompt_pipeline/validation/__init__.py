@@ -16,6 +16,7 @@ from prompt_pipeline.validation.json_validator import (
     MessagesValidator,
     RequirementsValidator,
 )
+from prompt_pipeline.validation.yaml_schema_validator import YAMLSchemaValidator
 
 __all__ = [
     "YAMLValidator",
@@ -30,4 +31,5 @@ __all__ = [
     "AggregationsValidator",
     "MessagesValidator",
     "RequirementsValidator",
+    "YAMLSchemaValidator",
 ]

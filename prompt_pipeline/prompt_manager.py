@@ -384,16 +384,27 @@ class PromptManager:
         step_number = step_config.get('order')
         inputs_config = step_config.get('inputs', [])
         
-        # Create input descriptors from configuration
-        input_descriptors = [
-            InputDescriptor(
-                label=inp['label'],
-                compression=inp.get('compression', 'full'),
-                description=inp.get('description', ''),
-                type=inp.get('type', 'unknown')
+        # Create input descriptors with data_entities lookup
+        input_descriptors = []
+        for inp in inputs_config:
+            label = inp['label']
+            
+            # Get description from data_entities.compression_strategies
+            description = self.get_compression_strategy_desc(
+                label,
+                inp.get('compression', 'full')
             )
-            for inp in inputs_config
-        ]
+            
+            # Get YAML schema if applicable
+            yaml_schema = self.get_yaml_schema_path(label)
+            
+            input_descriptors.append(InputDescriptor(
+                label=label,
+                compression=inp.get('compression', 'full'),
+                description=description or inp.get('description', ''),
+                type=inp.get('type', 'unknown'),
+                schema_path=yaml_schema,
+            ))
         
         # Generate preamble
         preamble = self.preamble_generator.generate_preamble(
@@ -488,6 +499,106 @@ class PromptManager:
             Dictionary of path settings.
         """
         return self.steps_config.get('paths', {})
+
+    # ============================================
+    # Data Entities Methods (NEW)
+    # ============================================
+
+    def get_data_entity(self, label: str) -> Optional[Dict[str, Any]]:
+        """
+        Get data entity configuration by label.
+        
+        Args:
+            label: The label of the data entity
+        
+        Returns:
+            Data entity configuration or None
+        """
+        data_entities = self.steps_config.get('data_entities', {})
+        return data_entities.get(label)
+
+    def get_compression_strategy_desc(
+        self,
+        label: str,
+        compression: str,
+    ) -> Optional[str]:
+        """
+        Get description for a compression strategy.
+        
+        Args:
+            label: Data entity label
+            compression: Compression strategy name
+        
+        Returns:
+            Description string or None
+        """
+        entity = self.get_data_entity(label)
+        if not entity:
+            return None
+
+        strategies = entity.get('compression_strategies', {})
+        strategy = strategies.get(compression, {})
+        return strategy.get('description')
+
+    def get_yaml_schema_path(self, label: str) -> Optional[str]:
+        """
+        Get YAML schema path for a data entity.
+        
+        Args:
+            label: Data entity label
+        
+        Returns:
+            Schema path string or None
+        """
+        entity = self.get_data_entity(label)
+        if not entity:
+            return None
+        return entity.get('yaml_schema')
+
+    def get_output_entity_filename(self, label: str) -> Optional[str]:
+        """
+        Get filename for an output data entity.
+        
+        Args:
+            label: Output label
+        
+        Returns:
+            Filename or None
+        """
+        entity = self.get_data_entity(label)
+        if not entity:
+            return None
+        return entity.get('filename')
+
+    def get_output_entity_type(self, label: str) -> Optional[str]:
+        """
+        Get type for an output data entity.
+        
+        Args:
+            label: Output label
+        
+        Returns:
+            Type string or None
+        """
+        entity = self.get_data_entity(label)
+        if not entity:
+            return None
+        return entity.get('type')
+
+    def get_output_entity_schema(self, label: str) -> Optional[str]:
+        """
+        Get schema path for an output data entity.
+        
+        Args:
+            label: Output label
+        
+        Returns:
+            Schema path string or None
+        """
+        entity = self.get_data_entity(label)
+        if not entity:
+            return None
+        return entity.get('schema')
 
 
 # Convenience function for simple usage

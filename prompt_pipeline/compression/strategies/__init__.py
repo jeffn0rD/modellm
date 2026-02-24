@@ -8,6 +8,7 @@ Each strategy implements a different compression approach:
 - hierarchical: Layered compression with summaries
 - schema_only: Schema-only references with counts
 - differential: Only pass changes from previous version
+- yaml_as_json: Convert YAML to JSON for prompt input
 """
 
 from prompt_pipeline.compression.strategies.base import CompressionStrategy
@@ -17,6 +18,7 @@ from prompt_pipeline.compression.strategies.concept_summary import ConceptSummar
 from prompt_pipeline.compression.strategies.hierarchical import HierarchicalCompressionStrategy
 from prompt_pipeline.compression.strategies.schema_only import SchemaOnlyCompressionStrategy
 from prompt_pipeline.compression.strategies.differential import DifferentialCompressionStrategy
+from prompt_pipeline.compression.strategies.yaml_as_json import YamlAsJsonStrategy
 
 __all__ = [
     "CompressionStrategy",
@@ -26,4 +28,5 @@ __all__ = [
     "HierarchicalCompressionStrategy",
     "SchemaOnlyCompressionStrategy",
     "DifferentialCompressionStrategy",
+    "YamlAsJsonStrategy",
 ]

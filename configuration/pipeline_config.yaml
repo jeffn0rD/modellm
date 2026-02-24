@@ -1,213 +1,274 @@
+# ============================================
+# DATA ENTITIES (Centralized Data Artifact Definitions)
+# ============================================
+data_entities:
+  nl_spec:
+    type: md
+    filename: todo_list_nl_spec.md
+    description: "Natural language requirements specification in markdown format"
+
+  spec:
+    type: yaml
+    filename: spec_1.yaml
+    description: "A formal application specification in YAML format"
+    yaml_schema: schemas/spec_yaml_schema.json
+    compression_strategies:
+      full:
+        description: "Complete YAML specification"
+      anchor_index:
+        description: "anchor index format (AN1: definition, AN2: definition...)"
+      schema_only:
+        description: "schema-only format"
+      yaml_as_json:
+        description: "YAML converted to JSON format"
+
+  spec_formal:
+    type: md
+    filename: spec_formal.md
+    description: "Formal markdown specification"
+
+  revised_spec:
+    type: md
+    filename: revised_spec.md
+    description: "Revised formal markdown specification"
+
+  concepts:
+    type: json
+    filename: concepts.json
+    description: "Extracted concepts from specification"
+    schema: schemas/concepts.schema.json
+    compression_strategies:
+      full:
+        description: "Complete JSON concepts"
+      concept_summary:
+        description: "concept summary format (markdown tables grouped by entity type)"
+
+  aggregations:
+    type: json
+    filename: aggregations.json
+    description: "Aggregated concept relationships"
+    schema: schemas/aggregations.schema.json
+    compression_strategies:
+      full:
+        description: "Complete JSON aggregations"
+      concept_summary:
+        description: "concept summary format (markdown tables grouped by entity type)"
+
+  messages:
+    type: json
+    filename: messages.json
+    description: "Message definitions"
+    schema: schemas/messages.schema.json
+    compression_strategies:
+      full:
+        description: "Complete JSON messages"
+      concept_summary:
+        description: "concept summary format (markdown tables grouped by entity type)"
+
+  message_aggregations:
+    type: json
+    filename: messageAggregations.json
+    description: "Message aggregation definitions"
+    schema: null
+    compression_strategies:
+      full:
+        description: "Complete JSON message aggregations"
+
+  requirements:
+    type: json
+    filename: requirements.json
+    description: "Final requirements output"
+    schema: schemas/requirements.schema.json
+    compression_strategies:
+      full:
+        description: "Complete JSON requirements"
+
+# ============================================
+# CLI INPUTS (unchanged)
+# ============================================
 cli_inputs:
-- label: nl_spec
-  type: md
-  prompt: 'Enter your natural language specification:'
-  required: true
-  default_file: doc/todo_list_nl_spec.md
+  - label: nl_spec
+    type: md
+    prompt: 'Enter your natural language specification:'
+    required: true
+    default_file: doc/todo_list_nl_spec.md
+
+# ============================================
+# EXOGENOUS INPUTS (unchanged)
+# ============================================
 exogenous_inputs:
-- file: doc/todo_list_nl_spec.md
-  label: nl_spec
-- file: schemas/concept.schema.json
-  label: concept_schema
+  - file: doc/todo_list_nl_spec.md
+    label: nl_spec
+  - file: schemas/concept.schema.json
+    label: concept_schema
+
+# ============================================
+# OUTPUT LABELS (unchanged)
+# ============================================
 output_labels:
-- step: step1
-  label: spec
-- step: step2
-  label: spec_formal
-- step: step3
-  label: revised_spec
-- step: stepC3
-  label: concepts
-- step: stepC4
-  label: aggregations
-- step: stepC5
-  label: messages
-- step: stepD1
-  label: requirements
+  - step: step1
+    label: spec
+  - step: step2
+    label: spec_formal
+  - step: step3
+    label: revised_spec
+  - step: stepC3
+    label: concepts
+  - step: stepC4
+    label: aggregations
+  - step: stepC5
+    label: messages
+  - step: stepD1
+    label: requirements
+
+# ============================================
+# STEPS (Simplified - only reference labels)
+# ============================================
 steps:
   step1:
     name: step1
     prompt_file: prompt_step1_v2.md
     order: 1
     inputs:
-    - label: nl_spec
-      type: md
-      source: cli
-      compression: none
-      color: cyan
-      description: Natural language specification (markdown)
+      - label: nl_spec
+        source: cli
+        compression: none
+        color: cyan
     outputs:
-    - file: spec_1.yaml
-      label: spec
-      type: yaml
+      - label: spec
     dependencies: []
     validation:
-      schema: null
       enabled: false
     persona: systems_architect
+
   step2:
     name: step2
     prompt_file: prompt_step2_v2.md
     order: 2
     inputs:
-    - label: spec
-      type: yaml
-      source: label:spec
-      compression: anchor_index
-      color: green
-      description: 'anchor index format (AN1: definition, AN2: definition...)'
+      - label: spec
+        source: label:spec
+        compression: anchor_index
+        color: green
     outputs:
-    - file: spec_formal.md
-      label: spec_formal
-      type: md
+      - label: spec_formal
     dependencies:
-    - step1
+      - step1
     validation:
-      schema: null
       enabled: false
     persona: software_engineer
+
   step3:
     name: step3
     prompt_file: prompt_step3_v2.md
     order: 3
     inputs:
-    - label: spec_formal
-      type: md
-      source: label:spec_formal
-      compression: full
-      color: yellow
-      description: Formal markdown specification
+      - label: spec_formal
+        source: label:spec_formal
+        compression: full
+        color: yellow
     outputs:
-    - file: revised_spec.md
-      label: revised_spec
-      type: md
+      - label: revised_spec
     dependencies:
-    - step2
+      - step2
     validation:
-      schema: null
       enabled: false
     persona: software_engineer
+
   stepC3:
     name: stepC3
     prompt_file: prompt_step_C3.md
     order: 4
     inputs:
-    - label: spec
-      type: yaml
-      source: label:spec
-      compression: none
-      compression_params:
-        truncation_length: 0 # full length text
-      color: magenta
-      
+      - label: spec
+        source: label:spec
+        compression: yaml_as_json
+        color: magenta
     outputs:
-    - file: concepts.json
-      label: concepts
-      type: json
+      - label: concepts
     dependencies:
-    - step1
+      - step1
     validation:
-      schema: schemas/concepts.schema.json
       enabled: true
     persona: systems_architect
+
   stepC4:
     name: stepC4
     prompt_file: prompt_step_C4.md
     order: 5
     inputs:
-    - label: spec
-      type: yaml
-      source: label:spec
-      compression: anchor_index
-      color: cyan
-      description: 'anchor index format (AN1: definition, AN2: definition...)'
-    - label: concepts
-      type: json
-      source: label:concepts
-      compression: concept_summary
-      color: green
-      description: concept summary format (markdown tables grouped by entity type)
+      - label: spec
+        source: label:spec
+        compression: anchor_index
+        color: cyan
+      - label: concepts
+        source: label:concepts
+        compression: concept_summary
+        color: green
     outputs:
-    - file: aggregations.json
-      label: aggregations
-      type: json
+      - label: aggregations
     dependencies:
-    - stepC3
+      - stepC3
     validation:
-      schema: schemas/aggregations.schema.json
       enabled: true
     persona: software_engineer
+
   stepC5:
     name: stepC5
     prompt_file: prompt_step_C5.md
     order: 6
     inputs:
-    - label: spec
-      type: yaml
-      source: label:spec
-      compression: anchor_index
-      color: cyan
-      description: 'anchor index format (AN1: definition, AN2: definition...)'
-    - label: concepts
-      type: json
-      source: label:concepts
-      compression: concept_summary
-      color: green
-      description: concept summary format (markdown tables grouped by entity type)
-    - label: aggregations
-      type: json
-      source: label:aggregations
-      compression: concept_summary
-      color: yellow
-      description: concept summary format (markdown tables grouped by entity type)
+      - label: spec
+        source: label:spec
+        compression: anchor_index
+        color: cyan
+      - label: concepts
+        source: label:concepts
+        compression: concept_summary
+        color: green
+      - label: aggregations
+        source: label:aggregations
+        compression: concept_summary
+        color: yellow
     outputs:
-    - file: messages.json
-      label: messages
-      type: json
-    - file: messageAggregations.json
-      label: message_aggregations
-      type: json
+      - label: messages
+      - label: message_aggregations
     dependencies:
-    - stepC3
-    - stepC4
+      - stepC3
+      - stepC4
     validation:
-      schema: schemas/messages.schema.json
       enabled: true
     persona: systems_architect
+
   stepD1:
     name: stepD1
     prompt_file: prompt_step_D1.md
     order: 7
     inputs:
-    - label: spec
-      type: yaml
-      source: label:spec
-      compression: anchor_index
-      color: cyan
-      description: 'anchor index format (AN1: definition, AN2: definition...)'
-    - label: concepts
-      type: json
-      source: label:concepts
-      compression: concept_summary
-      color: green
-      description: concept summary format (markdown tables grouped by entity type)
-    - label: messages
-      type: json
-      source: label:messages
-      compression: concept_summary
-      color: magenta
-      description: concept summary format (markdown tables grouped by entity type)
+      - label: spec
+        source: label:spec
+        compression: anchor_index
+        color: cyan
+      - label: concepts
+        source: label:concepts
+        compression: concept_summary
+        color: green
+      - label: messages
+        source: label:messages
+        compression: concept_summary
+        color: magenta
     outputs:
-    - file: requirements.json
-      label: requirements
-      type: json
+      - label: requirements
     dependencies:
-    - stepC3
-    - stepC5
+      - stepC3
+      - stepC5
     validation:
-      schema: schemas/requirements.schema.json
       enabled: true
     persona: systems_engineer
+
+# ============================================
+# MODEL LEVELS (unchanged)
+# ============================================
 model_levels:
   step1:
     1: minimax/minimax-m2.5
@@ -237,6 +298,10 @@ model_levels:
     1: qwen/qwen-2.5-72b
     2: xiaomi/mimo-v2-flash
     3: moonshotai/kimi-k2-0905
+
+# ============================================
+# DEV DEFAULTS (unchanged)
+# ============================================
 dev_defaults:
   model_level: 1
   verbosity: 2
