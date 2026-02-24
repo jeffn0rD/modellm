@@ -3,6 +3,7 @@
 import asyncio
 import json
 from pathlib import Path
+from typing import Dict, List, Optional
 
 import click
 
@@ -20,6 +21,86 @@ from prompt_pipeline.terminal_utils import (
     format_step,
     Color,
 )
+
+
+def _analyze_step_dependencies(
+    prompt_manager: PromptManager,
+    step_name: str,
+    nl_spec: Optional[str] = None,
+) -> Dict[str, any]:
+    """
+    Analyze step dependencies and suggest solutions.
+    
+    Args:
+        prompt_manager: PromptManager instance
+        step_name: Name of the step to run
+        nl_spec: Path to NL spec file if provided
+    
+    Returns:
+        Dictionary with dependency analysis
+    """
+    step_config = prompt_manager.get_step_config(step_name)
+    if not step_config:
+        return {"error": f"Step '{step_name}' not found"}
+    
+    # Get all steps from config
+    steps_config = prompt_manager.steps_config.get("steps", {})
+    
+    # Map labels to producing steps
+    label_to_step = {}
+    for step_name_key, config in steps_config.items():
+        outputs = config.get("outputs", [])
+        for output in outputs:
+            label = output.get("label")
+            if label:
+                label_to_step[label] = step_name_key
+    
+    # Find which labels this step needs
+    inputs_config = step_config.get("inputs", [])
+    dependencies = []
+    missing_inputs = []
+    
+    for input_spec in inputs_config:
+        label = input_spec.get("label")
+        source = input_spec.get("source", "")
+        
+        if source.startswith("label:"):
+            ref_label = source[6:]
+            producing_step = label_to_step.get(ref_label)
+            if producing_step:
+                dependencies.append({
+                    "label": ref_label,
+                    "producing_step": producing_step,
+                    "input_type": input_spec.get("type", "unknown"),
+                })
+    
+    # Suggest the full pipeline to run
+    dependency_chain = []
+    if dependencies:
+        # Get unique steps in order
+        unique_steps = []
+        for dep in dependencies:
+            if dep["producing_step"] not in unique_steps:
+                unique_steps.append(dep["producing_step"])
+        
+        # Sort by order
+        step_configs = {name: steps_config[name] for name in unique_steps if name in steps_config}
+        sorted_steps = sorted(
+            step_configs.items(),
+            key=lambda x: x[1].get("order", 999)
+        )
+        
+        dependency_chain = [step for step, _ in sorted_steps]
+    
+    return {
+        "step_name": step_name,
+        "dependencies": dependencies,
+        "dependency_chain": dependency_chain,
+        "nl_spec_required": any(
+            inp.get("source") == "cli" and inp.get("label") == "nl_spec"
+            for inp in inputs_config
+        ),
+    }
 
 
 @click.command()
@@ -289,7 +370,40 @@ def run_step(
             return
             
         except ValueError as e:
-            raise click.ClickException(f"Dry-run failed: {e}")
+            # Add dependency analysis to the error message
+            error_msg = str(e)
+            if "Missing required input" in error_msg or "Previous step output" in error_msg:
+                # Analyze dependencies
+                deps = _analyze_step_dependencies(prompt_manager, step_name, nl_spec)
+                
+                if deps.get("dependency_chain"):
+                    error_msg += "\n\n" + "=" * 80 + "\n"
+                    error_msg += "DEPENDENCY ANALYSIS\n"
+                    error_msg += "=" * 80 + "\n\n"
+                    error_msg += f"Step '{step_name}' has dependencies on previous steps.\n"
+                    error_msg += "\n"
+                    error_msg += "RECOMMENDED COMMAND (run in order):\n"
+                    error_msg += "-" * 80 + "\n"
+                    
+                    # Build the dependency chain command
+                    if nl_spec:
+                        for dep_step in deps["dependency_chain"]:
+                            error_msg += f"prompt-pipeline run-step {dep_step} --nl-spec {nl_spec}\n"
+                    else:
+                        error_msg += "# First, run the dependency chain:\n"
+                        for dep_step in deps["dependency_chain"]:
+                            error_msg += f"prompt-pipeline run-step {dep_step} --nl-spec <path_to_nl_spec.md>\n"
+                    
+                    error_msg += "\n" + f"prompt-pipeline run-step {step_name} --nl-spec <path_to_nl_spec.md>" + "\n"
+                    error_msg += "\n"
+                    error_msg += "Or run all steps at once:\n"
+                    if nl_spec:
+                        error_msg += "prompt-pipeline run-pipeline --nl-spec " + nl_spec + "\n"
+                    else:
+                        error_msg += "prompt-pipeline run-pipeline --nl-spec <path_to_nl_spec.md>\n"
+                    error_msg += "=" * 80 + "\n\n"
+            
+            raise click.ClickException(f"Dry-run failed: {error_msg}")
 
     # Initialize components
     # API key will be read from OPENROUTER_API_KEY environment variable
