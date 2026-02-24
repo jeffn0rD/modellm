@@ -193,7 +193,10 @@ class AnchorIndexCompressionStrategy(CompressionStrategy):
                         # For level 3, include minimal context
                         if truncation_length is not None:
                             # Use custom truncation length
-                            if len(text_value) > truncation_length:
+                            # 0 means no truncation (full text)
+                            if truncation_length == 0:
+                                display_value = text_value
+                            elif len(text_value) > truncation_length:
                                 display_value = text_value[:truncation_length] + "..."
                             else:
                                 display_value = text_value
@@ -368,7 +371,10 @@ class AnchorIndexCompressionStrategy(CompressionStrategy):
                     # For level 3, include minimal context
                     if truncation_length is not None:
                         # Use custom truncation length
-                        if len(text_value) > truncation_length:
+                        # 0 means no truncation (full text)
+                        if truncation_length == 0:
+                            display_value = text_value
+                        elif len(text_value) > truncation_length:
                             display_value = text_value[:truncation_length] + "..."
                         else:
                             display_value = text_value

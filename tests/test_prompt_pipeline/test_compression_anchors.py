@@ -627,3 +627,96 @@ specification:
         assert "AN1:" in result.content
         assert "AN2:" in result.content
         assert "AN3:" in result.content
+
+    def test_truncation_length_zero(self):
+        """Test that truncation_length=0 shows full text (no truncation)."""
+        strategy = AnchorIndexCompressionStrategy()
+        
+        # Create a long anchor text (>100 chars)
+        long_text = "This is a very long anchor text that should be displayed in full when truncation_length is 0. This text is longer than 100 characters to ensure we can see if truncation is working correctly or not."
+        content = f"""
+specification:
+  sections:
+    - text_blocks:
+        - anchor_id: AN1
+          text: {long_text}
+"""
+        
+        # Test with truncation_length=0 (should show full text)
+        context = CompressionContext(
+            content_type="yaml",
+            label="spec",
+            level=2,
+            preserve_full=False,
+            extra={"truncation_length": 0}
+        )
+        
+        result = strategy.compress(content, context)
+        
+        # Verify full text is present (not truncated)
+        assert long_text in result.content
+        assert "..." not in result.content
+
+    def test_truncation_length_positive(self):
+        """Test that truncation_length with positive value truncates text."""
+        strategy = AnchorIndexCompressionStrategy()
+        
+        # Create a long anchor text
+        long_text = "This is a very long anchor text that should be truncated."
+        content = f"""
+specification:
+  sections:
+    - text_blocks:
+        - anchor_id: AN1
+          text: {long_text}
+"""
+        
+        # Test with truncation_length=50 (should truncate)
+        context = CompressionContext(
+            content_type="yaml",
+            label="spec",
+            level=2,
+            preserve_full=False,
+            extra={"truncation_length": 50}
+        )
+        
+        result = strategy.compress(content, context)
+        
+        # Verify text is truncated
+        assert "..." in result.content
+        # Verify truncation length is approximately 50 chars
+        lines = result.content.split('\n')
+        anchor_lines = [line for line in lines if line.startswith('AN1:')]
+        if anchor_lines:
+            # Count characters after "AN1: "
+            after_prefix = anchor_lines[0][5:]  # "AN1: " is 5 chars
+            # Should be around 50 chars plus "..."
+            assert len(after_prefix) < 60
+
+    def test_truncation_length_none_uses_level_defaults(self):
+        """Test that None truncation_length uses level-based defaults."""
+        strategy = AnchorIndexCompressionStrategy()
+        
+        # Create a long anchor text (>100 chars)
+        long_text = "A" * 150
+        content = f"""
+specification:
+  sections:
+    - text_blocks:
+        - anchor_id: AN1
+          text: {long_text}
+"""
+        
+        # Test with no truncation_length specified (level=2 should truncate to 100)
+        context = CompressionContext(
+            content_type="yaml",
+            label="spec",
+            level=2,
+            preserve_full=False,
+            extra={}
+        )
+        
+        result = strategy.compress(content, context)
+        
+        # Verify text is truncated using level-based default
+        assert "..." in result.content

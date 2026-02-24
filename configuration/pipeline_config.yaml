@@ -96,6 +96,8 @@ steps:
       type: yaml
       source: label:spec
       compression: anchor_index
+      compression_params:
+        truncation_length: 0 # full length text
       color: magenta
       description: 'anchor index format (AN1: definition, AN2: definition...)'
     outputs:
