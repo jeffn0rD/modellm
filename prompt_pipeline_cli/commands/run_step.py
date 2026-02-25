@@ -1,9 +1,9 @@
-"""Run Step CLI Command."""
+"""Run Step CLI Command - Updated with Generic Input Options."""
 
 import asyncio
 import json
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 import click
 
@@ -21,6 +21,7 @@ from prompt_pipeline.terminal_utils import (
     format_step,
     Color,
 )
+from prompt_pipeline_cli.input_validation import InputTypeValidator, InputValidationError
 
 
 def _analyze_step_dependencies(
@@ -103,37 +104,405 @@ def _analyze_step_dependencies(
     }
 
 
+def _parse_input_file_option(value: str) -> Tuple[str, str]:
+    """
+    Parse --input-file value in format label:filename.
+    
+    Args:
+        value: Input in format "label:filename"
+    
+    Returns:
+        Tuple of (label, filename)
+    
+    Raises:
+        click.ClickException: If format is invalid
+    """
+    if ":" not in value:
+        raise click.ClickException(
+            f"Invalid --input-file format: '{value}'. "
+            "Expected format: label:filename"
+        )
+    
+    parts = value.split(":", 1)
+    label = parts[0].strip()
+    filename = parts[1].strip()
+    
+    if not label or not filename:
+        raise click.ClickException(
+            f"Invalid --input-file format: '{value}'. "
+            "Both label and filename must be non-empty."
+        )
+    
+    return label, filename
+
+
+def _parse_input_text_option(value: str) -> Tuple[str, str]:
+    """
+    Parse --input-text value in format label:"content".
+    
+    Args:
+        value: Input in format 'label:"content"' or label:content
+    
+    Returns:
+        Tuple of (label, content)
+    
+    Raises:
+        click.ClickException: If format is invalid
+    """
+    if ":" not in value:
+        raise click.ClickException(
+            f"Invalid --input-text format: '{value}'. "
+            "Expected format: label:content or label:\"content with spaces\""
+        )
+    
+    parts = value.split(":", 1)
+    label = parts[0].strip()
+    content = parts[1].strip()
+    
+    # Remove surrounding quotes if present
+    if (content.startswith('"') and content.endswith('"')) or \
+       (content.startswith("'") and content.endswith("'")):
+        content = content[1:-1]
+    
+    if not label:
+        raise click.ClickException(
+            f"Invalid --input-text format: '{value}'. "
+            "Label must be non-empty."
+        )
+    
+    return label, content
+
+
+def _parse_input_prompt_option(value: str) -> str:
+    """
+    Parse --input-prompt value (just the label).
+    
+    Args:
+        value: Input label
+    
+    Returns:
+        Label string
+    
+    Raises:
+        click.ClickException: If format is invalid
+    """
+    if not value:
+        raise click.ClickException(
+            "Invalid --input-prompt format: label cannot be empty"
+        )
+    
+    return value.strip()
+
+
+def _collect_inputs_from_cli(
+    ctx: click.Context,
+    step_name: str,
+    config_path: str,
+    input_file_options: List[str],
+    input_prompt_options: List[str],
+    input_text_options: List[str],
+) -> Tuple[Dict[str, str], Dict[str, Path], Dict[str, Any]]:
+    """
+    Collect and process all CLI inputs.
+    
+    Args:
+        ctx: Click context
+        step_name: Name of the step
+        config_path: Path to configuration file
+        input_file_options: List of --input-file values
+        input_prompt_options: List of --input-prompt values
+        input_text_options: List of --input-text values
+    
+    Returns:
+        Tuple of (cli_inputs, exogenous_inputs, input_metadata)
+    
+    Raises:
+        click.ClickException: If input parsing fails
+    """
+    cli_inputs = {}
+    exogenous_inputs = {}
+    input_metadata = {}
+    
+    prompt_manager = PromptManager(config_path)
+    step_config = prompt_manager.get_step_config(step_name)
+    
+    if not step_config:
+        raise click.ClickException(f"Step '{step_name}' not found in configuration")
+    
+    # Get expected inputs from step config
+    inputs_config = step_config.get("inputs", [])
+    expected_inputs = {inp.get("label"): inp for inp in inputs_config}
+    
+    # Process --input-file options
+    for option_value in input_file_options:
+        label, filename = _parse_input_file_option(option_value)
+        
+        # Check if label is expected
+        if label not in expected_inputs:
+            available_labels = ", ".join(expected_inputs.keys())
+            print_warning(
+                f"Warning: Label '{label}' is not expected for step '{step_name}'. "
+                f"Available labels: {available_labels}"
+            )
+        
+        # Get expected type for validation
+        expected_type = expected_inputs.get(label, {}).get("type", "text")
+        
+        # Validate file
+        try:
+            InputTypeValidator.validate_input_type(
+                label=label,
+                expected_type=expected_type,
+                source="file",
+                content_or_path=filename,
+            )
+        except InputValidationError as e:
+            raise click.ClickException(str(e))
+        
+        # Determine if this should be CLI input or exogenous input
+        input_config = expected_inputs.get(label, {})
+        source = input_config.get("source", "file")
+        
+        if source == "cli":
+            # Read file content for CLI source
+            try:
+                content = Path(filename).read_text(encoding="utf-8")
+                cli_inputs[label] = content
+                input_metadata[label] = {
+                    "source": "file",
+                    "path": filename,
+                    "type": expected_type,
+                }
+            except Exception as e:
+                raise click.ClickException(f"Failed to read input file {filename}: {e}")
+        else:
+            # Treat as exogenous input (file path)
+            exogenous_inputs[label] = Path(filename)
+            input_metadata[label] = {
+                "source": "file",
+                "path": filename,
+                "type": expected_type,
+            }
+    
+    # Process --input-prompt options
+    for option_value in input_prompt_options:
+        label = _parse_input_prompt_option(option_value)
+        
+        # Check if label is expected
+        if label not in expected_inputs:
+            available_labels = ", ".join(expected_inputs.keys())
+            print_warning(
+                f"Warning: Label '{label}' is not expected for step '{step_name}'. "
+                f"Available labels: {available_labels}"
+            )
+        
+        # Get expected type
+        expected_type = expected_inputs.get(label, {}).get("type", "text")
+        
+        # Get prompt message from cli_inputs config
+        cli_input_config = prompt_manager.get_cli_input_config(label)
+        prompt_message = cli_input_config.get("prompt", f"Enter content for {label}:")
+        
+        # Prompt user for input
+        print_info(f"\n{prompt_message}")
+        print_info("(Press Ctrl+D on Unix/Linux or Ctrl+Z then Enter on Windows to finish)")
+        
+        try:
+            # Read multiline input
+            lines = []
+            while True:
+                try:
+                    line = input("> ")
+                    lines.append(line)
+                except EOFError:
+                    break
+                except KeyboardInterrupt:
+                    raise click.ClickException("Input cancelled by user")
+            
+            content = "\n".join(lines).strip()
+            
+            if not content:
+                # Check for default value
+                default_value = cli_input_config.get("default_value")
+                if default_value:
+                    content = default_value
+                    print_info(f"Using default value: {default_value}")
+                else:
+                    raise click.ClickException(
+                        f"No content provided for label '{label}'. "
+                        f"This input is required."
+                    )
+            
+            # Validate content
+            try:
+                InputTypeValidator.validate_input_type(
+                    label=label,
+                    expected_type=expected_type,
+                    source="prompt",
+                    content_or_path=content,
+                )
+            except InputValidationError as e:
+                raise click.ClickException(str(e))
+            
+            cli_inputs[label] = content
+            input_metadata[label] = {
+                "source": "prompt",
+                "type": expected_type,
+            }
+            
+        except Exception as e:
+            raise click.ClickException(f"Failed to get prompt input: {e}")
+    
+    # Process --input-text options
+    for option_value in input_text_options:
+        label, content = _parse_input_text_option(option_value)
+        
+        # Check if label is expected
+        if label not in expected_inputs:
+            available_labels = ", ".join(expected_inputs.keys())
+            print_warning(
+                f"Warning: Label '{label}' is not expected for step '{step_name}'. "
+                f"Available labels: {available_labels}"
+            )
+        
+        # Get expected type
+        expected_type = expected_inputs.get(label, {}).get("type", "text")
+        
+        # Validate content
+        try:
+            InputTypeValidator.validate_input_type(
+                label=label,
+                expected_type=expected_type,
+                source="text",
+                content_or_path=content,
+            )
+        except InputValidationError as e:
+            raise click.ClickException(str(e))
+        
+        cli_inputs[label] = content
+        input_metadata[label] = {
+            "source": "text",
+            "type": expected_type,
+        }
+    
+    return cli_inputs, exogenous_inputs, input_metadata
+
+
+def _collect_config_inputs(
+    prompt_manager: PromptManager,
+    step_name: str,
+    cli_inputs: Dict[str, str],
+    exogenous_inputs: Dict[str, Path],
+    output_dir: Path,
+    force: bool = False,
+) -> Tuple[Dict[str, str], Dict[str, Path]]:
+    """
+    Collect inputs from configuration (exogenous_inputs and previous outputs).
+    
+    Args:
+        prompt_manager: PromptManager instance
+        step_name: Name of the step
+        cli_inputs: CLI inputs already collected from CLI
+        exogenous_inputs: Exogenous inputs already collected from CLI
+        output_dir: Output directory for discovering previous outputs
+        force: If True, continue even if inputs are missing
+    
+    Returns:
+        Tuple of (cli_inputs, exogenous_inputs)
+    
+    Raises:
+        click.ClickException: If required inputs are missing
+    """
+    step_config = prompt_manager.get_step_config(step_name)
+    if not step_config:
+        raise click.ClickException(f"Step '{step_name}' not found in configuration")
+    
+    inputs_config = step_config.get("inputs", [])
+    
+    # Process each input from config
+    for input_spec in inputs_config:
+        label = input_spec.get("label")
+        source = input_spec.get("source", "")
+        input_type = input_spec.get("type", "text")
+        
+        # Skip if already provided via CLI
+        if label in cli_inputs or label in exogenous_inputs:
+            continue
+        
+        # Handle file source from config
+        if source == "file":
+            # Try to find file in exogenous_inputs from config
+            config_exogenous = prompt_manager.steps_config.get("exogenous_inputs", [])
+            for exo in config_exogenous:
+                if exo.get("label") == label:
+                    file_path = Path(exo.get("file"))
+                    if file_path.exists():
+                        exogenous_inputs[label] = file_path
+                    elif not force:
+                        raise click.ClickException(
+                            f"File not found for label '{label}': {file_path}"
+                        )
+                    break
+        
+        # Handle label source (previous step output)
+        elif source.startswith("label:"):
+            ref_label = source[6:]
+            # Try to discover from output directory
+            data_entity = prompt_manager.get_data_entity(ref_label)
+            if data_entity:
+                filename = data_entity.get("filename")
+                if filename:
+                    check_file = output_dir / filename
+                    if check_file.exists():
+                        exogenous_inputs[label] = check_file
+                    elif not force:
+                        # This is handled by orchestrator in full pipeline mode
+                        pass
+    
+    # Check for required inputs from CLI (source:cli)
+    required_cli_inputs = []
+    for input_spec in inputs_config:
+        source = input_spec.get("source", "")
+        label = input_spec.get("label")
+        
+        if source == "cli":
+            # For CLI source, check both cli_inputs (from prompt/text) and exogenous_inputs (from file)
+            if label not in cli_inputs and label not in exogenous_inputs:
+                required_cli_inputs.append(label)
+    
+    # Check if required CLI inputs are provided
+    if required_cli_inputs and not force:
+        missing = ", ".join(required_cli_inputs)
+        raise click.ClickException(
+            f"Missing required CLI inputs for step '{step_name}': {missing}\n"
+            f"Please provide using --input-file, --input-prompt, or --input-text"
+        )
+    
+    return cli_inputs, exogenous_inputs
+
+
 @click.command()
 @click.argument("step_name")
 @click.option(
-    "--nl-spec",
-    type=click.Path(exists=True),
-    help="NL specification file",
+    "--input-file",
+    type=str,
+    multiple=True,
+    help="Input from file (format: label:filename). "
+         "Overrides config exogenous_inputs.",
 )
 @click.option(
-    "--spec-file",
-    type=click.Path(exists=True),
-    help="Specification file",
+    "--input-prompt",
+    type=str,
+    multiple=True,
+    help="Input from interactive prompt (format: label). "
+         "Prompts user to enter content.",
 )
 @click.option(
-    "--concepts-file",
-    type=click.Path(exists=True),
-    help="Path to concepts.json",
-)
-@click.option(
-    "--aggregations-file",
-    type=click.Path(exists=True),
-    help="Path to aggregations.json",
-)
-@click.option(
-    "--messages-file",
-    type=click.Path(exists=True),
-    help="Path to messages.json",
-)
-@click.option(
-    "--requirements-file",
-    type=click.Path(exists=True),
-    help="Path to requirements.json",
+    "--input-text",
+    type=str,
+    multiple=True,
+    help="Input from command line (format: label:value). "
+         "Provide content directly.",
 )
 @click.option(
     "--output-dir",
@@ -192,16 +561,18 @@ def _analyze_step_dependencies(
     is_flag=True,
     help="Continue even if inputs are missing (substitute empty strings)",
 )
+@click.option(
+    "--batch",
+    is_flag=True,
+    help="Run in batch mode (no interactive prompts)",
+)
 @click.pass_context
 def run_step(
     ctx,
     step_name,
-    nl_spec,
-    spec_file,
-    concepts_file,
-    aggregations_file,
-    messages_file,
-    requirements_file,
+    input_file,
+    input_prompt,
+    input_text,
     output_dir,
     output_file,
     model_level,
@@ -213,6 +584,7 @@ def run_step(
     show_response,
     show_both,
     force,
+    batch,
 ):
     """Run a single pipeline step.
 
@@ -222,94 +594,82 @@ def run_step(
     verbosity = ctx.obj.get("verbosity", 1)
     verbose = verbosity > 1
 
+    # Check for interactive inputs in batch mode
+    if batch and input_prompt:
+        raise click.ClickException(
+            "Cannot use --input-prompt in batch mode. "
+            "Use --input-file or --input-text instead."
+        )
+
+    # Initialize components
+    # API key will be read from OPENROUTER_API_KEY environment variable
+    llm_client = OpenRouterClient(api_key=None)
+    prompt_manager = PromptManager(config_path)
+    
+    # Determine what to show
+    show_both = show_both or (show_prompt and show_response)
+
+    executor = StepExecutor(
+        llm_client=llm_client,
+        prompt_manager=prompt_manager,
+        output_dir=Path(output_dir),
+        model_level=model_level,
+        skip_validation=skip_validation,
+        verbose=verbose,
+        show_prompt=show_prompt or show_both,
+        show_response=show_response or show_both,
+        output_file=output_file,
+        force=force,
+    )
+
+    orchestrator = PipelineOrchestrator(
+        config_path=config_path,
+        llm_client=llm_client,
+        prompt_manager=prompt_manager,
+        step_executor=executor,
+        output_dir=Path(output_dir),
+        verbose=verbose,
+    )
+
+    # Get step config to check requirements
+    step_config = prompt_manager.get_step_config(step_name)
+    if not step_config:
+        raise click.ClickException(f"Step '{step_name}' not found in configuration")
+
+    # Collect inputs from CLI
+    try:
+        cli_inputs, exogenous_inputs, input_metadata = _collect_inputs_from_cli(
+            ctx=ctx,
+            step_name=step_name,
+            config_path=config_path,
+            input_file_options=input_file,
+            input_prompt_options=input_prompt,
+            input_text_options=input_text,
+        )
+    except click.ClickException:
+        raise
+    except Exception as e:
+        raise click.ClickException(f"Failed to parse CLI inputs: {e}")
+
+    # Collect inputs from config
+    try:
+        cli_inputs, exogenous_inputs = _collect_config_inputs(
+            prompt_manager=prompt_manager,
+            step_name=step_name,
+            cli_inputs=cli_inputs,
+            exogenous_inputs=exogenous_inputs,
+            output_dir=Path(output_dir),
+            force=force,
+        )
+    except click.ClickException:
+        raise
+    except Exception as e:
+        raise click.ClickException(f"Failed to collect config inputs: {e}")
+
     # Handle dry-run modes
     if dry_run or dry_run_prompt:
-        # Initialize prompt manager
-        prompt_manager = PromptManager(config_path)
-        
-        # Get step config to check requirements
-        step_config = prompt_manager.get_step_config(step_name)
-        if not step_config:
-            raise click.ClickException(f"Step '{step_name}' not found in configuration")
-        
-        # Build inputs dict
-        inputs = {}
-        if nl_spec:
-            inputs["nl_spec"] = nl_spec
-        if spec_file:
-            inputs["spec_file"] = spec_file
-        if concepts_file:
-            inputs["concepts_file"] = concepts_file
-        if aggregations_file:
-            inputs["aggregations_file"] = aggregations_file
-        if messages_file:
-            inputs["messages_file"] = messages_file
-        if requirements_file:
-            inputs["requirements_file"] = requirements_file
-        
-        # Check required inputs
-        required_inputs = prompt_manager.get_required_inputs(step_name)
-        for req in required_inputs:
-            if req not in inputs:
-                # Try to discover from output directory
-                if req == "concepts_file":
-                    check_file = Path(output_dir) / "concepts.json"
-                elif req == "aggregations_file":
-                    check_file = Path(output_dir) / "aggregations.json"
-                elif req == "messages_file":
-                    check_file = Path(output_dir) / "messages.json"
-                elif req == "requirements_file":
-                    check_file = Path(output_dir) / "requirements.json"
-                elif req == "spec_file":
-                    check_file = Path(output_dir) / "spec_1.yaml"
-                elif req == "nl_spec":
-                    continue  # Skip - user must provide
-                else:
-                    check_file = None
-                
-                if check_file and check_file.exists():
-                    inputs[req] = check_file
-                else:
-                    raise click.ClickException(
-                        f"Missing required input '{req}' for step '{step_name}'. "
-                        f"Please provide --{req.replace('_', '-')} option."
-                    )
-        
-        # Convert inputs to the new format
-        cli_inputs = {}
-        exogenous_inputs = {}
-        
-        # Map old flag names to new label names
-        flag_to_label = {
-            "spec_file": "spec",
-            "nl_spec": "nl_spec",
-            "concepts_file": "concepts",
-            "aggregations_file": "aggregations",
-            "messages_file": "messages",
-            "requirements_file": "requirements",
-        }
-        
-        for flag_name, file_path in inputs.items():
-            # Map old flag name to new label name
-            label = flag_to_label.get(flag_name, flag_name)
-            
-            # Check if this input expects source:cli or source:file
-            input_configs = step_config.get("inputs", [])
-            input_config = next((ic for ic in input_configs if ic.get("label") == label), None)
-            if input_config and input_config.get("source") == "cli":
-                # Read file content for CLI source
-                try:
-                    content = Path(file_path).read_text(encoding="utf-8")
-                    cli_inputs[label] = content
-                except Exception as e:
-                    raise click.ClickException(f"Failed to read input file {file_path}: {e}")
-                continue
-            
-            # Default: treat as exogenous input (file path)
-            exogenous_inputs[label] = Path(file_path)
-        
-        # Construct the prompt without making API calls
         try:
+            # Construct the prompt without making API calls
             dry_run_result = construct_prompt_without_api_call(
                 step_name=step_name,
                 cli_inputs=cli_inputs,
@@ -333,6 +693,16 @@ def run_step(
                     click.echo(f"[DRY RUN] CLI inputs: {', '.join(cli_inputs.keys())}")
                 if exogenous_inputs:
                     click.echo(f"[DRY RUN] File inputs: {', '.join(exogenous_inputs.keys())}")
+                
+                # Show input metadata
+                if input_metadata:
+                    click.echo(f"[DRY RUN] Input sources:")
+                    for label, meta in input_metadata.items():
+                        source_type = meta.get("source", "unknown")
+                        input_type = meta.get("type", "unknown")
+                        click.echo(f"    {label}: {source_type} ({input_type})")
+                        if "path" in meta:
+                            click.echo(f"        path: {meta['path']}")
             
             # Show the prompt
             if dry_run_prompt or dry_run:
@@ -374,7 +744,7 @@ def run_step(
             error_msg = str(e)
             if "Missing required input" in error_msg or "Previous step output" in error_msg:
                 # Analyze dependencies
-                deps = _analyze_step_dependencies(prompt_manager, step_name, nl_spec)
+                deps = _analyze_step_dependencies(prompt_manager, step_name, None)
                 
                 if deps.get("dependency_chain"):
                     error_msg += "\n\n" + "=" * 80 + "\n"
@@ -386,142 +756,20 @@ def run_step(
                     error_msg += "-" * 80 + "\n"
                     
                     # Build the dependency chain command
-                    if nl_spec:
-                        for dep_step in deps["dependency_chain"]:
-                            error_msg += f"prompt-pipeline run-step {dep_step} --nl-spec {nl_spec}\n"
-                    else:
-                        error_msg += "# First, run the dependency chain:\n"
-                        for dep_step in deps["dependency_chain"]:
-                            error_msg += f"prompt-pipeline run-step {dep_step} --nl-spec <path_to_nl_spec.md>\n"
+                    error_msg += "# First, run the dependency chain:\n"
+                    for dep_step in deps["dependency_chain"]:
+                        error_msg += f"prompt-pipeline run-step {dep_step} --input-file nl_spec:doc/todo_list_nl_spec.md\n"
                     
-                    error_msg += "\n" + f"prompt-pipeline run-step {step_name} --nl-spec <path_to_nl_spec.md>" + "\n"
+                    error_msg += "\n" + f"prompt-pipeline run-step {step_name} --input-file nl_spec:doc/todo_list_nl_spec.md" + "\n"
                     error_msg += "\n"
                     error_msg += "Or run all steps at once:\n"
-                    if nl_spec:
-                        error_msg += "prompt-pipeline run-pipeline --nl-spec " + nl_spec + "\n"
-                    else:
-                        error_msg += "prompt-pipeline run-pipeline --nl-spec <path_to_nl_spec.md>\n"
+                    error_msg += "prompt-pipeline run-pipeline --input-file nl_spec:doc/todo_list_nl_spec.md\n"
                     error_msg += "=" * 80 + "\n\n"
             
             raise click.ClickException(f"Dry-run failed: {error_msg}")
 
-    # Initialize components
-    # API key will be read from OPENROUTER_API_KEY environment variable
-    llm_client = OpenRouterClient(api_key=None)
-    prompt_manager = PromptManager(config_path)
-    
-    # Determine what to show
-    show_both = show_both or (show_prompt and show_response)
-    
-    executor = StepExecutor(
-        llm_client=llm_client,
-        prompt_manager=prompt_manager,
-        output_dir=output_dir,
-        model_level=model_level,
-        skip_validation=skip_validation,
-        verbose=verbose,
-        show_prompt=show_prompt or show_both,
-        show_response=show_response or show_both,
-        output_file=output_file,
-        force=force,
-    )
-
-    orchestrator = PipelineOrchestrator(
-        config_path=config_path,
-        llm_client=llm_client,
-        prompt_manager=prompt_manager,
-        step_executor=executor,
-        output_dir=output_dir,
-        verbose=verbose,
-    )
-
-    # Get step config to check requirements
-    step_config = prompt_manager.get_step_config(step_name)
-    if not step_config:
-        raise click.ClickException(f"Step '{step_name}' not found in configuration")
-
-    # Build inputs dict
-    inputs = {}
-    if nl_spec:
-        inputs["nl_spec"] = nl_spec
-    if spec_file:
-        inputs["spec_file"] = spec_file
-    if concepts_file:
-        inputs["concepts_file"] = concepts_file
-    if aggregations_file:
-        inputs["aggregations_file"] = aggregations_file
-    if messages_file:
-        inputs["messages_file"] = messages_file
-    if requirements_file:
-        inputs["requirements_file"] = requirements_file
-
-    # Check required inputs
-    required_inputs = prompt_manager.get_required_inputs(step_name)
-    for req in required_inputs:
-        if req not in inputs:
-            # Try to discover from output directory
-            if req == "concepts_file":
-                check_file = Path(output_dir) / "concepts.json"
-            elif req == "aggregations_file":
-                check_file = Path(output_dir) / "aggregations.json"
-            elif req == "messages_file":
-                check_file = Path(output_dir) / "messages.json"
-            elif req == "requirements_file":
-                check_file = Path(output_dir) / "requirements.json"
-            elif req == "spec_file":
-                check_file = Path(output_dir) / "spec_1.yaml"
-            elif req == "nl_spec":
-                continue  # Skip - user must provide
-            else:
-                check_file = None
-
-            if check_file and check_file.exists():
-                inputs[req] = check_file
-            else:
-                raise click.ClickException(
-                    f"Missing required input '{req}' for step '{step_name}'. "
-                    f"Please provide --{req.replace('_', '-')} option."
-                )
-
     # Run step
     try:
-        # Convert inputs to the new format
-        # For inputs with source:cli, read file content and pass as CLI input text
-        # For inputs with source:file or label:*, pass as exogenous inputs
-        cli_inputs = {}
-        exogenous_inputs = {}
-        
-        # Map old flag names to new label names
-        flag_to_label = {
-            "spec_file": "spec",
-            "nl_spec": "nl_spec",
-            "concepts_file": "concepts",
-            "aggregations_file": "aggregations",
-            "messages_file": "messages",
-            "requirements_file": "requirements",
-        }
-        
-        for flag_name, file_path in inputs.items():
-            # Map old flag name to new label name
-            label = flag_to_label.get(flag_name, flag_name)
-            
-            # Check if this input expects source:cli or source:file
-            step_config = prompt_manager.get_step_config(step_name)
-            if step_config:
-                input_configs = step_config.get("inputs", [])
-                input_config = next((ic for ic in input_configs if ic.get("label") == label), None)
-                if input_config and input_config.get("source") == "cli":
-                    # Read file content for CLI source
-                    try:
-                        content = Path(file_path).read_text(encoding="utf-8")
-                        cli_inputs[label] = content
-                    except Exception as e:
-                        raise click.ClickException(f"Failed to read input file {file_path}: {e}")
-                    continue
-            
-            # Default: treat as exogenous input (file path)
-            exogenous_inputs[label] = Path(file_path)
-        
         output_paths = asyncio.run(
             orchestrator.run_step_with_inputs(
                 step_name=step_name,

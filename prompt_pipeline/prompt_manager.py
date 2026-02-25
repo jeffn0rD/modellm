@@ -600,6 +600,22 @@ class PromptManager:
             return None
         return entity.get('schema')
 
+    def get_cli_input_config(self, label: str) -> Dict[str, Any]:
+        """
+        Get CLI input configuration by label.
+        
+        Args:
+            label: The label of the CLI input
+        
+        Returns:
+            CLI input configuration or empty dict
+        """
+        cli_inputs = self.steps_config.get('cli_inputs', [])
+        for cli_input in cli_inputs:
+            if cli_input.get('label') == label:
+                return cli_input
+        return {}
+
 
 # Convenience function for simple usage
 def create_prompt_manager(
