@@ -121,25 +121,6 @@ exogenous_inputs:
     label: concept_schema
 
 # ============================================
-# OUTPUT LABELS (unchanged)
-# ============================================
-output_labels:
-  - step: step1
-    label: spec
-  - step: step2
-    label: spec_formal
-  - step: step3
-    label: revised_spec
-  - step: stepC3
-    label: concepts
-  - step: stepC4
-    label: aggregations
-  - step: stepC5
-    label: messages
-  - step: stepD1
-    label: requirements
-
-# ============================================
 # STEPS (Simplified - only reference labels)
 # ============================================
 steps:

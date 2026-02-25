@@ -2,7 +2,7 @@
 
 ## TODO:
   ## NEXT TASKS
-
+  - need a CLI command/switch that outputs the requirements for a given step (inputs, outputs, labels); which prompt file it uses, compression, etc.  
 ---
 
   ** DO NOT PLAN OR CREATE TASKS FOR ANYTHING AFTER THIS POINT **    

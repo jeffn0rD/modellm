@@ -78,12 +78,12 @@ class PipelineOrchestrator:
     def _initialize_label_registry(self) -> None:
         """Initialize label registry from pipeline configuration.
         
-        Loads output labels from the configuration and registers them
-        in the label registry with placeholder paths. Actual file paths
-        will be updated as steps execute.
+        Derives output labels from the outputs section in each step
+        configuration and registers them in the label registry with
+        placeholder paths. Actual file paths will be updated as steps execute.
         """
         config = self.prompt_manager.steps_config
-        if config and "output_labels" in config:
+        if config and "steps" in config:
             self.label_registry.merge_from_config(config)
             self._log(f"Initialized label registry with {len(self.label_registry)} labels")
     

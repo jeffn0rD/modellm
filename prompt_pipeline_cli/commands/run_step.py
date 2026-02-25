@@ -246,7 +246,16 @@ def _collect_inputs_from_cli(
             )
         
         # Get expected type for validation
-        expected_type = expected_inputs.get(label, {}).get("type", "text")
+        # First check if the input config has a type field
+        expected_type = expected_inputs.get(label, {}).get("type")
+        
+        # If no type in input config, check data_entities
+        if not expected_type:
+            data_entity = prompt_manager.get_data_entity(label)
+            if data_entity:
+                expected_type = data_entity.get("type", "text")
+            else:
+                expected_type = "text"
         
         # Validate file
         try:
@@ -297,7 +306,15 @@ def _collect_inputs_from_cli(
             )
         
         # Get expected type
-        expected_type = expected_inputs.get(label, {}).get("type", "text")
+        expected_type = expected_inputs.get(label, {}).get("type")
+        
+        # If no type in input config, check data_entities
+        if not expected_type:
+            data_entity = prompt_manager.get_data_entity(label)
+            if data_entity:
+                expected_type = data_entity.get("type", "text")
+            else:
+                expected_type = "text"
         
         # Get prompt message from cli_inputs config
         cli_input_config = prompt_manager.get_cli_input_config(label)
@@ -366,7 +383,15 @@ def _collect_inputs_from_cli(
             )
         
         # Get expected type
-        expected_type = expected_inputs.get(label, {}).get("type", "text")
+        expected_type = expected_inputs.get(label, {}).get("type")
+        
+        # If no type in input config, check data_entities
+        if not expected_type:
+            data_entity = prompt_manager.get_data_entity(label)
+            if data_entity:
+                expected_type = data_entity.get("type", "text")
+            else:
+                expected_type = "text"
         
         # Validate content
         try:

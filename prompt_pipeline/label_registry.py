@@ -267,12 +267,20 @@ class LabelRegistry:
     def merge_from_config(self, config: Dict[str, Any]) -> bool:
         """Merge labels from pipeline configuration.
         
+        This method now derives labels from the outputs section in each step
+        configuration instead of using a separate output_labels section.
+        
         Expected config format:
         {
-            "output_labels": [
-                {"step": "step1", "label": "spec"},
-                {"step": "stepC3", "label": "concepts"},
-            ],
+            "steps": {
+                "step1": {
+                    "name": "step1",
+                    "outputs": [
+                        {"label": "spec"}
+                    ]
+                },
+                ...
+            },
             ...
         }
         
@@ -282,36 +290,41 @@ class LabelRegistry:
         Returns:
             True if all labels were successfully merged, False if any failed
         """
-        if "output_labels" not in config:
+        if "steps" not in config:
             return True
         
         success = True
-        for label_spec in config["output_labels"]:
-            step = label_spec.get("step")
-            label = label_spec.get("label")
+        steps_config = config.get("steps", {})
+        
+        # Derive labels from step outputs
+        for step_name, step_config in steps_config.items():
+            outputs = step_config.get("outputs", [])
             
-            if not step or not label:
-                success = False
-                self._validation_errors.append(
-                    f"Invalid label spec: missing step or label in {label_spec}"
-                )
-                continue
-            
-            # Note: This method only registers the label mapping
-            # The actual file path will be registered when the step executes
-            # For now, we use a placeholder path that will be updated later
-            placeholder_path = Path(f"output_{step}_{label}.placeholder")
-            
-            # Try to get file type from step config (if available)
-            file_type = "text"  # Default
-            
-            if not self.register_label(
-                label=label,
-                step_name=step,
-                file_path=placeholder_path,
-                file_type=file_type,
-            ):
-                success = False
+            for output_spec in outputs:
+                label = output_spec.get("label")
+                
+                if not label:
+                    success = False
+                    self._validation_errors.append(
+                        f"Invalid output spec: missing label in step {step_name}"
+                    )
+                    continue
+                
+                # Note: This method only registers the label mapping
+                # The actual file path will be registered when the step executes
+                # For now, we use a placeholder path that will be updated later
+                placeholder_path = Path(f"output_{step_name}_{label}.placeholder")
+                
+                # Try to get file type from data_entities (if available)
+                file_type = "text"  # Default
+                
+                if not self.register_label(
+                    label=label,
+                    step_name=step_name,
+                    file_path=placeholder_path,
+                    file_type=file_type,
+                ):
+                    success = False
         
         return success
     
