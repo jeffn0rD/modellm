@@ -24,14 +24,7 @@ data_entities:
             • text (natural-language excerpt),
             • type (e.g., goal, capability, constraint, future-capability),
             • semantic_cues: A list of hint concepts: concepts: [{concept_id: Cn, name: "..."}].
-      full:
-        description: >
-          The complete specification with all details, in YAML format. This includes all the original text and structure from the natural language specification, organized into a structured YAML format. It serves as the foundational representation of the specification before any further processing or extraction of concepts.      
-          • Hierarchical Sections (S*) which contain text_blocks, identified with anchor_id formatted as (AN*), which is refered to here as an anchor. 
-          • For each anchor:
-            • text (natural-language excerpt),
-            • type (e.g., goal, capability, constraint, future-capability),
-            • semantic_cues: A list of hint concepts: concepts: [{concept_id: Cn, name: "..."}].
+          A JSON schema will be provided that describes the structure of the YAML specification.
       anchor_index:
         description: >
           A set of text block (`Anchors`) labeled AN1, AN2, AN3, etc.  Each corresponds to a block of text from the specification.
@@ -63,7 +56,7 @@ data_entities:
     description: "Extracted concepts from specification"
     schema: schemas/concepts.schema.json
     compression_strategies:
-      full:
+      none:
         description: "Complete JSON concepts"
       concept_summary:
         description: "concept summary format (markdown tables grouped by entity type)"
@@ -74,7 +67,7 @@ data_entities:
     description: "Aggregated concept relationships"
     schema: schemas/aggregations.schema.json
     compression_strategies:
-      full:
+      none:
         description: "Complete JSON aggregations"
       concept_summary:
         description: "concept summary format (markdown tables grouped by entity type)"
@@ -85,7 +78,7 @@ data_entities:
     description: "Message definitions"
     schema: schemas/messages.schema.json
     compression_strategies:
-      full:
+      none:
         description: "Complete JSON messages"
       concept_summary:
         description: "concept summary format (markdown tables grouped by entity type)"
@@ -96,7 +89,7 @@ data_entities:
     description: "Message aggregation definitions"
     schema: null
     compression_strategies:
-      full:
+      none:
         description: "Complete JSON message aggregations"
 
   requirements:
@@ -105,7 +98,7 @@ data_entities:
     description: "Final requirements output"
     schema: schemas/requirements.schema.json
     compression_strategies:
-      full:
+      none:
         description: "Complete JSON requirements"
 
 # ============================================
@@ -190,7 +183,7 @@ steps:
     inputs:
       - label: spec_formal
         source: label:spec_formal
-        compression: full
+        compression: none
         color: yellow
     outputs:
       - label: revised_spec
