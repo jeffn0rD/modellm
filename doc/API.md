@@ -1,1627 +1,1708 @@
-# TypeDBClient3 API Documentation
+# ModelLM API Reference
 
-## Overview
+Comprehensive API documentation for ModelLM v0.1.0
 
-The `TypeDBClient3` library provides a Python interface to TypeDB v3's HTTP API. It supports authentication, database management, query execution, schema operations, entity management, query building, and data import.
+## Table of Contents
 
-## Installation
-
-```bash
-pip install TypeDBClient3
-```
-
-## Quick Start
-
-```python
-from typedb_client3 import TypeDBClient, TransactionType
-
-# Connect to TypeDB
-client = TypeDBClient(
-    base_url="http://localhost:8000",
-    username="admin",
-    password="password"
-)
-
-# Create database and load schema
-client.create_database("my_db")
-client.load_schema("my_db", "schema.tql")
-
-# Execute queries
-client.execute_query("my_db", 'insert $a isa actor, owns actor-id "A1";', TransactionType.WRITE)
-
-client.close()
-```
+1. [LLM Client API](#llm-client-api)
+2. [Prompt Manager API](#prompt-manager-api)
+3. [Step Executor API](#step-executor-api)
+4. [Pipeline Orchestrator API](#pipeline-orchestrator-api)
+5. [Compression Manager API](#compression-manager-api)
+6. [Validation API](#validation-api)
+7. [CLI API](#cli-api)
+8. [TypeDB Importer API](#typedb-importer-api)
+9. [Terminal Utils API](#terminal-utils-api)
+10. [Label Registry API](#label-registry-api)
 
 ---
 
-## TypeDBClient
+## 1. LLM Client API
 
-Main client class for interacting with TypeDB v3.
+### OpenRouterClient
 
-### Constructor
+**File:** `prompt_pipeline/llm_client.py`  
+**Lines:** 12,902 bytes
+
+#### Initialization
 
 ```python
-TypeDBClient(
-    base_url: str = "http://localhost:8000",
-    username: Optional[str] = None,
-    password: Optional[str] = None,
-    timeout: int = 30,
-    operation_timeouts: Optional[Dict[str, int]] = None
+from prompt_pipeline.llm_client import OpenRouterClient
+
+client = OpenRouterClient(
+    api_key: str = None,  # Defaults to OPENROUTER_API_KEY env var
+    model: str = "openai/gpt-4-turbo-preview",
+    max_retries: int = 3,
+    base_delay: float = 2.0
 )
 ```
 
-**Parameters:**
-- `base_url` (str): TypeDB server URL. Default: `"http://localhost:8000"`
-- `username` (Optional[str]): Username for authentication. Default: `None`
-- `password` (Optional[str]): Password for authentication. Default: `None`
-- `timeout` (int): Default request timeout in seconds. Default: `30`
-- `operation_timeouts` (Optional[Dict[str, int]]): Per-operation timeouts. Default: `None`
+#### Parameters
 
-**Raises:**
-- `TypeDBValidationError`: If input parameters are invalid
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `api_key` | str | None | OpenRouter API key (falls back to env var) |
+| `model` | str | "openai/gpt-4-turbo-preview" | Default model to use |
+| `max_retries` | int | 3 | Maximum retry attempts |
+| `base_delay` | float | 2.0 | Base delay for exponential backoff (seconds) |
 
----
+#### Methods
 
-### Database Operations
+##### `call_llm()`
 
-#### `list_databases()`
-
-```python
-def list_databases(self) -> List[str]
-```
-
-List all databases on the server.
-
-**Returns:** `List[str]` - List of database names
-
-**Example:**
-```python
-dbs = client.list_databases()
-```
-
----
-
-#### `database_exists(database: str)`
+Execute an LLM API call with retry logic.
 
 ```python
-def database_exists(self, database: str) -> bool
-```
-
-Check if a database exists.
-
-**Parameters:**
-- `database` (str): Database name
-
-**Returns:** `bool` - True if database exists
-
----
-
-#### `create_database(database: str)`
-
-```python
-def create_database(self, database: str) -> None
-```
-
-Create a new database.
-
-**Parameters:**
-- `database` (str): Database name to create
-
-**Raises:**
-- `TypeDBValidationError`: If database name is invalid or already exists
-- `TypeDBServerError`: If server error occurs
-
----
-
-#### `delete_database(database: str)`
-
-```python
-def delete_database(self, database: str) -> None
-```
-
-Delete a database.
-
-**Parameters:**
-- `database` (str): Database name to delete
-
-**Raises:**
-- `TypeDBValidationError`: If database doesn't exist
-- `TypeDBServerError`: If server error occurs
-
----
-
-#### `connect_database(database: str)`
-
-```python
-def connect_database(self, database: str) -> bool
-```
-
-Verify database exists, create if it doesn't.
-
-**Parameters:**
-- `database` (str): Database name
-
-**Returns:** `bool` - True if database exists or was created
-
----
-
-### Query Execution
-
-#### `execute_query(database: str, query: str, transaction_type: TransactionType = TransactionType.READ)`
-
-```python
-def execute_query(
+def call_llm(
     self,
-    database: str,
-    query: str,
-    transaction_type: TransactionType = TransactionType.READ
-) -> Dict[str, Any]
+    prompt: str,
+    model: Optional[str] = None,
+    temperature: Optional[float] = None,
+    max_tokens: Optional[int] = None,
+    timeout: Optional[int] = None
+) -> Dict[str, Any]:
+    """
+    Execute LLM API call with exponential backoff retry.
+    
+    Args:
+        prompt: The prompt to send to the LLM
+        model: Override default model
+        temperature: Temperature setting (0.0-1.0)
+        max_tokens: Maximum tokens to generate
+        timeout: Request timeout in seconds
+    
+    Returns:
+        Dict with 'response' (str) and 'metadata' (Dict)
+    
+    Raises:
+        OpenRouterError: After max retries exhausted
+    """
 ```
-
-Execute a single TypeQL query.
-
-**Parameters:**
-- `database` (str): Database name
-- `query` (str): TypeQL query string
-- `transaction_type` (TransactionType): READ or WRITE
-
-**Returns:** `Dict[str, Any]` - Query results as JSON
-
-**Raises:**
-- `TypeDBQueryError`: If query is invalid
-- `TypeDBConnectionError`: If connection fails
 
 **Example:**
 ```python
-# Insert data
-client.execute_query(
-    "my_db",
-    'insert $a isa actor, owns actor-id "A1";',
-    TransactionType.WRITE
+from prompt_pipeline.llm_client import OpenRouterClient
+
+client = OpenRouterClient()
+result = client.call_llm(
+    prompt="Extract concepts from this specification...",
+    model="anthropic/claude-3-opus",
+    temperature=0.1,
+    max_tokens=4000
 )
 
-# Read data
-result = client.execute_query(
-    "my_db",
-    'match $a isa actor;',
-    TransactionType.READ
-)
+response_text = result['response']
+metadata = result['metadata']
+print(f"Response: {response_text}")
+print(f"Model: {metadata['model']}")
+print(f"Tokens used: {metadata['total_tokens']}")
 ```
 
----
+##### `get_model_info()`
 
-#### `execute_transaction(database: str, transaction_type: TransactionType, operations: List[Dict[str, Any]])`
+Get information about available models.
 
 ```python
-def execute_transaction(
+def get_model_info(self, model: str) -> Dict[str, Any]:
+    """
+    Get information about a specific model.
+    
+    Args:
+        model: Model name (e.g., "openai/gpt-4-turbo-preview")
+    
+    Returns:
+        Dict with model metadata (context length, pricing, etc.)
+    """
+```
+
+##### `select_model()`
+
+Select model based on level and step.
+
+```python
+def select_model(
     self,
-    database: str,
-    transaction_type: TransactionType,
-    operations: List[Dict[str, Any]]
-) -> Dict[str, Any]
+    step_name: str,
+    model_level: int,
+    step_config: Optional[Dict] = None
+) -> str:
+    """
+    Select model based on configuration.
+    
+    Args:
+        step_name: Name of the step
+        model_level: Quality level (1, 2, or 3)
+        step_config: Step configuration (optional override)
+    
+    Returns:
+        Selected model name
+    """
 ```
-
-Execute multiple operations in a single transaction.
-
-**Parameters:**
-- `database` (str): Database name
-- `transaction_type` (TransactionType): READ or WRITE
-- `operations` (List[Dict[str, Any]]): List of operations with "query" key
-
-**Returns:** `Dict[str, Any]` - Combined results
 
 **Example:**
 ```python
-operations = [
-    {"query": 'insert $a isa actor, owns actor-id "A1";'},
-    {"query": 'insert $b isa actor, owns actor-id "A2";'},
-]
-result = client.execute_transaction("my_db", TransactionType.WRITE, operations)
+model = client.select_model("stepC3", 1)
+# Returns: "qwen/qwen-2.5-72b"
 ```
 
----
-
-#### `execute_queries(database: str, *queries: str, transaction_type: TransactionType = TransactionType.WRITE)`
+#### Error Handling
 
 ```python
-def execute_queries(
-    self,
-    database: str,
-    *queries: str,
-    transaction_type: TransactionType = TransactionType.WRITE
-) -> List[Dict[str, Any]]
-```
-
-Execute multiple queries as variadic arguments.
-
-**Parameters:**
-- `database` (str): Database name
-- `*queries` (str): Variable number of TypeQL queries
-- `transaction_type` (TransactionType): READ or WRITE
-
-**Returns:** `List[Dict[str, Any]]` - Results for each query
-
-**Example:**
-```python
-results = client.execute_queries(
-    "my_db",
-    'insert $a isa actor, owns actor-id "A1";',
-    'insert $b isa actor, owns actor-id "A2";',
-    transaction_type=TransactionType.WRITE
-)
-```
-
----
-
-#### `with_transaction(database: str, transaction_type: TransactionType)`
-
-```python
-def with_transaction(
-    self,
-    database: str,
-    transaction_type: TransactionType
-) -> TransactionContext
-```
-
-Create a transaction context manager.
-
-**Parameters:**
-- `database` (str): Database name
-- `transaction_type` (TransactionType): READ or WRITE
-
-**Returns:** `TransactionContext` - Context manager
-
-**Example:**
-```python
-with client.with_transaction("my_db", TransactionType.WRITE) as tx:
-    tx.execute('insert $a isa actor, owns actor-id "A1";')
-    tx.execute('insert $b isa actor, owns actor-id "A2";')
-```
-
----
-
-### Schema Operations
-
-#### `load_schema(database: str, schema_path)`
-
-```python
-def load_schema(self, database: str, schema_path) -> None
-```
-
-Load TypeDB schema from file or string.
-
-**Parameters:**
-- `database` (str): Database name
-- `schema_path`: Path to .tql file (str/Path) or schema string
-
-**Raises:**
-- `FileNotFoundError`: If schema file doesn't exist
-- `TypeDBQueryError`: If schema is invalid
-
-**Example:**
-```python
-# From file
-client.load_schema("my_db", "path/to/schema.tql")
-
-# From string
-schema = """
-define
-actor sub entity, owns actor-id;
-"""
-client.load_schema("my_db", schema)
-```
-
----
-
-#### `get_schema(database: str)`
-
-```python
-def get_schema(self, database: str) -> str
-```
-
-Fetch database schema as TypeQL define string.
-
-**Parameters:**
-- `database` (str): Database name
-
-**Returns:** `str` - TypeQL schema string
-
-**Raises:**
-- `TypeDBConnectionError`: If connection fails
-- `TypeDBQueryError`: If request fails
-
----
-
-### Token Management
-
-#### `get_encrypted_token()`
-
-```python
-def get_encrypted_token(self) -> Optional[str]
-```
-
-Get encrypted token for external storage.
-
-**Returns:** `Optional[str]` - Encrypted token string
-
----
-
-#### `set_encrypted_token(encrypted_token: str)`
-
-```python
-def set_encrypted_token(self, encrypted_token: str) -> None
-```
-
-Set encrypted token from external storage.
-
-**Parameters:**
-- `encrypted_token` (str): Previously encrypted token
-
----
-
-#### `get_token_access_log()`
-
-```python
-def get_token_access_log(self) -> List[Dict[str, Any]]
-```
-
-Get token access audit log.
-
-**Returns:** `List[Dict[str, Any]]` - Access log entries
-
----
-
-### Cleanup
-
-#### `close()`
-
-```python
-def close(self) -> None
-```
-
-Close all connections and clear sensitive data from memory.
-
----
-
-## TransactionType
-
-Enum for transaction types.
-
-```python
-from typedb_client3 import TransactionType
-
-TransactionType.READ   # For read queries
-TransactionType.WRITE # For write/insert/delete queries
-```
-
----
-
-## Validation Functions
-
-### `validate_base_url(url: str)`
-
-Validate and normalize base URL.
-
-**Parameters:**
-- `url` (str): URL to validate
-
-**Returns:** `str` - Normalized URL
-
-**Raises:** `TypeDBValidationError` - If URL is invalid
-
----
-
-### `validate_credentials(username: Optional[str], password: Optional[str])`
-
-Validate username and password.
-
-**Parameters:**
-- `username` (Optional[str]): Username
-- `password` (Optional[str]): Password
-
-**Raises:** `TypeDBValidationError` - If credentials are invalid
-
----
-
-### `validate_timeout(timeout: Any)`
-
-Validate timeout value.
-
-**Parameters:**
-- `timeout`: Timeout value to validate
-
-**Returns:** `int` - Validated timeout
-
-**Raises:** `TypeDBValidationError` - If timeout is invalid
-
----
-
-### `validate_operation_timeouts(timeouts: Dict[str, int])`
-
-Validate operation-specific timeouts.
-
-**Parameters:**
-- `timeouts` (Dict[str, int]): Operation name to timeout mapping
-
-**Returns:** `Dict[str, int]` - Validated timeouts
-
----
-
-## SecureTokenManager
-
-Class for secure JWT token storage with Fernet encryption.
-
-### `store_token(token: str)`
-
-Encrypt and store a JWT token.
-
-**Parameters:**
-- `token` (str): JWT token string
-
-**Returns:** `str` - Encrypted token
-
----
-
-### `retrieve_token(encrypted_token: str)`
-
-Decrypt and retrieve a JWT token.
-
-**Parameters:**
-- `encrypted_token` (str): Encrypted token
-
-**Returns:** `str` - Decrypted token
-
-**Raises:** `TypeDBAuthenticationError` - If decryption fails
-
----
-
-### `clear_memory()`
-
-Clear cached token from memory.
-
----
-
-## Exceptions
-
-- `TypeDBConnectionError` - Connection-related errors
-- `TypeDBAuthenticationError` - Authentication failures
-- `TypeDBQueryError` - Query execution errors
-- `TypeDBServerError` - Server-side errors
-- `TypeDBValidationError` - Input validation errors
-
----
-
-## Error Handling Example
-
-```python
-from typedb_client3 import TypeDBClient, TransactionType
-from typedb_client3.exceptions import (
-    TypeDBConnectionError,
-    TypeDBQueryError,
-    TypeDBValidationError
-)
+from prompt_pipeline.llm_client import OpenRouterError
 
 try:
-    client = TypeDBClient("http://localhost:8000", "admin", "password")
-    client.execute_query("my_db", "invalid query", TransactionType.READ)
-except TypeDBValidationError as e:
-    print(f"Validation error: {e}")
-except TypeDBQueryError as e:
-    print(f"Query error: {e}")
-except TypeDBConnectionError as e:
-    print(f"Connection error: {e}")
-finally:
-    client.close()
+    result = client.call_llm(prompt)
+except OpenRouterError as e:
+    print(f"API Error: {e.message}")
+    print(f"Details: {e.details}")
+    print(f"Retry count: {e.retry_count}")
 ```
 
 ---
 
-# Detailed Class Reference
+## 2. Prompt Manager API
 
-## QueryBuilder
+### PromptManager
 
-The `QueryBuilder` class provides a fluent interface for building TypeDB v3 queries programmatically.
+**File:** `prompt_pipeline/prompt_manager.py`  
+**Lines:** 19,830 bytes
 
-### Class Methods
-
-#### `QueryBuilder()`
-
-Creates a new QueryBuilder instance.
+#### Initialization
 
 ```python
-qb = QueryBuilder()
+from prompt_pipeline.prompt_manager import PromptManager
+
+manager = PromptManager(
+    config_path: str = "configuration/pipeline_config.yaml"
+)
 ```
 
-#### `QueryBuilder.match_template()`
+#### Methods
 
-Creates a QueryBuilder pre-configured for MATCH queries.
+##### `get_step_config()`
+
+Get configuration for a specific step.
 
 ```python
-qb = QueryBuilder.match_template()
-# Equivalent to QueryBuilder().match()
+def get_step_config(
+    self,
+    step_name: str
+) -> Optional[Dict[str, Any]]:
+    """
+    Get the configuration for a specific step.
+    
+    Args:
+        step_name: Name of the step
+    
+    Returns:
+        Step configuration dictionary or None if not found
+    """
 ```
 
-#### `QueryBuilder.insert_template()`
-
-Creates a QueryBuilder pre-configured for INSERT queries.
-
+**Example:**
 ```python
-qb = QueryBuilder.insert_template()
-# Equivalent to QueryBuilder().insert()
+config = manager.get_step_config("stepC3")
+print(config['name'])  # "stepC3"
+print(config['prompt_file'])  # "prompt_step_C3.md"
+print(config['inputs'])  # List of input configurations
 ```
 
-#### `QueryBuilder.put_template()`
+##### `get_prompt_with_variables()`
 
-Creates a QueryBuilder pre-configured for PUT (idempotent insert) queries.
+Get prompt with variable substitution.
 
 ```python
-qb = QueryBuilder.put_template()
+def get_prompt_with_variables(
+    self,
+    step_name: str,
+    variables: Optional[Dict[str, str]] = None,
+    persona: Optional[str] = None
+) -> str:
+    """
+    Get the complete prompt for a step with variables substituted.
+    
+    Args:
+        step_name: Name of the step
+        variables: Dictionary of label -> content mappings
+        persona: Override persona (optional)
+    
+    Returns:
+        Complete prompt with preamble and substituted variables
+    
+    Raises:
+        ValueError: If step not found or required variables missing
+    """
 ```
 
-#### `QueryBuilder.delete_template()`
-
-Creates a QueryBuilder pre-configured for DELETE queries.
-
+**Example:**
 ```python
-qb = QueryBuilder.delete_template()
+manager = PromptManager()
+
+# Prepare variables from step inputs
+variables = {
+    'spec': "YAML spec content...",
+    'concepts': "JSON concepts content..."
+}
+
+prompt = manager.get_step_config_with_variables(
+    step_name="stepC4",
+    variables=variables
+)
+
+# prompt now contains:
+# [System message with persona]
+# [Preamble]
+# [Template with {{spec}} and {{concepts}} replaced]
 ```
 
-### Instance Methods
+##### `generate_preamble()`
 
-#### `.match()`
-
-Set query mode to MATCH (read).
+Generate system preamble for step.
 
 ```python
-qb = QueryBuilder().match()
+def generate_preamble(
+    self,
+    step_name: str,
+    persona: Optional[str] = None
+) -> str:
+    """
+    Generate the system message and preamble for a step.
+    
+    Args:
+        step_name: Name of the step
+        persona: Override persona from config
+    
+    Returns:
+        Formatted preamble string
+    """
 ```
 
-#### `.insert()`
+##### `get_data_entity()`
 
-Set query mode to INSERT (write).
+Get data entity configuration.
 
 ```python
-qb = QueryBuilder().insert()
+def get_data_entity(
+    self,
+    label: str
+) -> Optional[Dict[str, Any]]:
+    """
+    Get data entity configuration for a label.
+    
+    Args:
+        label: Label name (e.g., "spec", "concepts")
+    
+    Returns:
+        Data entity configuration or None if not found
+    """
 ```
 
-#### `.put()`
-
-Set query mode to PUT (idempotent write).
-
+**Example:**
 ```python
-qb = QueryBuilder().put()
+spec_entity = manager.get_data_entity("spec")
+print(spec_entity['type'])  # "yaml"
+print(spec_entity['filename'])  # "spec_1.yaml"
+print(spec_entity['yaml_schema'])  # "schemas/spec_yaml_schema.json"
 ```
 
-#### `.delete()`
+##### `resolve_inputs()`
 
-Set query mode to DELETE (write).
+Resolve inputs for a step.
 
 ```python
-qb = QueryBuilder().delete()
+def resolve_inputs(
+    self,
+    step_name: str,
+    cli_inputs: Optional[Dict[str, str]] = None,
+    previous_outputs: Optional[Dict[str, Path]] = None,
+    exogenous_inputs: Optional[Dict[str, str]] = None
+) -> Dict[str, str]:
+    """
+    Resolve all inputs for a step.
+    
+    Args:
+        step_name: Name of the step
+        cli_inputs: CLI-provided inputs (highest priority)
+        previous_outputs: Outputs from previous steps
+        exogenous_inputs: Exogenous inputs from config
+    
+    Returns:
+        Dictionary of label -> content mappings
+    
+    Raises:
+        InputError: If required input not found
+    """
 ```
 
-#### `.define()`
+**Resolution Priority:**
+1. CLI inputs (highest)
+2. Exogenous inputs
+3. Previous outputs
+4. Missing required input → Error
 
-Set query mode to DEFINE (schema).
+##### `register_output()`
 
-```python
-qb = QueryBuilder().define()
-```
-
-#### `.undefine()`
-
-Set query mode to UNDEFINE (schema).
+Register step output for next steps.
 
 ```python
-qb = QueryBuilder().undefine()
-```
-
-#### `.redefine()`
-
-Set query mode to REDEFINE (schema).
-
-```python
-qb = QueryBuilder().redefine()
-```
-
-#### `.variable(name: str, type: str, attributes: dict = None)`
-
-Add a variable to the query.
-
-```python
-# Simple variable
-qb.variable("x", "actor")
-
-# With attributes
-qb.variable("a", "actor", {"actor-id": "A1", "id-label": "User1"})
-```
-
-#### `.update_variable(name: str, type: str, attributes: dict)`
-
-Update an existing variable or create a new one.
-
-```python
-qb.update_variable("x", "actor", {"actor-id": "A2"})
-```
-
-#### `.get_variable(name: str)`
-
-Get a Variable by name.
-
-```python
-var = qb.get_variable("x")
-```
-
-#### `.clear_variable(name: str)`
-
-Remove a variable from the query.
-
-```python
-qb.clear_variable("x")
-```
-
-#### `.clear_all_variables()`
-
-Remove all variables from the query.
-
-```python
-qb.clear_all_variables()
-```
-
-#### `.relation(type: str)`
-
-Add a relation to the query. Returns a `RelationBuilder`.
-
-```python
-qb.relation("messaging")  # Returns RelationBuilder
-```
-
-#### `.fetch(fields)`
-
-Set the FETCH clause.
-
-```python
-# Fetch single variable
-qb.fetch(["x"])
-
-# Fetch with nested structure
-qb.fetch({"name": "$p.name", "titles": {"a": "$b.title"}})
-```
-
-#### `.order_by(variable: str, attribute: str, direction: str = "asc")`
-
-Add ORDER BY clause.
-
-```python
-qb.order_by("x", "order")  # ascending
-qb.order_by("x", "order", "desc")  # descending
-```
-
-#### `.offset(n: int)`
-
-Add OFFSET clause.
-
-```python
-qb.offset(10)
-```
-
-#### `.limit(n: int)`
-
-Add LIMIT clause.
-
-```python
-qb.limit(5)
-```
-
-#### `.reduce(variable: str, function: str, group_by: str = None)`
-
-Add REDUCE clause for aggregations.
-
-```python
-# Simple count
-qb.reduce("$x", "count")
-
-# With groupby
-qb.reduce("$s", "sum", "f")
-```
-
-#### `.with_function(func: str)`
-
-Add WITH clause for user-defined functions.
-
-```python
-qb.with_function("fun path($start: node) -> { node }: match {}; return { $start };")
-```
-
-#### `.build()`
-
-Build and return the final TypeQL query string.
-
-```python
-query = qb.build()
-```
-
-#### `.get_tql()`
-
-Get the TypeQL query (alias for build() with caching.
-
-```python
-tql = qb.get_tql()
-```
-
-#### `.clone()`
-
-Create a deep copy of the QueryBuilder.
-
-```python
-clone = qb.clone()
+def register_output(
+    self,
+    step_name: str,
+    output_file: str,
+    output_label: str,
+    output_type: str
+) -> None:
+    """
+    Register an output for use by subsequent steps.
+    
+    Args:
+        step_name: Name of the step producing output
+        output_file: Path to output file
+        output_label: Label to register
+        output_type: Type of output (yaml, json, etc.)
+    """
 ```
 
 ---
 
-## Variable
+## 3. Step Executor API
 
-Represents a typed variable in a QueryBuilder query.
+### StepExecutor
 
-### Constructor
+**File:** `prompt_pipeline/step_executor.py`  
+**Lines:** 35,780 bytes
 
-```python
-Variable(name: str)
-```
-
-### Methods
-
-#### `.isa(type: str)`
-
-Set the type of the variable.
+#### Initialization
 
 ```python
-var = Variable("x")
-var.isa("actor")
-# Result: "$x isa actor"
-```
+from prompt_pipeline.step_executor import StepExecutor
+from prompt_pipeline.llm_client import OpenRouterClient
+from prompt_pipeline.prompt_manager import PromptManager
 
-#### `.has(attribute: str, value)`
-
-Add an attribute to the variable.
-
-```python
-var.has("actor-id", "A1")
-var.has("name", "John")
-var.has("count", 42)
-var.has("active", True)
-# Result: '$x isa actor, has actor-id "A1", has name "John", has count 42, has active true'
-```
-
-#### `.label(name: str)`
-
-Set a label for the variable (TypeDB v3 feature).
-
-```python
-var.label("$type_label")
-# Result: '$x isa user, label $type_label'
-```
-
-### Properties
-
-- `name` - The variable name (without $)
-- `type` - The isa type
-- `attributes` - Dict of attribute key-value pairs
-- `label` - Optional type label
-
----
-
-## RelationBuilder
-
-Helper for building relations in queries.
-
-### Constructor
-
-```python
-RelationBuilder(query_builder: QueryBuilder, relation_type: str)
-```
-
-### Methods
-
-#### `.role(role_name: str, variable: str)`
-
-Add a role player to the relation.
-
-```python
-rb.role("producer", "$actor")
-rb.role("message", "$msg")
-```
-
-#### `.links()`
-
-Use the `links` keyword (TypeDB v3).
-
-```python
-rb.links()
-```
-
-#### `.as_variable(name: str)`
-
-Set the variable name for the relation.
-
-```python
-rb.as_variable("m")
-```
-
-#### `.end_relation()`
-
-Finish building the relation and return to QueryBuilder.
-
-```python
-qb = rb.end_relation()
-```
-
----
-
-## Entity Classes
-
-### Entity (Base Class)
-
-Base class for all entity types.
-
-```python
-from typedb_client3.entities import Entity
-
-entity = Entity()
-```
-
-**Class Attributes:**
-- `_type` - The entity type name (empty string for base class)
-- `_key_attr` - The key attribute name
-
-**Methods:**
-- `get_key_value()` - Get the key attribute value
-- `to_insert_query()` - Generate INSERT query
-- `to_match_query()` - Generate MATCH query
-- `_escape_value(value)` - Escape value for TypeQL
-
-### Actor
-
-```python
-from typedb_client3.entities import Actor
-
-actor = Actor(
-    actor_id="A1",
-    id_label="User1",
-    description="Test actor",
-    justification="For testing"
+executor = StepExecutor(
+    llm_client=OpenRouterClient(),
+    prompt_manager=PromptManager(),
+    output_dir=Path("pipeline_output/"),
+    model_level=1,
+    skip_validation=False,
+    verbose=False,
+    show_prompt=False,
+    show_response=False,
+    output_file=None,
+    force=False
 )
 ```
 
-**Attributes:**
-- `actor_id` (key attribute)
-- `id_label`
-- `description`
-- `justification`
+#### Parameters
 
-### Action
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `llm_client` | OpenRouterClient | Required | LLM client instance |
+| `prompt_manager` | PromptManager | Required | Prompt manager instance |
+| `output_dir` | Path | Required | Directory for output files |
+| `model_level` | int | 1 | Model quality level (1-3) |
+| `skip_validation` | bool | False | Skip validation (dev mode) |
+| `verbose` | bool | False | Print verbose output |
+| `show_prompt` | bool | False | Display substituted prompt |
+| `show_response` | bool | False | Display LLM response |
+| `output_file` | str | None | Specific output filename |
+| `force` | bool | False | Continue despite warnings |
+
+#### Methods
+
+##### `execute_step()`
+
+Execute a single step.
 
 ```python
-from typedb_client3.entities import Action
+def execute_step(
+    self,
+    step_name: str,
+    cli_inputs: Optional[Dict[str, str]] = None,
+    approval_mode: str = "interactive"
+) -> Tuple[bool, Optional[List[Path]]]:
+    """
+    Execute a single pipeline step.
+    
+    Args:
+        step_name: Name of the step to execute
+        cli_inputs: CLI-provided inputs
+        approval_mode: "interactive", "auto", or "dry-run"
+    
+    Returns:
+        Tuple of (success, list_of_output_paths)
+    
+    Raises:
+        StepExecutionError: If execution fails
+    """
+```
 
-action = Action(
-    action_id="ACT1",
-    id_label="CreateUser",
-    description="Creates a user",
-    justification="For user management"
+**Approval Modes:**
+- `"interactive"`: Show prompt and wait for confirmation
+- `"auto"`: Skip approval, execute automatically
+- `"dry-run"`: Show what would happen, don't execute
+
+**Example:**
+```python
+executor = StepExecutor(llm_client, prompt_manager, Path("output/"))
+
+# Interactive approval
+success, outputs = executor.execute_step(
+    step_name="stepC3",
+    cli_inputs={'spec': 'yaml/spec_1.yaml'},
+    approval_mode="interactive"
+)
+
+# Auto approval
+success, outputs = executor.execute_step(
+    step_name="stepC3",
+    cli_inputs={'spec': 'yaml/spec_1.yaml'},
+    approval_mode="auto"
+)
+
+# Dry run
+success, outputs = executor.execute_step(
+    step_name="stepC3",
+    cli_inputs={'spec': 'yaml/spec_1.yaml'},
+    approval_mode="dry-run"
 )
 ```
 
-### Message
+##### `construct_prompt()`
+
+Construct the prompt for a step.
 
 ```python
-from typedb_client3.entities import Message
-
-message = Message(
-    message_id="MSG1",
-    id_label="TestMsg",
-    description="A test message",
-    justification="For testing"
-)
+def construct_prompt(
+    self,
+    step_name: str,
+    cli_inputs: Optional[Dict[str, str]] = None
+) -> str:
+    """
+    Construct the complete prompt for a step.
+    
+    Args:
+        step_name: Name of the step
+        cli_inputs: CLI-provided inputs
+    
+    Returns:
+        Complete prompt with all substitutions
+    """
 ```
 
-### DataEntity
+##### `validate_output()`
+
+Validate step output.
 
 ```python
-from typedb_client3.entities import DataEntity
-
-data = DataEntity(
-    data_entity_id="DATA1",
-    id_label="TestData",
-    description="Test data"
-)
+def validate_output(
+    self,
+    output_file: Path,
+    step_name: str
+) -> ValidationResult:
+    """
+    Validate the output of a step.
+    
+    Args:
+        output_file: Path to output file
+        step_name: Name of the step
+    
+    Returns:
+        ValidationResult with is_valid, errors, warnings
+    """
 ```
 
-### Requirement
-
+**Example:**
 ```python
-from typedb_client3.entities import Requirement
-
-req = Requirement(
-    requirement_id="REQ1",
-    id_label="TestReq",
-    description="A requirement",
-    requirement_type="functional",
-    status="draft",
-    priority="high"
+result = executor.validate_output(
+    output_file=Path("concepts/concepts.json"),
+    step_name="stepC3"
 )
-```
 
-### ActionAggregate
-
-```python
-from typedb_client3.entities import ActionAggregate
-
-agg = ActionAggregate(
-    action_agg_id="AGG1",
-    id_label="TestAgg"
-)
-```
-
-### MessageAggregate
-
-```python
-from typedb_client3.entities import MessageAggregate
-
-msg_agg = MessageAggregate(
-    message_agg_id="MSGAGG1",
-    id_label="TestMsgAgg"
-)
-```
-
-### Constraint
-
-```python
-from typedb_client3.entities import Constraint
-
-constraint = Constraint(
-    constraint_id="CON1",
-    id_label="TestConstraint",
-    description="A constraint",
-    constraint_type="required"
-)
-```
-
-### Category
-
-```python
-from typedb_client3.entities import Category
-
-category = Category(name="TestCategory")
-```
-
-### TextBlock
-
-```python
-from typedb_client3.entities import TextBlock
-
-tb = TextBlock(
-    anchor_id="AN1",
-    id_label="Goal1",
-    anchor_type="goal",
-    text="This is a goal",
-    order=1
-)
-```
-
-### Concept
-
-```python
-from typedb_client3.entities import Concept
-
-concept = Concept(
-    concept_id="C1",
-    id_label="TestConcept",
-    description="A concept"
-)
-```
-
-### SpecDocument
-
-```python
-from typedb_client3.entities import SpecDocument
-
-doc = SpecDocument(
-    spec_doc_id="DOC1",
-    id_label="TestDoc",
-    title="Test Document",
-    version="1.0",
-    status="draft",
-    description="A spec document"
-)
-```
-
-### SpecSection
-
-```python
-from typedb_client3.entities import SpecSection
-
-section = SpecSection(
-    spec_section_id="SEC1",
-    id_label="TestSection",
-    title="Test Section",
-    order=1
-)
+if result.is_valid:
+    print("✓ Validation passed")
+else:
+    print(f"✗ Validation failed: {result.errors}")
+    print(f"Warnings: {result.warnings}")
 ```
 
 ---
 
-## Relation Classes
+## 4. Pipeline Orchestrator API
 
-### Relation (Base Class)
+### PipelineOrchestrator
 
-Base class for all relation types.
+**File:** `prompt_pipeline/orchestrator.py`  
+**Lines:** 16,899 bytes
 
-```python
-from typedb_client3.entities import Relation
-
-relation = Relation()
-```
-
-**Class Attributes:**
-- `_type` - The relation type name
-- `_roles` - List of role names
-
-### Messaging
+#### Initialization
 
 ```python
-from typedb_client3.entities import Messaging, Actor, Message
+from prompt_pipeline.orchestrator import PipelineOrchestrator
 
-producer = Actor(actor_id="A1", id_label="P", description="", justification="")
-consumer = Actor(actor_id="A2", id_label="C", description="", justification="")
-message = Message(message_id="M1", id_label="Msg", description="", justification="")
-
-messaging = Messaging(
-    producer=producer,
-    consumer=consumer,
-    message=message
+orchestrator = PipelineOrchestrator(
+    config_path: str = "configuration/pipeline_config.yaml",
+    output_dir: Path = Path("pipeline_output/"),
+    model_level: int = 1,
+    skip_validation: bool = False
 )
 ```
 
-**Roles:** `producer`, `consumer`, `message`
+#### Methods
 
-### Anchoring
+##### `execute_pipeline()`
+
+Execute the full pipeline.
 
 ```python
-from typedb_client3.entities import Anchoring, TextBlock, Concept
-
-anchor = TextBlock(anchor_id="AN1", id_label="Goal", anchor_type="goal", text="", order=1)
-concept = Concept(concept_id="C1", id_label="Test", description="")
-
-anchoring = Anchoring(anchor=anchor, concept=concept)
+def execute_pipeline(
+    self,
+    nl_spec_file: Optional[Path] = None,
+    cli_inputs: Optional[Dict[str, str]] = None,
+    approval_mode: str = "auto",
+    import_database: Optional[str] = None,
+    wipe: bool = False
+) -> Dict[str, Any]:
+    """
+    Execute the complete pipeline.
+    
+    Args:
+        nl_spec_file: Path to NL spec file (for step1)
+        cli_inputs: Additional CLI inputs
+        approval_mode: "interactive", "auto", or "dry-run"
+        import_database: Database name for TypeDB import
+        wipe: Whether to wipe database before import
+    
+    Returns:
+        Dictionary with execution results and metrics
+    
+    Raises:
+        PipelineExecutionError: If pipeline fails
+    """
 ```
 
-**Roles:** `anchor`, `concept`
-
-### Membership
-
+**Example:**
 ```python
-from typedb_client3.entities import Membership, Actor, Category
+orchestrator = PipelineOrchestrator(
+    config_path="configuration/pipeline_config.yaml",
+    output_dir=Path("pipeline_output/"),
+    model_level=1
+)
 
-member = Actor(actor_id="A1", id_label="Member", description="", justification="")
-category = Category(name="TestCategory")
+results = orchestrator.execute_pipeline(
+    nl_spec_file=Path("doc/todo_list_spec.md"),
+    approval_mode="auto",
+    import_database="todo_app",
+    wipe=True
+)
 
-membership = Membership(member_of=category, member=member)
+print(f"Steps executed: {results['steps_executed']}")
+print(f"Total cost: ${results['total_cost']}")
+print(f"Total time: {results['total_time']}s")
 ```
 
-**Roles:** `member-of`, `member`
+##### `get_execution_plan()`
 
-### MembershipSeq
-
-Like Membership but with ordering.
-
-**Roles:** `member-of`, `member`, `order`
-
-### Outlining
+Get the execution plan for the pipeline.
 
 ```python
-from typedb_client3.entities import Outlining, SpecSection
-
-section = SpecSection(spec_section_id="SEC1", id_label="Section", title="", order=1)
-subsection = SpecSection(spec_section_id="SEC2", id_label="SubSection", title="", order=2)
-
-outlining = Outlining(section=section, subsection=subsection)
+def get_execution_plan(
+    self,
+    start_step: Optional[str] = None
+) -> List[Dict[str, Any]]:
+    """
+    Get the execution plan for the pipeline.
+    
+    Args:
+        start_step: Name of step to start from (optional)
+    
+    Returns:
+        List of step execution plans
+    """
 ```
 
-**Roles:** `section`, `subsection`
-
-### Categorization
-
+**Example:**
 ```python
-from typedb_client3.entities import Categorization, Category, Concept
-
-category = Category(name="TestCat")
-concept = Concept(concept_id="C1", id_label="Test", description="")
-
-categorization = Categorization(category=category, object=concept)
+plan = orchestrator.get_execution_plan()
+for step in plan:
+    print(f"Step: {step['name']}")
+    print(f"  Order: {step['order']}")
+    print(f"  Dependencies: {step['dependencies']}")
+    print(f"  Inputs: {[inp['label'] for inp in step['inputs']]}")
+    print(f"  Outputs: {[out['label'] for out in step['outputs']]}")
 ```
 
-**Roles:** `category`, `object`
+##### `get_step_dependencies()`
 
-### Requiring
-
-```python
-from typedb_client3.entities import Requiring, Requirement, Concept
-
-req = Requirement(requirement_id="REQ1", id_label="Req", description="")
-concept = Concept(concept_id="C1", id_label="Test", description="")
-
-requiring = Requiring(required_by=req, conceptualized_as=concept)
-```
-
-**Roles:** `required-by`, `conceptualized-as`, `implemented-by`
-
-### ConstrainedBy
+Get dependencies for a step.
 
 ```python
-from typedb_client3.entities import ConstrainedBy, Constraint, DataEntity
-
-constraint = Constraint(constraint_id="CON1", id_label="Con", description="")
-data = DataEntity(data_entity_id="DATA1", id_label="Data", description="")
-
-constrained = ConstrainedBy(constraint=constraint, object=data)
-```
-
-**Roles:** `constraint`, `object`
-
-### MessagePayload
-
-```python
-from typedb_client3.entities import MessagePayload, Message, DataEntity
-
-message = Message(message_id="M1", id_label="Msg", description="", justification="")
-payload = DataEntity(data_entity_id="DATA1", id_label="Data", description="")
-
-msg_payload = MessagePayload(message=message, payload=payload)
-```
-
-**Roles:** `message`, `payload`
-
-### Filesystem
-
-```python
-from typedb_client3.entities import Filesystem
-
-# folder and entry can be fs-folder or fs-file entities
-filesystem = Filesystem(folder=folder_entity, entry=file_entity)
-```
-
-**Roles:** `folder`, `entry`
-
----
-
-## EntityManager
-
-Manages entity operations with a TypeDB database.
-
-```python
-from typedb_client3 import TypeDBClient
-from typedb_client3.entity_manager import EntityManager
-from typedb_client3.entities import Actor
-
-client = TypeDBClient(base_url="http://localhost:8000", username="admin", password="password")
-em = EntityManager(client, "my_database")
-```
-
-### Constructor
-
-```python
-EntityManager(client: TypeDBClient, database: str)
-```
-
-### Methods
-
-#### `.insert(entity: Entity)`
-
-Insert an entity into the database.
-
-```python
-actor = Actor(actor_id="A1", id_label="User1", description="Test", justification="")
-em.insert(actor)
-```
-
-#### `.put(entity: Entity)`
-
-Insert or update an entity (idempotent).
-
-```python
-em.put(actor)
-```
-
-#### `.exists(entity_class, key_value: str)`
-
-Check if an entity exists.
-
-```python
-exists = em.exists(Actor, "A1")
-```
-
-#### `.fetch_one(entity_class, attributes: dict)`
-
-Fetch a single entity matching criteria.
-
-```python
-actor = em.fetch_one(Actor, {"actor-id": "A1"})
-```
-
-#### `.fetch_all(entity_class, attributes: dict = None)`
-
-Fetch all entities matching criteria.
-
-```python
-actors = em.fetch_all(Actor, {"id-label": "User%"})
-```
-
-#### `.delete(entity: Entity)`
-
-Delete an entity.
-
-```python
-em.delete(actor)
-```
-
-#### `.insert_relation(relation: Relation)`
-
-Insert a relation (not fully implemented).
-
-```python
-em.insert_relation(messaging)
-```
-
-#### `._escape_value(value)`
-
-Escape a value for use in queries.
-
-```python
-escaped = em._escape_value('test"string')
-# Result: '"test\\"string"'
+def get_step_dependencies(
+    self,
+    step_name: str
+) -> List[str]:
+    """
+    Get the dependency chain for a step.
+    
+    Args:
+        step_name: Name of the step
+    
+    Returns:
+        List of required step names in execution order
+    """
 ```
 
 ---
 
-## Query Patterns
+## 5. Compression Manager API
 
-Pre-built query templates for common operations.
+### CompressionManager
+
+**File:** `prompt_pipeline/compression/manager.py`  
+**Lines:** 18,927 bytes
+
+#### Initialization
 
 ```python
-from typedb_client3.query_patterns import QUERY_PATTERNS, QueryPattern
+from prompt_pipeline.compression import CompressionManager, CompressionConfig
+
+manager = CompressionManager()
 ```
 
-### QueryPattern Class
+#### Methods
+
+##### `compress()`
+
+Compress content using a strategy.
 
 ```python
-# Get a pattern by name
-pattern = QueryPattern.get("messages_by_producer")
-
-# Execute the pattern
-result = pattern.execute(client, "my_database", actor_id="A1")
+def compress(
+    self,
+    content: str,
+    strategy: str,
+    config: Optional[CompressionConfig] = None
+) -> CompressionResult:
+    """
+    Compress content using the specified strategy.
+    
+    Args:
+        content: Content to compress
+        strategy: Strategy name (e.g., "hierarchical", "anchor_index")
+        config: Compression configuration
+    
+    Returns:
+        CompressionResult with compressed content and metrics
+    """
 ```
 
-### Available Patterns
+**CompressionConfig:**
+```python
+config = CompressionConfig(
+    strategy="hierarchical",
+    level=3,  # 1=light, 2=medium, 3=aggressive
+    preserve_full=False,
+    truncation_length=4000,
+    metadata={"preserve_relations": True}
+)
+```
 
-- `messages_by_producer` - Get messages produced by an actor
-- `messages_by_action` - Get messages related to an action
-- `concepts_by_anchor` - Get concepts anchored to a text block
-- `concepts_by_requirement` - Get concepts needed for a requirement
-- `text_blocks_by_section` - Get text blocks in a section
-- `actions_by_aggregate` - Get actions in an action aggregate
+**Example:**
+```python
+from prompt_pipeline.compression import CompressionManager, CompressionConfig
 
-### QUERY_PATTERNS Dictionary
+manager = CompressionManager()
+
+# Compress with default config
+result = manager.compress(
+    content="Large specification content...",
+    strategy="hierarchical"
+)
+
+print(f"Original: {result.original_length} bytes")
+print(f"Compressed: {result.compressed_length} bytes")
+print(f"Reduction: {result.reduction_percent:.1f}%")
+print(f"Content: {result.content[:500]}...")
+```
+
+##### `get_strategy()`
+
+Get a compression strategy by name.
 
 ```python
-# List all available patterns
-print(QUERY_PATTERNS.keys())
-# dict_keys(['messages_by_producer', 'messages_by_action', ...])
+def get_strategy(self, name: str) -> CompressionStrategy:
+    """
+    Get a compression strategy by name.
+    
+    Args:
+        name: Strategy name
+    
+    Returns:
+        CompressionStrategy instance
+    
+    Raises:
+        ValueError: If strategy not found
+    """
+```
 
-# Access a pattern
-pattern = QUERY_PATTERNS["messages_by_producer"]
+##### `get_available_strategies()`
+
+List available strategies.
+
+```python
+def get_available_strategies(self) -> List[str]:
+    """
+    Get list of available compression strategy names.
+    
+    Returns:
+        List of strategy names
+    """
+```
+
+**Example:**
+```python
+manager = CompressionManager()
+strategies = manager.get_available_strategies()
+# ['zero', 'anchor_index', 'concept_summary', 'hierarchical', 
+#  'schema_only', 'differential', 'yaml_as_json']
+```
+
+### CompressionResult
+
+```python
+@dataclass
+class CompressionResult:
+    """Result of a compression operation."""
+    
+    content: str
+    original_length: int
+    compressed_length: int
+    compression_ratio: float
+    strategy: str
+    metadata: Optional[Dict[str, Any]] = None
+    
+    @property
+    def reduction_percent(self) -> float:
+        """Get reduction percentage."""
+        return (1 - self.compression_ratio) * 100
 ```
 
 ---
 
-## Importer
+## 6. Validation API
 
-Import data from YAML or JSON files into TypeDB.
+### YAMLValidator
+
+**File:** `prompt_pipeline/validation/yaml_validator.py`  
+**Lines:** 24,127 bytes
+
+#### Methods
+
+##### `validate()`
+
+Validate YAML content.
 
 ```python
-from typedb_client3.importer import TypeDBImporter, create_importer
+def validate(
+    self,
+    content: str,
+    schema_path: Optional[Path] = None
+) -> ValidationResult:
+    """
+    Validate YAML content.
+    
+    Args:
+        content: YAML content to validate
+        schema_path: Path to JSON schema (optional)
+    
+    Returns:
+        ValidationResult with is_valid, errors, warnings
+    """
 ```
 
-### TypeDBImporter Class
+**Example:**
+```python
+from prompt_pipeline.validation import YAMLValidator
+
+validator = YAMLValidator()
+
+with open("spec_1.yaml") as f:
+    yaml_content = f.read()
+
+result = validator.validate(
+    content=yaml_content,
+    schema_path=Path("schemas/spec_yaml_schema.json")
+)
+
+if result.is_valid:
+    print("✓ YAML is valid")
+else:
+    print(f"✗ Errors: {result.errors}")
+```
+
+### JSONValidator
+
+**File:** `prompt_pipeline/validation/json_validator.py`  
+**Lines:** 12,739 bytes
+
+#### Methods
+
+##### `validate()`
+
+Validate JSON content.
 
 ```python
+def validate(
+    self,
+    content: str,
+    schema: Optional[Dict[str, Any]] = None,
+    schema_path: Optional[Path] = None
+) -> ValidationResult:
+    """
+    Validate JSON content.
+    
+    Args:
+        content: JSON content to validate
+        schema: JSON schema as dict (optional)
+        schema_path: Path to JSON schema file (optional)
+    
+    Returns:
+        ValidationResult with is_valid, errors, warnings
+    """
+```
+
+**Example:**
+```python
+from prompt_pipeline.validation import JSONValidator
+
+validator = JSONValidator()
+
+with open("concepts.json") as f:
+    json_content = f.read()
+
+result = validator.validate(
+    content=json_content,
+    schema_path=Path("schemas/concepts.schema.json")
+)
+```
+
+##### `validate_concepts()`
+
+Validate concepts JSON.
+
+```python
+def validate_concepts(self, json_content: str) -> ValidationResult:
+    """Validate concepts.json structure."""
+```
+
+##### `validate_aggregations()`
+
+Validate aggregations JSON.
+
+```python
+def validate_aggregations(self, json_content: str) -> ValidationResult:
+    """Validate aggregations.json structure."""
+```
+
+##### `validate_messages()`
+
+Validate messages JSON.
+
+```python
+def validate_messages(self, json_content: str) -> ValidationResult:
+    """Validate messages.json structure."""
+```
+
+##### `validate_requirements()`
+
+Validate requirements JSON.
+
+```python
+def validate_requirements(self, json_content: str) -> ValidationResult:
+    """Validate requirements.json structure."""
+```
+
+### ValidationResult
+
+```python
+@dataclass
+class ValidationResult:
+    """Result of validation operation."""
+    
+    is_valid: bool
+    errors: List[str] = field(default_factory=list)
+    warnings: List[str] = field(default_factory=list)
+    metadata: Optional[Dict[str, Any]] = None
+```
+
+---
+
+## 7. CLI API
+
+### CLI Command: run-step
+
+**File:** `prompt_pipeline_cli/commands/run_step.py`
+
+#### Command Syntax
+
+```bash
+prompt-pipeline run-step <step_name> [OPTIONS]
+```
+
+#### Options
+
+| Option | Type | Description |
+|--------|------|-------------|
+| `--input-file` | str | Input file (label:filename) |
+| `--input-prompt` | str | Interactive prompt for input |
+| `--input-text` | str | Direct text input (label:"text") |
+| `--input-env` | str | Environment variable input (label:ENV_VAR) |
+| `--approve` | flag | Show prompt and wait for confirmation |
+| `--auto-approve` | flag | Skip approval prompt |
+| `--dry-run` | flag | Show what would happen without executing |
+| `--show-prompt` | flag | Display substituted prompt |
+| `--show-response` | flag | Display LLM response |
+| `--model-level` | int | Model quality level (1-3) |
+| `--model` | str | Override model selection |
+| `--output-dir` | str | Output directory |
+| `--output-file` | str | Specific output filename |
+| `--skip-validation` | flag | Skip validation (dev mode) |
+| `--force` | flag | Continue despite warnings |
+| `--config` | str | Custom configuration file |
+| `--verbosity` | int | Verbosity level (0-3) |
+| `--batch` | flag | Disable all interactive prompts |
+
+#### Examples
+
+```bash
+# Basic execution
+prompt-pipeline run-step stepC3 \
+  --input-file spec:yaml/spec_1.yaml \
+  --approve
+
+# Multiple inputs
+prompt-pipeline run-step stepC4 \
+  --input-file spec:yaml/spec_1.yaml \
+  --input-file concepts:concepts/concepts.json \
+  --approve
+
+# Dry run
+prompt-pipeline run-step stepC3 \
+  --input-file spec:yaml/spec_1.yaml \
+  --dry-run
+
+# Interactive prompt
+prompt-pipeline run-step step1 \
+  --input-prompt nl_spec \
+  --approve
+
+# Batch mode
+prompt-pipeline run-step stepC3 \
+  --input-file spec:yaml/spec_1.yaml \
+  --auto-approve
+
+# With verbosity
+prompt-pipeline run-step stepC3 \
+  --input-file spec:yaml/spec_1.yaml \
+  --approve \
+  --verbosity 2
+```
+
+### CLI Command: run-pipeline
+
+**File:** `prompt_pipeline_cli/commands/run_pipeline.py`
+
+#### Command Syntax
+
+```bash
+prompt-pipeline run-pipeline [OPTIONS]
+```
+
+#### Options
+
+| Option | Type | Description |
+|--------|------|-------------|
+| `--nl-spec` | str | Path to NL spec file |
+| `--input-file` | str | Input file (label:filename) |
+| `--output-dir` | str | Output directory |
+| `--import-database` | str | Database name for TypeDB import |
+| `--wipe` | flag | Wipe database before import |
+| `--model-level` | int | Model quality level (1-3) |
+| `--auto-approve` | flag | Skip approval prompts |
+| `--verbosity` | int | Verbosity level (0-3) |
+
+#### Examples
+
+```bash
+# Basic pipeline
+prompt-pipeline run-pipeline \
+  --nl-spec doc/todo_list_spec.md
+
+# With import
+prompt-pipeline run-pipeline \
+  --nl-spec doc/todo_list_spec.md \
+  --import-database todo_app \
+  --wipe
+
+# Custom output directory
+prompt-pipeline run-pipeline \
+  --nl-spec doc/todo_list_spec.md \
+  --output-dir output/
+
+# With specific model level
+prompt-pipeline run-pipeline \
+  --nl-spec doc/todo_list_spec.md \
+  --model-level 2
+
+# Batch mode
+prompt-pipeline run-pipeline \
+  --nl-spec doc/todo_list_spec.md \
+  --auto-approve
+```
+
+### CLI Command: import
+
+**File:** `prompt_pipeline_cli/commands/import_cmd.py`
+
+#### Command Syntax
+
+```bash
+prompt-pipeline import [OPTIONS]
+```
+
+#### Options
+
+| Option | Type | Description |
+|--------|------|-------------|
+| `--file` | str | Path to JSON file to import |
+| `--database` | str | TypeDB database name |
+| `--wipe` | flag | Wipe database before import |
+| `--import-id` | str | Import ID for versioning |
+
+#### Examples
+
+```bash
+# Basic import
+prompt-pipeline import \
+  --file requirements/requirements.json \
+  --database my_app
+
+# With wipe
+prompt-pipeline import \
+  --file requirements/requirements.json \
+  --database my_app \
+  --wipe
+
+# With import ID
+prompt-pipeline import \
+  --file requirements/requirements.json \
+  --database my_app \
+  --import-id "v1.0"
+```
+
+### CLI Command: validate
+
+**File:** `prompt_pipeline_cli/commands/validate.py`
+
+#### Command Syntax
+
+```bash
+prompt-pipeline validate [OPTIONS]
+```
+
+#### Options
+
+| Option | Type | Description |
+|--------|------|-------------|
+| `--config` | str | Path to configuration file |
+| `--file` | str | Path to file to validate |
+
+#### Examples
+
+```bash
+# Validate configuration
+prompt-pipeline validate --config configuration/pipeline_config.yaml
+
+# Validate a file
+prompt-pipeline validate --file concepts/concepts.json
+```
+
+### CLI Command: config
+
+**File:** `prompt_pipeline_cli/commands/config.py`
+
+#### Command Syntax
+
+```bash
+prompt-pipeline config [OPTIONS]
+```
+
+#### Options
+
+| Option | Type | Description |
+|--------|------|-------------|
+| `--show` | flag | Show configuration details |
+
+#### Example
+
+```bash
+prompt-pipeline config --show
+```
+
+---
+
+## 8. TypeDB Importer API
+
+### TypeDBImporter
+
+**File:** `prompt_pipeline/importer/importer.py`  
+**Lines:** 33,283 bytes
+
+#### Initialization
+
+```python
+from prompt_pipeline.importer import TypeDBImporter
+
+importer = TypeDBImporter(
+    base_url: str = "http://localhost:8000",
+    username: str = "admin",
+    password: str = "password"
+)
+```
+
+#### Methods
+
+##### `import_file()`
+
+Import data from a file.
+
+```python
+def import_file(
+    self,
+    file_path: Path,
+    database: str,
+    wipe: bool = False,
+    import_id: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    Import data from a JSON file to TypeDB.
+    
+    Args:
+        file_path: Path to JSON file
+        database: Database name
+        wipe: Whether to wipe database before import
+        import_id: Import ID for versioning
+    
+    Returns:
+        Dict with import metrics (entities, relations, time)
+    
+    Raises:
+        ImportError: If import fails
+    """
+```
+
+**Example:**
+```python
+from prompt_pipeline.importer import TypeDBImporter
+
 importer = TypeDBImporter(
     base_url="http://localhost:8000",
-    database="my_database",
-    username="admin",
-    password="password",
-    verbose=1
-)
-```
-
-### Constructor
-
-```python
-TypeDBImporter(
-    base_url: str = "http://localhost:8000",
-    database: str = "specifications",
-    username: Optional[str] = None,
-    password: Optional[str] = None,
-    verbose: int = VerboseLevel.NORMAL,
-    auto_connect: bool = True
-)
-```
-
-### Methods
-
-#### `.connect()`
-
-Connect to TypeDB.
-
-```python
-importer.connect()
-```
-
-#### `.import_yaml(file_path: Path, force_update: bool = False)`
-
-Import data from a YAML file.
-
-```python
-importer.import_yaml(Path("spec.yaml"), force_update=True)
-```
-
-#### `.import_json(file_path: Path, force_update: bool = False)`
-
-Import data from a JSON file.
-
-```python
-importer.import_json(Path("data.json"), force_update=True)
-```
-
-#### `.import_json_directory(dir_path: Path, force_update: bool = False)`
-
-Import all JSON files from a directory.
-
-```python
-importer.import_json_directory(Path("./json"), force_update=True)
-```
-
-#### `.import_string(content: str, format: str, force_update: bool = False)`
-
-Import data from a string.
-
-```python
-importer.import_string(yaml_content, "yaml", force_update=True)
-```
-
-### create_importer Factory Function
-
-```python
-importer = create_importer(
-    base_url="http://localhost:8000",
-    database="my_database",
     username="admin",
     password="password"
 )
+
+metrics = importer.import_file(
+    file_path=Path("requirements/requirements.json"),
+    database="todo_app",
+    wipe=True,
+    import_id="v1.0"
+)
+
+print(f"Entities created: {metrics['entities_created']}")
+print(f"Relations created: {metrics['relations_created']}")
+print(f"Import time: {metrics['import_time']}s")
 ```
 
-### Colors Class
+#### Entity Model
 
-Terminal color codes for output.
+**Core Entities:**
+- `Actor`: System actors and users
+- `Action`: Actions and operations
+- `Message`: Messages and communications
+- `Concept`: Domain concepts
+- `Requirement`: System requirements
+- `Constraint`: Design constraints
+- `TextBlock`: Specification text segments
 
-```python
-from typedb_client3.importer import Colors
-
-print(f"{Colors.RED}Error:{Colors.RESET} Something went wrong")
-```
-
-**Available Colors:**
-- `RESET`, `RED`, `GREEN`, `YELLOW`, `BLUE`, `MAGENTA`, `CYAN`, `BOLD`, `DIM`
-
-### VerboseLevel Class
-
-Verbosity levels for importer output.
-
-```python
-from typedb_client3.importer import VerboseLevel
-
-VerboseLevel.ERROR   # 0 - Only errors
-VerboseLevel.NORMAL  # 1 - Summary (default)
-VerboseLevel.VERBOSE # 2 - Detailed progress
-VerboseLevel.DEBUG   # 3 - All debug info
-```
-
-### Logger Class
-
-Custom logger for importer output.
-
-```python
-from typedb_client3.importer import Logger
-
-logger = Logger("importer", verbose_level=VerboseLevel.VERBOSE)
-logger.info("Import started")
-logger.error("Import failed")
-```
+**Relations:**
+- `Messaging`: Message producer-consumer relationships
+- `Anchoring`: Concept-text anchoring
+- `Membership`: Entity membership
+- `Requiring`: Requirement relationships
 
 ---
 
-## Validation Functions
+## 9. Terminal Utils API
 
-### validate_base_url
+### Terminal Output Functions
 
-```python
-from typedb_client3.validation import validate_base_url
+**File:** `prompt_pipeline/terminal_utils.py`  
+**Lines:** 7,048 bytes
 
-url = validate_base_url("http://localhost:8000")
-# Returns: "http://localhost:8000"
-
-url = validate_base_url("localhost:8000")
-# Returns: "http://localhost:8000" (adds scheme)
-
-url = validate_base_url("http://localhost:8000/")
-# Returns: "http://localhost:8000" (removes trailing slash)
-```
-
-**Raises:** `TypeDBValidationError` for invalid URLs
-
-### validate_credentials
+#### Print Functions
 
 ```python
-from typedb_client3.validation import validate_credentials
-
-# Valid credentials
-validate_credentials("admin", "password")  # OK
-
-# Both None (anonymous access)
-validate_credentials(None, None)  # OK
-
-# Invalid combinations raise TypeDBValidationError
-validate_credentials("admin", None)  # Error: must be provided together
-validate_credentials("", "password")  # Error: empty username
-```
-
-### validate_timeout
-
-```python
-from typedb_client3.validation import validate_timeout
-
-timeout = validate_timeout(30)      # Returns 30
-timeout = validate_timeout("30")    # Converts string to int
-timeout = validate_timeout(None)    # Returns default 30
-
-# Invalid values raise TypeDBValidationError
-validate_timeout(0)      # Error: must be at least 1 second
-validate_timeout(301)    # Error: cannot exceed 300 seconds
-validate_timeout("abc")  # Error: must be a number
-```
-
-### validate_operation_timeouts
-
-```python
-from typedb_client3.validation import validate_operation_timeouts
-
-timeouts = validate_operation_timeouts({
-    "read_operation": 60,
-    "write_operation": 120
-})
-# Returns validated dict with defaults for missing keys
-
-timeouts = validate_operation_timeouts({})
-# Returns all defaults
-```
-
-### create_optimized_session
-
-Create a requests Session with connection pooling.
-
-```python
-from typedb_client3.validation import create_optimized_session
-
-session = create_optimized_session()
-# Returns requests.Session with:
-# - Connection pooling (DEFAULT_POOL_CONNECTIONS = 10)
-# - Max pool size (DEFAULT_POOL_MAXSIZE = 10)
-# - Retry logic (DEFAULT_MAX_RETRIES = 3)
-# - Backoff factor (DEFAULT_BACKOFF_FACTOR = 0.5)
-```
-
----
-
-## Constants
-
-### Connection Pooling Constants
-
-```python
-from typedb_client3.validation import (
-    DEFAULT_POOL_CONNECTIONS,   # 10
-    DEFAULT_POOL_MAXSIZE,       # 10
-    DEFAULT_MAX_RETRIES,        # 3
-    DEFAULT_BACKOFF_FACTOR      # 0.5
+from prompt_pipeline.terminal_utils import (
+    print_info,
+    print_success,
+    print_warning,
+    print_error,
+    print_header,
+    format_step,
+    format_model,
+    Color
 )
 ```
 
-### TransactionType
+##### `print_info()`
+
+Print informational message.
 
 ```python
-from typedb_client3 import TransactionType
+def print_info(
+    message: str,
+    prefix: str = "ℹ"
+) -> None:
+    """
+    Print info message with color.
+    
+    Args:
+        message: Message to print
+        prefix: Prefix symbol
+    """
+```
 
-TransactionType.READ   # "read"
-TransactionType.WRITE  # "write"
+##### `print_success()`
+
+Print success message.
+
+```python
+def print_success(
+    message: str,
+    prefix: str = "✓"
+) -> None:
+    """
+    Print success message with color.
+    
+    Args:
+        message: Message to print
+        prefix: Prefix symbol
+    """
+```
+
+##### `print_warning()`
+
+Print warning message.
+
+```python
+def print_warning(
+    message: str,
+    prefix: str = "⚠"
+) -> None:
+    """
+    Print warning message with color.
+    
+    Args:
+        message: Message to print
+        prefix: Prefix symbol
+    """
+```
+
+##### `print_error()`
+
+Print error message.
+
+```python
+def print_error(
+    message: str,
+    prefix: str = "✗"
+) -> None:
+    """
+    Print error message with color.
+    
+    Args:
+        message: Message to print
+        prefix: Prefix symbol
+    """
+```
+
+##### `print_header()`
+
+Print formatted header.
+
+```python
+def print_header(
+    title: str,
+    width: int = 60
+) -> None:
+    """
+    Print formatted header.
+    
+    Args:
+        title: Header title
+        width: Width of header
+    """
+```
+
+##### `format_step()`
+
+Format step name for display.
+
+```python
+def format_step(step_name: str) -> str:
+    """
+    Format step name with color.
+    
+    Args:
+        step_name: Step name
+    
+    Returns:
+        Formatted string with color codes
+    """
+```
+
+##### `format_model()`
+
+Format model name for display.
+
+```python
+def format_model(model: str) -> str:
+    """
+    Format model name with color.
+    
+    Args:
+        model: Model name
+    
+    Returns:
+        Formatted string with color codes
+    """
+```
+
+#### Spinner Class
+
+```python
+from prompt_pipeline.terminal_utils import Spinner
+
+spinner = Spinner(
+    message: str = "Processing...",
+    interval: float = 0.1
+)
+
+with spinner:
+    # Long-running operation
+    time.sleep(2)
+```
+
+**Example:**
+```python
+from prompt_pipeline.terminal_utils import Spinner
+import time
+
+with Spinner("Calling LLM API..."):
+    time.sleep(3)  # Simulate API call
+# Output: Calling LLM API... ⠋ (spinning animation)
+```
+
+#### Color Constants
+
+```python
+from prompt_pipeline.terminal_utils import Color
+
+Color.CYAN    # Cyan for primary inputs
+Color.GREEN   # Green for secondary inputs
+Color.YELLOW  # Yellow for tertiary inputs
+Color.MAGENTA # Magenta for special inputs
+Color.RED     # Red for errors
+Color.BLUE    # Blue for info
+Color.WHITE   # White for normal text
 ```
 
 ---
 
-## SecureTokenManager
+## 10. Label Registry API
 
-Manages encrypted JWT token storage.
+### LabelRegistry
 
-```python
-from typedb_client3 import SecureTokenManager
-```
+**File:** `prompt_pipeline/label_registry.py`  
+**Lines:** 13,560 bytes
 
-### Constructor
-
-```python
-manager = SecureTokenManager()
-```
-
-### Methods
-
-#### `.store_token(token: str) -> str`
-
-Encrypt and store a JWT token.
+#### Initialization
 
 ```python
-encrypted = manager.store_token("jwt_token_string")
-# Returns encrypted token that can be safely stored
+from prompt_pipeline.label_registry import LabelRegistry
+
+registry = LabelRegistry()
 ```
 
-#### `.retrieve_token(encrypted_token: str) -> str`
+#### Methods
 
-Decrypt and retrieve a JWT token.
+##### `register_output()`
+
+Register a step output.
 
 ```python
-token = manager.retrieve_token(encrypted_token)
+def register_output(
+    self,
+    step_name: str,
+    label: str,
+    file_path: Path,
+    file_type: str
+) -> None:
+    """
+    Register an output for use by subsequent steps.
+    
+    Args:
+        step_name: Name of the step producing output
+        label: Label to register
+        file_path: Path to output file
+        file_type: Type of file (yaml, json, etc.)
+    """
 ```
 
-**Raises:** `TypeDBAuthenticationError` if decryption fails
+**Example:**
+```python
+from pathlib import Path
 
-#### `.clear_memory()`
+registry = LabelRegistry()
 
-Clear cached token from memory.
+# After stepC3 executes
+registry.register_output(
+    step_name="stepC3",
+    label="concepts",
+    file_path=Path("concepts/concepts.json"),
+    file_type="json"
+)
+```
+
+##### `get_label_path()`
+
+Get file path for a label.
 
 ```python
-manager.clear_memory()
+def get_label_path(
+    self,
+    label: str,
+    step_name: Optional[str] = None
+) -> Optional[Path]:
+    """
+    Get file path for a label.
+    
+    Args:
+        label: Label name
+        step_name: Optional step name for scoping
+    
+    Returns:
+        Path to file or None if not found
+    """
 ```
 
-#### `.get_access_log() -> List[Dict]`
+##### `resolve_label()`
 
-Get audit log of token operations.
+Resolve label to file content.
 
 ```python
-log = manager.get_access_log()
-# Returns list of {"action": "...", "timestamp": ...}
+def resolve_label(
+    self,
+    label: str,
+    step_name: Optional[str] = None
+) -> Optional[str]:
+    """
+    Resolve label to file content.
+    
+    Args:
+        label: Label name
+        step_name: Optional step name for scoping
+    
+    Returns:
+        File content as string or None if not found
+    """
 ```
 
-#### `.rotate_key() -> bytes`
+##### `clear_registry()`
 
-Rotate the encryption key (invalidates old tokens).
+Clear the registry.
 
 ```python
-new_key = manager.rotate_key()
+def clear_registry(self) -> None:
+    """
+    Clear all registered labels.
+    """
 ```
 
-### Properties
+##### `get_all_labels()`
 
-#### `.encryption_key -> bytes`
-
-Get the current encryption key.
+Get all registered labels.
 
 ```python
-key = manager.encryption_key
+def get_all_labels(self) -> List[str]:
+    """
+    Get all registered labels.
+    
+    Returns:
+        List of label names
+    """
 ```
+
+---
+
+## Error Types
+
+### OpenRouterError
+
+```python
+class OpenRouterError(Exception):
+    """Exception raised for OpenRouter API errors."""
+    
+    def __init__(
+        self,
+        message: str,
+        status_code: Optional[int] = None,
+        details: Optional[Dict] = None,
+        retry_count: int = 0
+    ):
+        self.message = message
+        self.status_code = status_code
+        self.details = details
+        self.retry_count = retry_count
+        super().__init__(message)
+```
+
+### StepExecutionError
+
+```python
+class StepExecutionError(Exception):
+    """Exception raised when step execution fails."""
+    
+    def __init__(
+        self,
+        message: str,
+        errors: Optional[List[str]] = None,
+        warnings: Optional[List[str]] = None
+    ):
+        self.message = message
+        self.errors = errors or []
+        self.warnings = warnings or []
+        super().__init__(message)
+```
+
+### InputValidationError
+
+```python
+class InputValidationError(Exception):
+    """Exception raised for invalid inputs."""
+    
+    def __init__(self, message: str):
+        self.message = message
+        super().__init__(message)
+```
+
+### ImportError
+
+```python
+class ImportError(Exception):
+    """Exception raised for TypeDB import errors."""
+    
+    def __init__(
+        self,
+        message: str,
+        cause: Optional[Exception] = None
+    ):
+        self.message = message
+        self.cause = cause
+        super().__init__(message)
+```
+
+---
+
+## Quick Reference
+
+### Common Patterns
+
+**Pattern 1: Execute Step with Approval**
+```python
+executor = StepExecutor(
+    llm_client=OpenRouterClient(),
+    prompt_manager=PromptManager(),
+    output_dir=Path("output/"),
+    model_level=1
+)
+
+success, outputs = executor.execute_step(
+    step_name="stepC3",
+    cli_inputs={'spec': 'yaml/spec_1.yaml'},
+    approval_mode="interactive"
+)
+```
+
+**Pattern 2: Full Pipeline**
+```python
+orchestrator = PipelineOrchestrator(
+    config_path="configuration/pipeline_config.yaml",
+    output_dir=Path("pipeline_output/"),
+    model_level=1
+)
+
+results = orchestrator.execute_pipeline(
+    nl_spec_file=Path("doc/spec.md"),
+    approval_mode="auto",
+    import_database="my_app",
+    wipe=True
+)
+```
+
+**Pattern 3: Compression**
+```python
+from prompt_pipeline.compression import CompressionManager
+
+manager = CompressionManager()
+result = manager.compress(
+    content="Large content...",
+    strategy="hierarchical",
+    config=CompressionConfig(level=3)
+)
+```
+
+**Pattern 4: Validation**
+```python
+from prompt_pipeline.validation import JSONValidator
+
+validator = JSONValidator()
+result = validator.validate(
+    content=json_content,
+    schema_path=Path("schemas/concepts.schema.json")
+)
+```
+
+---
+
+## Environment Variables
+
+```bash
+# Required
+export OPENROUTER_API_KEY="sk-or-..."
+export TYPEDB_URL="http://localhost:8000"
+export TYPEDB_USERNAME="admin"
+export TYPEDB_PASSWORD="password"
+
+# Optional
+export MODEL_LEVEL="1"  # Default model level
+export VERBOSITY="2"    # Default verbosity
+```
+
+---
+
+## Version Information
+
+**Document Version:** 1.0  
+**Last Updated:** 2026-02-26  
+**Status:** Complete  
+**Project:** ModelLM v0.1.0
