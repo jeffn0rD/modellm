@@ -207,6 +207,23 @@ def print_info(text: str) -> None:
         print(f"[INFO] {text}")
 
 
+def print_section(text: str, color: str = Color.CYAN) -> None:
+    """
+    Print a formatted section header.
+    
+    Args:
+        text: Section header text
+        color: Color for the section header
+    """
+    try:
+        print_colored(f"\n{'-'*80}", color)
+        print_colored(text, color, bold=True)
+    except:
+        # Fallback: print without colors
+        print(f"\n{'-'*80}")
+        print(text)
+
+
 def supports_color() -> bool:
     """Check if terminal supports color output.
     

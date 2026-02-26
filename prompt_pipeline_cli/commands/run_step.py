@@ -19,6 +19,7 @@ from prompt_pipeline.terminal_utils import (
     print_error,
     print_info,
     print_header,
+    print_section,
     format_step,
     Color,
 )
@@ -103,6 +104,446 @@ def _analyze_step_dependencies(
             for inp in inputs_config
         ),
     }
+
+
+def _get_step_info(
+    prompt_manager: PromptManager,
+    step_name: str,
+) -> Optional[Dict[str, any]]:
+    """
+    Gather all information about a step from configuration.
+    
+    Args:
+        prompt_manager: PromptManager instance
+        step_name: Name of the step
+    
+    Returns:
+        Dictionary with all step information including:
+        - step_name
+        - configuration (name, order, persona, prompt_file)
+        - inputs (label, source, type, compression, color, data_entity)
+        - outputs (label, type, data_entity)
+        - model_levels
+        - validation
+        - dependencies
+    """
+    # Get step configuration
+    step_config = prompt_manager.get_step_config(step_name)
+    if not step_config:
+        return None
+    
+    # Get step configuration details
+    configuration = {
+        "name": step_name,
+        "order": step_config.get("order"),
+        "persona": step_config.get("persona"),
+        "prompt_file": step_config.get("prompt_file"),
+    }
+    
+    # Get inputs with data_entity details
+    inputs = []
+    inputs_config = step_config.get("inputs", [])
+    for input_spec in inputs_config:
+        input_info = {
+            "label": input_spec.get("label"),
+            "source": input_spec.get("source"),
+            "type": input_spec.get("type"),
+            "compression": input_spec.get("compression", "none"),
+        }
+        
+        # Get compression params if present
+        if input_spec.get("compression_params"):
+            input_info["compression_params"] = input_spec.get("compression_params")
+        
+        # Get color if present
+        if input_spec.get("color"):
+            input_info["color"] = input_spec.get("color")
+        
+        # Get data_entity details
+        label = input_spec.get("label")
+        data_entity = prompt_manager.get_data_entity(label)
+        if data_entity:
+            input_info["data_entity"] = {
+                "filename": data_entity.get("filename"),
+                "description": data_entity.get("description"),
+                "schema": data_entity.get("yaml_schema"),
+            }
+        
+        inputs.append(input_info)
+    
+    # Get outputs with data_entity details
+    outputs = []
+    outputs_config = step_config.get("outputs", [])
+    for output_spec in outputs_config:
+        output_info = {
+            "label": output_spec.get("label"),
+            "type": output_spec.get("type"),
+        }
+        
+        # Get data_entity details
+        label = output_spec.get("label")
+        data_entity = prompt_manager.get_data_entity(label)
+        if data_entity:
+            output_info["data_entity"] = {
+                "filename": data_entity.get("filename"),
+                "description": data_entity.get("description"),
+                "schema": data_entity.get("yaml_schema"),
+            }
+        
+        outputs.append(output_info)
+    
+    # Get model levels
+    model_levels = step_config.get("model_levels", {})
+    
+    # Get validation config
+    validation = step_config.get("validation", {})
+    
+    # Get dependencies (labels that this step depends on)
+    dependencies = []
+    for input_spec in inputs_config:
+        source = input_spec.get("source", "")
+        if source.startswith("label:"):
+            dependencies.append(source[6:])
+    
+    return {
+        "step_name": step_name,
+        "configuration": configuration,
+        "inputs": inputs,
+        "outputs": outputs,
+        "model_levels": model_levels,
+        "validation": validation,
+        "dependencies": dependencies,
+    }
+
+
+def display_step_info(
+    info: Dict[str, any],
+    verbose: bool = False,
+    as_json: bool = False,
+) -> None:
+    """
+    Display step information in formatted output.
+    
+    Args:
+        info: Step information dictionary
+        verbose: Whether to show detailed explanations
+        as_json: Whether to output as JSON
+    """
+    if as_json:
+        import json
+        print(json.dumps(info, indent=2))
+        return
+    
+    # Display sections
+    print_header(f"STEP INFORMATION: {info['step_name']}", Color.CYAN)
+    
+    # Step Configuration
+    print_section("Step Configuration")
+    for key, value in info['configuration'].items():
+        if value is not None:
+            print_info(f"  {key.replace('_', ' ').title()}: {value}")
+    
+    # Input Requirements
+    _display_input_requirements(info['inputs'])
+    
+    # Output Definitions
+    _display_output_definitions(info['outputs'])
+    
+    # Configuration Settings
+    _display_configuration_settings(info)
+    
+    # CLI Switches
+    print_section("Applicable CLI Switches")
+    _display_cli_switches()
+    
+    # Example Commands
+    print_section("Example Commands")
+    _display_example_commands(info['step_name'])
+    
+    # Dependencies
+    if info.get('dependencies'):
+        print_section("Dependency Analysis")
+        _display_dependency_analysis(info['step_name'], info['dependencies'])
+    
+    # Verbose Mode
+    if verbose:
+        print_section("Detailed Explanations")
+        _display_verbose_explanations(info)
+
+
+def _display_input_requirements(inputs: List[Dict]) -> None:
+    """Display input requirements section."""
+    print_section("Input Requirements")
+    for i, input_info in enumerate(inputs, 1):
+        print_info(f"\nInput #{i}:")
+        print_info(f"  Label: {input_info['label']}")
+        print_info(f"  Source: {input_info['source']}")
+        print_info(f"  Type: {input_info['type']}")
+        print_info(f"  Compression: {input_info['compression']}")
+        
+        if input_info.get('compression_params'):
+            for key, value in input_info['compression_params'].items():
+                print_info(f"    {key}: {value}")
+        
+        if input_info.get('color'):
+            print_info(f"  Color: {input_info['color']}")
+        
+        if input_info.get('data_entity'):
+            print_info(f"  Data Entity:")
+            de = input_info['data_entity']
+            print_info(f"    Filename: {de.get('filename')}")
+            print_info(f"    Description: {de.get('description')}")
+            if de.get('schema'):
+                print_info(f"    Schema: {de.get('schema')}")
+
+
+def _display_output_definitions(outputs: List[Dict]) -> None:
+    """Display output definitions section."""
+    print_section("Output Definitions")
+    for i, output_info in enumerate(outputs, 1):
+        print_info(f"\nOutput #{i}:")
+        print_info(f"  Label: {output_info['label']}")
+        print_info(f"  Type: {output_info['type']}")
+        
+        if output_info.get('data_entity'):
+            de = output_info['data_entity']
+            print_info(f"  Description: {de.get('description')}")
+            if de.get('schema'):
+                print_info(f"  Schema: {de.get('schema')}")
+            print_info(f"  Filename: {de.get('filename')}")
+
+
+def _display_configuration_settings(info: Dict[str, any]) -> None:
+    """Display configuration settings section."""
+    print_section("Configuration Settings")
+    
+    if info.get('model_levels'):
+        print_info("\nModel Levels:")
+        for level, model in sorted(info['model_levels'].items(), key=lambda x: int(x[0])):
+            level_desc = {1: "fast/cheap", 2: "balanced", 3: "best"}.get(int(level), "unknown")
+            print_info(f"  Level {level} ({level_desc}): {model}")
+    
+    if info.get('validation'):
+        validation = info['validation']
+        print_info("\nValidation:")
+        print_info(f"  Enabled: {validation.get('enabled', False)}")
+        if validation.get('schema'):
+            print_info(f"  Schema: {validation.get('schema')}")
+    
+    if info.get('dependencies'):
+        print_info("\nDependencies:")
+        print_info(f"  Required steps: {', '.join(info['dependencies'])}")
+
+
+def _display_cli_switches() -> None:
+    """Display applicable CLI switches section."""
+    switch_categories = {
+        "Required Inputs": [
+            ("--input-file label:filename", "Provide input from file"),
+            ("--input-prompt label", "Prompt user to enter content"),
+            ("--input-text label:\"value\"", "Provide content directly"),
+        ],
+        "Execution Control": [
+            ("--dry-run", "Show what would happen without executing"),
+            ("--dry-run-prompt", "Display the full prompt without API calls"),
+            ("--approve", "Show prompt and wait for confirmation"),
+            ("--auto-approve", "Skip approval prompt (CI/CD)"),
+            ("--force", "Continue with missing inputs (substitute empty)"),
+        ],
+        "Output Control": [
+            ("--output-dir PATH", "Output directory (default: pipeline_output/)"),
+            ("--output-file PATH", "Override output file path"),
+            ("--show-prompt", "Display prompt sent to LLM"),
+            ("--show-response", "Display response from LLM"),
+            ("--show-both", "Display both prompt and response"),
+        ],
+        "Model Control": [
+            ("--model-level 1|2|3", "Model quality level"),
+            ("--model NAME", "Specific model (overrides --model-level)"),
+        ],
+        "Info Mode": [
+            ("--info", "Display step information"),
+            ("--info-verbose", "Show detailed explanations"),
+            ("--info-json", "Output as JSON"),
+            ("--info-steps steps", "Show info for multiple steps"),
+        ],
+        "Other": [
+            ("--skip-validation", "Skip output validation"),
+            ("--batch", "Run in batch mode (no interactive prompts)"),
+            ("--help", "Show this help message"),
+        ],
+    }
+    
+    for category, switches in switch_categories.items():
+        print_info(f"\n{category}:")
+        for flag, desc in switches:
+            # Align columns for readability
+            print_info(f"  {flag:40} {desc}")
+
+
+def _display_example_commands(step_name: str) -> None:
+    """Display example commands section."""
+    examples = [
+        f"prompt-pipeline run-step {step_name} --input-file nl_spec:doc/todo_list_nl_spec.md",
+        f"prompt-pipeline run-step {step_name} --input-file nl_spec:doc/todo_list_nl_spec.md --approve",
+        f"prompt-pipeline run-step {step_name} --input-file nl_spec:doc/todo_list_nl_spec.md --dry-run-prompt",
+        f"prompt-pipeline run-step {step_name} --input-file nl_spec:doc/todo_list_nl_spec.md --auto-approve",
+        f"prompt-pipeline run-step {step_name} --info",
+        f"prompt-pipeline run-step {step_name} --info --info-verbose",
+    ]
+    
+    for example in examples:
+        print_info(f"\n  {example}")
+
+
+def _display_dependency_analysis(step_name: str, dependencies: List[str]) -> None:
+    """Display dependency analysis section."""
+    print_info("\nThis step depends on:")
+    for dep in dependencies:
+        print_info(f"  - Previous step output: {dep}")
+    
+    print_info("\nTo run this step, you must first run:")
+    for dep in dependencies:
+        print_info(f"  1. prompt-pipeline run-step <step_name> --input-file {dep}:<filename>")
+    
+    print_info("\nOr run the full pipeline:")
+    print_info(f"  prompt-pipeline run-pipeline --input-file nl_spec:doc/todo_list_nl_spec.md")
+
+
+def _display_verbose_explanations(info: Dict[str, any]) -> None:
+    """Display detailed explanations for verbose mode."""
+    # Compression strategies explanations
+    print_info("\nCOMPRESSION STRATEGIES:")
+    
+    if info.get('inputs'):
+        for input_info in info['inputs']:
+            compression = input_info.get('compression')
+            if compression and compression != 'none':
+                print_info(f"\n  {compression}:")
+                if compression == 'hierarchical':
+                    print_info("    Creates a hierarchical representation that preserves")
+                    print_info("    the original structure while reducing context size.")
+                    print_info("    Layers: Executive summary, concept inventory,")
+                    print_info("    detailed definitions, source evidence.")
+                    print_info("    Compression ratio: ~0.3-0.5 (50-70% reduction)")
+                elif compression == 'anchor_index':
+                    print_info("    Extract anchor definitions from YAML spec.")
+                    print_info("    Create compact index: {AN1: \"text\", AN2: \"text\"}")
+                    print_info("    Compression ratio: ~0.2-0.3 (70-80% reduction)")
+                elif compression == 'concept_summary':
+                    print_info("    Convert Concepts.json to markdown tables.")
+                    print_info("    Group by: Actors, Actions, DataEntities, Categories")
+                    print_info("    Compression ratio: ~0.4-0.5 (50-60% reduction)")
+                elif compression == 'yaml_as_json':
+                    print_info("    Converts YAML to JSON format for prompt input.")
+    
+    # Input source explanations
+    print_info("\nINPUT SOURCES:")
+    
+    if info.get('inputs'):
+        for input_info in info['inputs']:
+            source = input_info.get('source', '')
+            label = input_info.get('label', '')
+            
+            if source.startswith('label:'):
+                print_info(f"\n  {label} (from previous step):")
+                print_info("    This input comes from the output of a previous step.")
+                print_info("    Priority: High (automatic in full pipeline mode)")
+                print_info(f"    Manual override: --input-file {label}:custom_file.yaml")
+            elif source == 'cli':
+                print_info(f"\n  {label} (interactive):")
+                print_info("    This input is provided interactively by the user.")
+                print_info("    Priority: CLI inputs override config")
+                print_info(f"    Manual override: --input-prompt {label} or --input-file {label}:file.md")
+    
+    # Model level explanations
+    print_info("\nMODEL LEVELS:")
+    
+    if info.get('model_levels'):
+        print_info("\n  Level 1 (fast/cheap):")
+        print_info("    Optimized for speed and cost. Use for initial development.")
+        
+        print_info("\n  Level 2 (balanced):")
+        print_info("    Good balance of quality and performance. Use for regular execution.")
+        
+        print_info("\n  Level 3 (best):")
+        print_info("    Highest quality output. Use for final production.")
+    
+    # Switch explanations
+    print_info("\nSWITCH EXPLANATIONS:")
+    
+    print_info("\n  --dry-run:")
+    print_info("    Performs all prompt construction and validation without")
+    print_info("    making API calls. Useful for verifying inputs and debugging.")
+    
+    print_info("\n  --dry-run-prompt:")
+    print_info("    Like --dry-run, but also displays the full prompt that would")
+    print_info("    be sent to the LLM. Essential for debugging prompt templates.")
+    
+    print_info("\n  --approve:")
+    print_info("    Shows the fully substituted prompt and waits for user")
+    print_info("    confirmation before executing the LLM call.")
+    
+    print_info("\n  --auto-approve:")
+    print_info("    Skips the approval prompt entirely. Use for CI/CD pipelines")
+    print_info("    and automated workflows.")
+    
+    print_info("\n  --force:")
+    print_info("    Continues execution even if required inputs are missing.")
+    print_info("    WARNING: Missing inputs are substituted with empty strings!")
+
+
+def handle_info(
+    ctx: click.Context,
+    step_name: str,
+    info_verbose: bool,
+    info_json: bool,
+    info_steps: str,
+) -> None:
+    """
+    Handle the --info flag to display step information.
+    
+    Args:
+        ctx: Click context
+        step_name: Name of the step
+        info_verbose: Whether to show verbose explanations
+        info_json: Whether to output as JSON
+        info_steps: Comma-separated list of additional steps
+    """
+    config_path = ctx.obj.get("config", "configuration/pipeline_config.yaml")
+    
+    # Initialize prompt manager
+    try:
+        prompt_manager = PromptManager(config_path)
+    except Exception as e:
+        raise click.ClickException(f"Failed to load configuration: {e}")
+    
+    # Determine steps to show
+    steps_to_show = [step_name]
+    
+    if info_steps:
+        additional_steps = [s.strip() for s in info_steps.split(",") if s.strip()]
+        steps_to_show.extend(additional_steps)
+    
+    # Display info for each step
+    for step_name_to_show in steps_to_show:
+        try:
+            step_info = _get_step_info(prompt_manager, step_name_to_show)
+            
+            if step_info is None:
+                raise click.ClickException(f"Step '{step_name_to_show}' not found")
+            
+            display_step_info(
+                step_info,
+                verbose=info_verbose,
+                as_json=info_json,
+            )
+            
+            if not info_json and step_name_to_show != steps_to_show[-1]:
+                print()  # Blank line between steps
+                
+        except Exception as e:
+            raise click.ClickException(f"Failed to get info for step '{step_name_to_show}': {e}")
 
 
 def _parse_input_file_option(value: str) -> Tuple[str, str]:
@@ -770,6 +1211,26 @@ def _show_approval_prompt(
     is_flag=True,
     help="Skip approval prompt (useful for CI/CD or batch processing)",
 )
+@click.option(
+    "--info",
+    is_flag=True,
+    help="Display step information (inputs, outputs, configuration, switches)",
+)
+@click.option(
+    "--info-verbose",
+    is_flag=True,
+    help="Show detailed explanations with --info",
+)
+@click.option(
+    "--info-json",
+    is_flag=True,
+    help="Output step info as JSON for programmatic use",
+)
+@click.option(
+    "--info-steps",
+    type=str,
+    help="Comma-separated list of steps to show info for (with --info)",
+)
 @click.pass_context
 def run_step(
     ctx,
@@ -791,6 +1252,10 @@ def run_step(
     batch,
     approve,
     auto_approve,
+    info,
+    info_verbose,
+    info_json,
+    info_steps,
 ):
     """Run a single pipeline step.
 
@@ -799,6 +1264,16 @@ def run_step(
     config_path = ctx.obj.get("config", "configuration/pipeline_config.yaml")
     verbosity = ctx.obj.get("verbosity", 1)
     verbose = verbosity > 1
+
+    # Handle --info flag
+    if info:
+        return handle_info(ctx, step_name, info_verbose, info_json, info_steps)
+
+    # Validate info flags are not used without --info
+    if info_verbose or info_json or info_steps:
+        raise click.ClickException(
+            "--info-verbose, --info-json, and --info-steps can only be used with --info"
+        )
 
     # Check for interactive inputs in batch mode
     if batch and input_prompt:

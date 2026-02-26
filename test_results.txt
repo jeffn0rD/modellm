@@ -1,0 +1,48 @@
+============================= test session starts =============================
+platform win32 -- Python 3.14.0, pytest-9.0.2, pluggy-1.6.0 -- C:\Python314\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\jeff0r\Dropbox\working\modellm
+configfile: pyproject.toml
+plugins: anyio-4.12.0, asyncio-1.3.0, cov-7.0.0, mock-3.15.1
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 35 items
+
+tests/test_prompt_pipeline/test_run_step_info.py::TestGetStepInfo::test_get_step_info_valid_step PASSED [  2%]
+tests/test_prompt_pipeline/test_run_step_info.py::TestGetStepInfo::test_get_step_info_missing_step PASSED [  5%]
+tests/test_prompt_pipeline/test_run_step_info.py::TestGetStepInfo::test_get_step_info_with_compression_params PASSED [  8%]
+tests/test_prompt_pipeline/test_run_step_info.py::TestGetStepInfo::test_get_step_info_with_color PASSED [ 11%]
+tests/test_prompt_pipeline/test_run_step_info.py::TestGetStepInfo::test_get_step_info_with_dependencies PASSED [ 14%]
+tests/test_prompt_pipeline/test_run_step_info.py::TestDisplayStepInfo::test_display_step_info_basic PASSED [ 17%]
+tests/test_prompt_pipeline/test_run_step_info.py::TestDisplayStepInfo::test_display_step_info_as_json PASSED [ 20%]
+tests/test_prompt_pipeline/test_run_step_info.py::TestDisplayStepInfo::test_display_step_info_verbose PASSED [ 22%]
+tests/test_prompt_pipeline/test_run_step_info.py::TestDisplayInputRequirements::test_display_input_requirements_basic PASSED [ 25%]
+tests/test_prompt_pipeline/test_run_step_info.py::TestDisplayInputRequirements::test_display_input_requirements_with_compression_params PASSED [ 28%]
+tests/test_prompt_pipeline/test_run_step_info.py::TestDisplayInputRequirements::test_display_input_requirements_with_data_entity PASSED [ 31%]
+tests/test_prompt_pipeline/test_run_step_info.py::TestDisplayOutputDefinitions::test_display_output_definitions_basic PASSED [ 34%]
+tests/test_prompt_pipeline/test_run_step_info.py::TestDisplayOutputDefinitions::test_display_output_definitions_with_data_entity PASSED [ 37%]
+tests/test_prompt_pipeline/test_run_step_info.py::TestDisplayConfigurationSettings::test_display_configuration_settings_with_model_levels PASSED [ 40%]
+tests/test_prompt_pipeline/test_run_step_info.py::TestDisplayConfigurationSettings::test_display_configuration_settings_with_validation PASSED [ 42%]
+tests/test_prompt_pipeline/test_run_step_info.py::TestDisplayConfigurationSettings::test_display_configuration_settings_with_dependencies PASSED [ 45%]
+tests/test_prompt_pipeline/test_run_step_info.py::TestDisplayCliSwitches::test_display_cli_switches PASSED [ 48%]
+tests/test_prompt_pipeline/test_run_step_info.py::TestDisplayExampleCommands::test_display_example_commands PASSED [ 51%]
+tests/test_prompt_pipeline/test_run_step_info.py::TestDisplayDependencyAnalysis::test_display_dependency_analysis PASSED [ 54%]
+tests/test_prompt_pipeline/test_run_step_info.py::TestDisplayVerboseExplanations::test_display_verbose_explanations_compression_strategies PASSED [ 57%]
+tests/test_prompt_pipeline/test_run_step_info.py::TestDisplayVerboseExplanations::test_display_verbose_explanations_input_sources FAILED [ 60%]
+tests/test_prompt_pipeline/test_run_step_info.py::TestDisplayVerboseExplanations::test_display_verbose_explanations_model_levels PASSED [ 62%]
+tests/test_prompt_pipeline/test_run_step_info.py::TestDisplayVerboseExplanations::test_display_verbose_explanations_switch_explanations PASSED [ 65%]
+tests/test_prompt_pipeline/test_run_step_info.py::TestInfo::test_handle_info_valid_step PASSED [ 68%]
+tests/test_prompt_pipeline/test_run_step_info.py::TestInfo::test_handle_info_missing_step PASSED [ 71%]
+tests/test_prompt_pipeline/test_run_step_info.py::TestInfo::test_handle_info_invalid_config PASSED [ 74%]
+tests/test_prompt_pipeline/test_run_step_info.py::TestInfo::test_handle_info_multiple_steps PASSED [ 77%]
+tests/test_prompt_pipeline/test_run_step_info.py::TestInfo::test_handle_info_json_output PASSED [ 80%]
+tests/test_prompt_pipeline/test_run_step_info.py::TestInfo::test_handle_info_verbose_output PASSED [ 82%]
+tests/test_prompt_pipeline/test_run_step_info.py::TestRunStepInfoOptions::test_run_step_with_info_flag PASSED [ 85%]
+tests/test_prompt_pipeline/test_run_step_info.py::TestRunStepInfoOptions::test_run_step_info_verbose_without_info PASSED [ 88%]
+tests/test_prompt_pipeline/test_run_step_info.py::TestRunStepInfoOptions::test_run_step_info_json_without_info PASSED [ 91%]
+tests/test_prompt_pipeline/test_run_step_info.py::TestRunStepInfoOptions::test_run_step_info_steps_without_info PASSED [ 94%]
+tests/test_prompt_pipeline/test_run_step_info.py::TestTerminalUtils::test_print_section PASSED [ 97%]
+tests/test_prompt_pipeline/test_run_step_info.py::TestTerminalUtils::test_print_section_without_color PASSED [100%]
+
+=========================== short test summary info ===========================
+FAILED tests/test_prompt_pipeline/test_run_step_info.py::TestDisplayVerboseExplanations::test_display_verbose_explanations_input_sources
+======================== 1 failed, 34 passed in 0.17s =========================

@@ -137,6 +137,17 @@ python agents/tools/extract_context.py \
 - **If scope expands beyond one module or 2-3 functions, verify the plan with the human engineer**
 - **Before creating tasks, extract minimal context** using `agents/tools/extract_context.py`
 
+### Task Size Guidelines
+- **Ideal task size**: 1-2 functions or a single configuration change
+- **Maximum scope**: One module with 2-3 functions
+- **Warning signs**: Task requires modifying >3 files or >10 functions
+- **Before starting**: Extract minimal context to ensure task fits in context window
+
+### Task Priority Levels
+- **CRITICAL**: Must be done immediately, blocks other work
+- **HIGH**: Important for current feature, should be completed soon
+- **MEDIUM**: Can wait for other tasks, nice-to-have improvements
+
 ### Before Starting Any Task
 
 **Follow the 3-Step Workflow (see agents/tools/workflow_guide.md for details):**
