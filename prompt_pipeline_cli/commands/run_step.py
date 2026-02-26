@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import sys
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -11,7 +12,7 @@ from prompt_pipeline.llm_client import OpenRouterClient
 from prompt_pipeline.orchestrator import PipelineOrchestrator
 from prompt_pipeline.prompt_manager import PromptManager
 from prompt_pipeline.step_executor import StepExecutor
-from prompt_pipeline.step_executor_dry_run import construct_prompt_without_api_call
+from prompt_pipeline.step_executor_dry_run import construct_prompt_without_api_call, DryRunResult
 from prompt_pipeline.terminal_utils import (
     print_success,
     print_warning,
@@ -506,6 +507,174 @@ def _collect_config_inputs(
     return cli_inputs, exogenous_inputs
 
 
+def _display_compression_info(dry_run_result: DryRunResult) -> None:
+    """
+    Display compression information for the prompt.
+    
+    Args:
+        dry_run_result: Result from dry-run prompt construction
+    """
+    if not dry_run_result.compression_metrics:
+        return
+    
+    print_info("\n" + "=" * 80)
+    print_info("COMPRESSION INFO")
+    print_info("=" * 80)
+    
+    total_original = 0
+    total_compressed = 0
+    
+    for label, metrics in dry_run_result.compression_metrics.items():
+        original = metrics.get("original_length", 0)
+        compressed = metrics.get("compressed_length", 0)
+        strategy = metrics.get("strategy", "unknown")
+        
+        if original > 0:
+            ratio = compressed / original
+            reduction = (1 - ratio) * 100
+            
+            print_info(f"\nInput '{label}':")
+            print_info(f"  Strategy: {strategy}")
+            print_info(f"  Original: {original} chars")
+            print_info(f"  Compressed: {compressed} chars")
+            print_info(f"  Reduction: {reduction:.1f}%")
+            
+            total_original += original
+            total_compressed += compressed
+    
+    if total_original > 0:
+        overall_ratio = total_compressed / total_original
+        overall_reduction = (1 - overall_ratio) * 100
+        
+        print_info(f"\nOverall:")
+        print_info(f"  Total original: {total_original} chars")
+        print_info(f"  Total compressed: {total_compressed} chars")
+        print_info(f"  Overall reduction: {overall_reduction:.1f}%")
+        print_info("=" * 80)
+
+
+def _show_approval_prompt(
+    dry_run_result: DryRunResult,
+    step_name: str,
+    input_metadata: Dict[str, Any],
+) -> bool:
+    """
+    Show the approval prompt and get user confirmation.
+    
+    Args:
+        dry_run_result: Result from dry-run prompt construction
+        step_name: Name of the step being executed
+        input_metadata: Metadata about input sources
+    
+    Returns:
+        True if user approves, False otherwise
+    
+    Raises:
+        click.ClickException: If user cancels or quits
+    """
+    # Show the prompt header
+    print_header("=== PROMPT (substituted) ===", Color.CYAN)
+    
+    # Display the full prompt
+    try:
+        click.echo(dry_run_result.full_prompt)
+    except UnicodeEncodeError:
+        # Fallback for encoding issues
+        try:
+            terminal_encoding = sys.stdout.encoding or 'utf-8'
+            safe_bytes = dry_run_result.full_prompt.encode(terminal_encoding, errors='replace')
+            sys.stdout.buffer.write(safe_bytes)
+            sys.stdout.buffer.write(b'\n')
+            sys.stdout.flush()
+        except Exception:
+            click.echo("[Prompt contains characters that cannot be displayed]")
+    
+    print_header("=== END PROMPT ===", Color.CYAN)
+    
+    # Show compression info
+    _display_compression_info(dry_run_result)
+    
+    # Show prompt metadata
+    print_info(f"\nStep: {step_name} (#{dry_run_result.step_number})")
+    print_info(f"Persona: {dry_run_result.persona}")
+    print_info(f"Prompt file: {dry_run_result.prompt_file}")
+    print_info(f"Total prompt length: {len(dry_run_result.full_prompt)} characters")
+    
+    # Show input sources
+    if input_metadata:
+        print_info(f"\nInput sources:")
+        for label, meta in input_metadata.items():
+            source_type = meta.get("source", "unknown")
+            input_type = meta.get("type", "unknown")
+            print_info(f"  {label}: {source_type} ({input_type})")
+            if "path" in meta:
+                print_info(f"    path: {meta['path']}")
+    
+    # Interactive approval prompt
+    while True:
+        try:
+            click.echo("")  # Blank line for spacing
+            response = click.prompt(
+                "Continue? (y/n/q/v)",
+                default="n",
+                show_default=True,
+                type=str,
+            ).strip().lower()
+            
+            if response in ('y', 'yes'):
+                return True
+            elif response in ('n', 'no'):
+                print_warning("Execution cancelled by user")
+                return False
+            elif response in ('q', 'quit'):
+                print_warning("Quitting")
+                raise click.ClickException("User quit")
+            elif response in ('v', 'verbose'):
+                # Show verbose details
+                print_info("\n" + "=" * 80)
+                print_info("VERBOSE DETAILS")
+                print_info("=" * 80)
+                print_info(f"\nStep configuration:")
+                print_info(f"  Step name: {dry_run_result.step_name}")
+                print_info(f"  Prompt file: {dry_run_result.prompt_file}")
+                print_info(f"  Persona: {dry_run_result.persona}")
+                print_info(f"  Step number: {dry_run_result.step_number}")
+                
+                print_info(f"\nCLI inputs:")
+                if dry_run_result.cli_inputs:
+                    for label, content in dry_run_result.cli_inputs.items():
+                        preview = content[:100] + "..." if len(content) > 100 else content
+                        print_info(f"  {label}: {preview}")
+                else:
+                    print_info("  None")
+                
+                print_info(f"\nFile inputs:")
+                if dry_run_result.exogenous_inputs:
+                    for label, path in dry_run_result.exogenous_inputs.items():
+                        print_info(f"  {label}: {path}")
+                else:
+                    print_info("  None")
+                
+                print_info(f"\nPrevious outputs:")
+                if dry_run_result.previous_outputs:
+                    for label, path in dry_run_result.previous_outputs.items():
+                        print_info(f"  {label}: {path}")
+                else:
+                    print_info("  None")
+                
+                print_info("=" * 80)
+                continue  # Show prompt again
+            else:
+                print_warning("Invalid response. Please enter y, n, q, or v")
+                
+        except KeyboardInterrupt:
+            print_warning("\n\nExecution cancelled by user")
+            return False
+        except click.Abort:
+            print_warning("\n\nExecution cancelled by user")
+            return False
+
+
 @click.command()
 @click.argument("step_name")
 @click.option(
@@ -591,6 +760,16 @@ def _collect_config_inputs(
     is_flag=True,
     help="Run in batch mode (no interactive prompts)",
 )
+@click.option(
+    "--approve",
+    is_flag=True,
+    help="Show substituted prompt and wait for user confirmation before executing",
+)
+@click.option(
+    "--auto-approve",
+    is_flag=True,
+    help="Skip approval prompt (useful for CI/CD or batch processing)",
+)
 @click.pass_context
 def run_step(
     ctx,
@@ -610,6 +789,8 @@ def run_step(
     show_both,
     force,
     batch,
+    approve,
+    auto_approve,
 ):
     """Run a single pipeline step.
 
@@ -691,6 +872,69 @@ def run_step(
     except Exception as e:
         raise click.ClickException(f"Failed to collect config inputs: {e}")
 
+    # Handle approval logic (must be before dry-run to avoid double processing)
+    # Skip approval if using --dry-run (dry-run doesn't need approval)
+    if (approve or auto_approve) and not dry_run and not dry_run_prompt:
+        # Check for conflicting flags
+        if auto_approve and approve:
+            raise click.ClickException(
+                "Cannot use --approve and --auto-approve together. "
+                "Use --approve for interactive approval or --auto-approve for CI/CD."
+            )
+        
+        # Build the prompt for approval check
+        try:
+            approval_dry_run_result = construct_prompt_without_api_call(
+                step_name=step_name,
+                cli_inputs=cli_inputs,
+                exogenous_inputs=exogenous_inputs,
+                previous_outputs={},
+                prompt_manager=prompt_manager,
+                force=force,
+            )
+        except ValueError as e:
+            error_msg = str(e)
+            if "Missing required input" in error_msg or "Previous step output" in error_msg:
+                # Analyze dependencies
+                deps = _analyze_step_dependencies(prompt_manager, step_name, None)
+                
+                if deps.get("dependency_chain"):
+                    error_msg += "\n\n" + "=" * 80 + "\n"
+                    error_msg += "DEPENDENCY ANALYSIS\n"
+                    error_msg += "=" * 80 + "\n\n"
+                    error_msg += f"Step '{step_name}' has dependencies on previous steps.\n"
+                    error_msg += "\n"
+                    error_msg += "RECOMMENDED COMMAND (run in order):\n"
+                    error_msg += "-" * 80 + "\n"
+                    
+                    # Build the dependency chain command
+                    error_msg += "# First, run the dependency chain:\n"
+                    for dep_step in deps["dependency_chain"]:
+                        error_msg += f"prompt-pipeline run-step {dep_step} --input-file nl_spec:doc/todo_list_nl_spec.md\n"
+                    
+                    error_msg += "\n" + f"prompt-pipeline run-step {step_name} --input-file nl_spec:doc/todo_list_nl_spec.md" + "\n"
+                    error_msg += "\n"
+                    error_msg += "Or run all steps at once:\n"
+                    error_msg += "prompt-pipeline run-pipeline --input-file nl_spec:doc/todo_list_nl_spec.md\n"
+                    error_msg += "=" * 80 + "\n\n"
+            
+            raise click.ClickException(f"Failed to build prompt for approval: {error_msg}")
+        
+        # Show approval prompt unless auto-approved
+        if approve:
+            should_proceed = _show_approval_prompt(
+                dry_run_result=approval_dry_run_result,
+                step_name=step_name,
+                input_metadata=input_metadata,
+            )
+            if not should_proceed:
+                print_warning("Execution cancelled by user")
+                return
+        
+        # If auto_approve, skip the prompt and continue
+        # If approve was used and user approved, continue
+        # If neither flag is set, continue without approval (current behavior)
+
     # Handle dry-run modes
     if dry_run or dry_run_prompt:
         try:
@@ -712,6 +956,10 @@ def run_step(
                 click.echo(f"[DRY RUN] Persona: {dry_run_result.persona}")
                 click.echo(f"[DRY RUN] Prompt file: {dry_run_result.prompt_file}")
                 click.echo(f"[DRY RUN] Total prompt length: {len(dry_run_result.full_prompt)} characters")
+                
+                # Show approval status
+                if approve or auto_approve:
+                    click.echo(f"[DRY RUN] Approval skipped (dry-run mode)")
                 
                 # Show inputs
                 if cli_inputs:

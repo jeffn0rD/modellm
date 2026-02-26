@@ -39,7 +39,9 @@ data_entities:
             • text (natural-language excerpt),
             • type (e.g., goal, capability, constraint, future-capability),
             • semantic_cues: A list of hint concepts: concepts: [{concept_id: Cn, name: "..."}].
-
+      heirachical:
+        description: >
+          A hierarchical representation of the specification that preserves the original structure and organization of the natural language specification. This format maintains the sections, subsections, and text blocks as they appear in the original document, allowing for a more intuitive understanding of the specification's flow and organization. It includes all the original text and structure from the natural language specification, organized into a structured YAML format. It serves as the foundational representation of the specification before any further processing or extraction of concepts.          
   spec_formal:
     type: md
     filename: spec_formal.md
@@ -181,7 +183,9 @@ steps:
     inputs:
       - label: spec
         source: label:spec
-        compression: none
+        compression: hierarchical
+        compression_params:
+          level: 3  # 1=light, 2=medium, 3=aggressive
         color: magenta
     outputs:
       - label: concepts

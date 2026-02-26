@@ -501,11 +501,16 @@ class StepExecutor:
             if compression_params and "truncation_length" in compression_params:
                 config.truncation_length = compression_params["truncation_length"]
             
+            # Extract level from compression_params if provided
+            level = 2  # Default to medium compression
+            if compression_params and "level" in compression_params:
+                level = compression_params["level"]
+            
             # Create compression context
             context = CompressionContext(
                 content_type=input_type,
                 label=label or "input",
-                level=2,  # Default to medium compression
+                level=level,
             )
             
             # Apply compression
