@@ -13,9 +13,9 @@ class TestCLIDryRun:
         result = subprocess.run([
             "python", "-m", "prompt_pipeline_cli.main",
             "run-step",
-            "--nl-spec", "doc/todo_list_nl_spec.md",
-            "--dry-run-prompt",
-            "step1"
+            "step1",
+            "--input-file", "nl_spec:doc/todo_list_nl_spec.md",
+            "--dry-run-prompt"
         ], capture_output=True, text=True, cwd=".")
         
         # Should exit successfully
@@ -48,9 +48,9 @@ class TestCLIDryRun:
         result = subprocess.run([
             "python", "-m", "prompt_pipeline_cli.main",
             "run-step",
-            "--nl-spec", "doc/todo_list_nl_spec.md",
-            "--dry-run",
-            "step1"
+            "step1",
+            "--input-file", "nl_spec:doc/todo_list_nl_spec.md",
+            "--dry-run"
         ], capture_output=True, text=True, cwd=".")
         
         # Should exit successfully
@@ -82,9 +82,9 @@ class TestCLIDryRun:
             result = subprocess.run([
                 "python", "-m", "prompt_pipeline_cli.main",
                 "run-step",
-                "--spec-file", "test_spec.yaml",
-                "--dry-run-prompt",
-                "stepC3"
+                "stepC3",
+                "--input-file", "spec:test_spec.yaml",
+                "--dry-run-prompt"
             ], capture_output=True, text=True, cwd=".")
             
             # Should exit successfully
@@ -104,15 +104,14 @@ class TestCLIDryRun:
         result = subprocess.run([
             "python", "-m", "prompt_pipeline_cli.main",
             "run-step",
-            "--dry-run-prompt",
-            "step1"  # Missing --nl-spec
+            "step1"  # Missing --input-file
         ], capture_output=True, text=True, cwd=".")
         
         # Should exit with error
         assert result.returncode != 0
         
-        # Should show missing input error
-        assert "MISSING INPUT ERROR" in result.stderr or "MISSING INPUT ERROR" in result.stdout
+        # Should show missing input error (updated message format)
+        assert "Missing required CLI inputs" in result.stderr or "Missing required CLI inputs" in result.stdout
     
     def test_dry_run_with_force_flag(self):
         """Test that --dry-run-prompt with --force works without all inputs."""
