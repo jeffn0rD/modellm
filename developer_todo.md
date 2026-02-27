@@ -2,7 +2,8 @@
 
 ## TODO:
   ## NEXT TASKS
-  - need a CLI command/switch that outputs the requirements for a given step (inputs, outputs, labels); which prompt file it uses, compression, etc.  
+  - when in interactive mode, is user entered information saved?  User -> NL spec -> markdown file?  
+
 ---
 
   ** DO NOT PLAN OR CREATE TASKS FOR ANYTHING AFTER THIS POINT **    
@@ -33,7 +34,7 @@
     - one function at a time spec
 
 ## DONE
-X  - need to create a library to facilitate typedb v3 database operations
+X  - need a CLI command/switch that outputs the requirements for a given step (inputs, outputs, labels); which prompt file it uses, compression, etc.  X  - need to create a library to facilitate typedb v3 database operations
 X    - agents keep messing up syntax with version 2.  the fix is to just create our own api (get it right once)
 X    - have to develop a spec for match, insert, delete operations
 X  - need a tool that can delete and create a new typedb database.  could possibly be integrated into the above library.  the schema tql file should be seperate, not integrated into the script.
