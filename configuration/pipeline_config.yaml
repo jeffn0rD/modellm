@@ -89,7 +89,7 @@ data_entities:
     type: json
     filename: messageAggregations.json
     description: "Message aggregation definitions"
-    schema: null
+    schema: schemas/messageAggregations.schema.json
     compression_strategies:
       none:
         description: "Complete JSON message aggregations"
@@ -301,7 +301,8 @@ model_levels:
     1: qwen/qwen-2.5-72b
     2: xiaomi/mimo-v2-flash
     3: moonshotai/kimi-k2-0905
-
+    
+# free model for testing: qwen/qwen3-vl-30b-a3b-thinking
 # ============================================
 # DEV DEFAULTS (unchanged)
 # ============================================

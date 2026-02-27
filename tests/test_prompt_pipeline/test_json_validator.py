@@ -72,7 +72,8 @@ class TestConceptsValidator:
         validator = ConceptsValidator()
         result = validator.validate(json_content)
         assert not result.is_valid()
-        assert any("must be an array" in e.lower() for e in result.errors)
+        # Schema validation catches non-array type
+        assert any("array" in e.lower() for e in result.errors)
 
     def test_missing_required_field(self):
         """Test validation catches missing required field."""

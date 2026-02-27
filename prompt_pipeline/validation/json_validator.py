@@ -135,39 +135,6 @@ class ConceptsValidator(JSONValidator):
         """
         super().__init__(schema_path)
 
-    def validate(self, json_content: str) -> ValidationResult:
-        """Validate concepts JSON.
-
-        Args:
-            json_content: The JSON content to validate.
-
-        Returns:
-            ValidationResult with errors and warnings.
-        """
-        result = ValidationResult()
-
-        # Parse JSON
-        try:
-            data = json.loads(json_content)
-        except json.JSONDecodeError as e:
-            result.add_error(f"JSON parse error: {e}")
-            return result
-
-        # Check it's an array
-        if not isinstance(data, list):
-            result.add_error("concepts.json must be an array")
-            return result
-
-        if len(data) == 0:
-            result.add_warning("No concepts defined")
-
-        # Validate against schema
-        if self.schema:
-            self._validate_schema(data, result)
-
-        result.passed = result.is_valid()
-        return result
-
 
 class AggregationsValidator(JSONValidator):
     """Validate aggregations.json output.
@@ -186,39 +153,6 @@ class AggregationsValidator(JSONValidator):
             schema_path: Optional path to JSON schema file.
         """
         super().__init__(schema_path)
-
-    def validate(self, json_content: str) -> ValidationResult:
-        """Validate aggregations JSON.
-
-        Args:
-            json_content: The JSON content to validate.
-
-        Returns:
-            ValidationResult with errors and warnings.
-        """
-        result = ValidationResult()
-
-        # Parse JSON
-        try:
-            data = json.loads(json_content)
-        except json.JSONDecodeError as e:
-            result.add_error(f"JSON parse error: {e}")
-            return result
-
-        # Check it's an array
-        if not isinstance(data, list):
-            result.add_error("aggregations.json must be an array")
-            return result
-
-        if len(data) == 0:
-            result.add_warning("No aggregations defined")
-
-        # Validate against schema
-        if self.schema:
-            self._validate_schema(data, result)
-
-        result.passed = result.is_valid()
-        return result
 
 
 class MessagesValidator(JSONValidator):
@@ -239,39 +173,6 @@ class MessagesValidator(JSONValidator):
         """
         super().__init__(schema_path)
 
-    def validate(self, json_content: str) -> ValidationResult:
-        """Validate messages JSON.
-
-        Args:
-            json_content: The JSON content to validate.
-
-        Returns:
-            ValidationResult with errors and warnings.
-        """
-        result = ValidationResult()
-
-        # Parse JSON
-        try:
-            data = json.loads(json_content)
-        except json.JSONDecodeError as e:
-            result.add_error(f"JSON parse error: {e}")
-            return result
-
-        # Check it's an array
-        if not isinstance(data, list):
-            result.add_error("messages.json must be an array")
-            return result
-
-        if len(data) == 0:
-            result.add_warning("No messages defined")
-
-        # Validate against schema
-        if self.schema:
-            self._validate_schema(data, result)
-
-        result.passed = result.is_valid()
-        return result
-
 
 class RequirementsValidator(JSONValidator):
     """Validate requirements.json output.
@@ -290,39 +191,6 @@ class RequirementsValidator(JSONValidator):
             schema_path: Optional path to JSON schema file.
         """
         super().__init__(schema_path)
-
-    def validate(self, json_content: str) -> ValidationResult:
-        """Validate requirements JSON.
-
-        Args:
-            json_content: The JSON content to validate.
-
-        Returns:
-            ValidationResult with errors and warnings.
-        """
-        result = ValidationResult()
-
-        # Parse JSON
-        try:
-            data = json.loads(json_content)
-        except json.JSONDecodeError as e:
-            result.add_error(f"JSON parse error: {e}")
-            return result
-
-        # Check it's an array
-        if not isinstance(data, list):
-            result.add_error("requirements.json must be an array")
-            return result
-
-        if len(data) == 0:
-            result.add_warning("No requirements defined")
-
-        # Validate against schema
-        if self.schema:
-            self._validate_schema(data, result)
-
-        result.passed = result.is_valid()
-        return result
 
 
 # Convenience functions
