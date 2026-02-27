@@ -6,6 +6,8 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import click
 
+from prompt_pipeline.exceptions import FileOperationError
+from prompt_pipeline.file_utils import validate_file_path
 from prompt_pipeline.llm_client import OpenRouterClient
 from prompt_pipeline.orchestrator import PipelineOrchestrator
 from prompt_pipeline.prompt_manager import PromptManager
@@ -49,7 +51,19 @@ def _parse_input_file_option(value: str) -> Tuple[str, str]:
             "Both label and filename must be non-empty."
         )
     
-    return label, filename
+    # Validate the file path for security (prevent path traversal)
+    try:
+        validated_path = validate_file_path(
+            file_path=Path(filename),
+            allowed_base_dir=Path.cwd(),
+            must_exist=False,
+        )
+    except FileOperationError as e:
+        raise click.ClickException(
+            f"Invalid file path '{filename}': {e}"
+        )
+    
+    return label, str(validated_path)
 
 
 def _collect_inputs_from_cli(

@@ -8,6 +8,8 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 from prompt_pipeline.compression import CompressionManager, CompressionContext, CompressionConfig
+from prompt_pipeline.exceptions import StepExecutionError, FileOperationError
+from prompt_pipeline.file_utils import load_file_content, write_file_content
 from prompt_pipeline.llm_client import OpenRouterClient
 from prompt_pipeline.prompt_manager import PromptManager
 from prompt_pipeline.tag_replacement import TagReplacer
@@ -53,20 +55,6 @@ def safe_print(text: str) -> None:
         except:
             # Last resort: print without special characters
             print(text.encode('ascii', errors='ignore').decode('ascii'))
-
-
-class StepExecutionError(Exception):
-    """Exception raised when step execution fails."""
-
-    def __init__(
-        self,
-        message: str,
-        errors: Optional[List[str]] = None,
-        warnings: Optional[List[str]] = None,
-    ):
-        super().__init__(message)
-        self.errors = errors or []
-        self.warnings = warnings or []
 
 
 class StepExecutor:
@@ -252,12 +240,21 @@ class StepExecutor:
                 response, output_label
             )
             
-            # Save to file
+            # Save to file with safe write
             output_path = self.output_dir / filename
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-            
-            with open(output_path, 'w', encoding='utf-8') as f:
-                f.write(processed_response)
+            try:
+                write_file_content(
+                    file_path=output_path,
+                    content=processed_response,
+                    encoding="utf-8",
+                    create_parents=True,
+                    atomic=True,
+                )
+            except FileOperationError as e:
+                raise StepExecutionError(
+                    f"Failed to write output file {output_path}: {e}",
+                    errors=[str(e)]
+                )
             
             output_paths[output_label] = output_path
             self._log(f"Saved output '{output_label}' to {filename}")
@@ -432,7 +429,7 @@ class StepExecutor:
         return None
 
     def _load_file_content(self, file_path: Path, input_type: str) -> str:
-        """Load content from a file.
+        """Load content from a file using shared file utilities.
 
         Args:
             file_path: Path to the file.
@@ -444,18 +441,17 @@ class StepExecutor:
         Raises:
             StepExecutionError: If file not found or invalid.
         """
-        if not isinstance(file_path, Path):
-            file_path = Path(file_path)
-        
-        if not file_path.exists():
-            raise StepExecutionError(f"Input file not found: {file_path}")
-        
         try:
-            content = file_path.read_text(encoding="utf-8")
-        except Exception as e:
-            raise StepExecutionError(f"Failed to read input file {file_path}: {e}")
-        
-        return content
+            # Use shared file utility for loading
+            content = load_file_content(
+                file_path=file_path,
+                encoding="utf-8",
+                allow_empty=False,
+            )
+            return content
+        except FileOperationError as e:
+            # Convert FileOperationError to StepExecutionError for consistency
+            raise StepExecutionError(str(e))
 
     def _apply_compression(
         self,
@@ -687,7 +683,7 @@ class StepExecutor:
         self,
         response: str,
         output_label: str,
-    ) -> str:
+    ) -> Optional[str]:
         """
         Extract JSON from LLM response if it contains reasoning section.
 
@@ -701,7 +697,7 @@ class StepExecutor:
             output_label: Output label for this response.
 
         Returns:
-            Extracted JSON string.
+            Extracted JSON string or None if no valid JSON found.
         """
         # Try to find JSON markers in the response
         # Common patterns:
@@ -760,6 +756,9 @@ class StepExecutor:
 
         Returns:
             Processed response string.
+        
+        Raises:
+            StepExecutionError: If JSON extraction fails for json-typed outputs.
         """
         # Get data entity for this output label
         data_entity = self.prompt_manager.get_data_entity(output_label)
@@ -772,15 +771,25 @@ class StepExecutor:
         # For JSON outputs, extract JSON from response if needed
         if output_type == 'json':
             extracted_json = self._extract_json_from_response(response, output_label)
-            if extracted_json:
-                return extracted_json
+            if extracted_json is None:
+                raise StepExecutionError(
+                    f"Failed to extract valid JSON from LLM response for '{output_label}'. "
+                    f"Response length: {len(response)} chars.",
+                    errors=["No valid JSON found in LLM response"]
+                )
+            return extracted_json
         
         # For YAML outputs that were converted to JSON, convert back
         if output_type == 'yaml':
             # First, try to extract JSON from the response
             extracted_json = self._extract_json_from_response(response, output_label)
-            if extracted_json:
-                response = extracted_json
+            if extracted_json is None:
+                raise StepExecutionError(
+                    f"Failed to extract valid JSON from LLM response for '{output_label}'. "
+                    f"Response length: {len(response)} chars.",
+                    errors=["No valid JSON found in LLM response"]
+                )
+            response = extracted_json
             
             # Parse response as JSON and convert to YAML
             try:

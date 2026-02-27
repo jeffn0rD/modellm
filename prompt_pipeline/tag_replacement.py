@@ -7,10 +7,14 @@ and providing error handling for missing tags.
 """
 
 import re
+from pathlib import Path
 from typing import Dict, Any, List, Set, Optional, Tuple
 
+from prompt_pipeline.exceptions import FileOperationError, PromptPipelineError
+from prompt_pipeline.file_utils import load_file_content
 
-class TagReplacementError(Exception):
+
+class TagReplacementError(PromptPipelineError):
     """Base exception for tag replacement errors."""
     pass
 
@@ -105,7 +109,7 @@ class TagReplacer:
     
     def _load_file_content(self, file_path: str) -> str:
         """
-        Load content from a file.
+        Load content from a file using shared file utilities.
         
         Args:
             file_path: Path to the file to load.
@@ -114,18 +118,16 @@ class TagReplacer:
             File content as string.
         
         Raises:
-            FileNotFoundError: If the file doesn't exist.
             TagReplacementError: If the file cannot be read.
         """
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
-                return f.read()
-        except FileNotFoundError:
-            raise TagReplacementError(f"File not found: {file_path}")
-        except PermissionError:
-            raise TagReplacementError(f"Permission denied: {file_path}")
-        except Exception as e:
-            raise TagReplacementError(f"Error reading file {file_path}: {e}")
+            return load_file_content(
+                file_path=Path(file_path),
+                encoding="utf-8",
+                allow_empty=False,
+            )
+        except FileOperationError as e:
+            raise TagReplacementError(str(e))
     
     def _resolve_replacement(
         self,

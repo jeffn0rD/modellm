@@ -14,6 +14,8 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
+from prompt_pipeline.exceptions import LLMClientError
+
 # Load environment variables from .env file if present
 try:
     from dotenv import load_dotenv
@@ -34,15 +36,6 @@ DEFAULT_TIMEOUT = 120  # seconds
 # Retry configuration
 MAX_RETRIES = 3
 RETRY_BACKOFF_FACTORS = [1, 2, 4]  # seconds
-
-
-class LLMCallError(Exception):
-    """Exception raised for LLM call failures."""
-    
-    def __init__(self, message: str, retry_count: int = 0, last_status_code: Optional[int] = None):
-        super().__init__(message)
-        self.retry_count = retry_count
-        self.last_status_code = last_status_code
 
 
 class OpenRouterClient:
@@ -71,12 +64,15 @@ class OpenRouterClient:
             timeout: Request timeout in seconds.
             config_path: Optional path to pipeline config for model selection.
         """
-        self.api_key = api_key or os.environ.get(OPENROUTER_API_KEY_ENV)
-        if not self.api_key:
+        _api_key = api_key or os.environ.get(OPENROUTER_API_KEY_ENV)
+        if not _api_key:
             raise ValueError(
                 f"API key not provided. Set {OPENROUTER_API_KEY_ENV} environment variable "
                 "or pass api_key parameter."
             )
+        
+        # Store API key as private attribute for security
+        self._api_key = _api_key
         
         self.default_model = default_model
         self.max_tokens = max_tokens
@@ -90,6 +86,19 @@ class OpenRouterClient:
         
         # Create session with retry strategy
         self.session = self._create_session()
+    
+    @property
+    def api_key(self) -> str:
+        """Get API key (for internal use only)."""
+        return self._api_key
+    
+    def __str__(self) -> str:
+        """Return string representation of the client (masks API key)."""
+        return f"OpenRouterClient(model={self.default_model}, timeout={self.timeout})"
+    
+    def __repr__(self) -> str:
+        """Return repr of the client (masks API key)."""
+        return self.__str__()
     
     def _load_model_levels(self) -> None:
         """Load model level mappings from config file."""
@@ -176,29 +185,29 @@ class OpenRouterClient:
         try:
             data = response.json()
         except ValueError as e:
-            raise LLMCallError(f"Failed to parse response as JSON: {e}")
+            raise LLMClientError(f"Failed to parse response as JSON: {e}")
         
         # Check for errors in response
         if 'error' in data:
             error_msg = data['error'].get('message', str(data['error']))
-            raise LLMCallError(f"API error: {error_msg}")
+            raise LLMClientError(f"API error: {error_msg}")
         
         # Extract content from response
         try:
             choices = data.get('choices', [])
             if not choices:
-                raise LLMCallError("No choices in response")
+                raise LLMClientError("No choices in response")
             
             message = choices[0].get('message', {})
             content = message.get('content', '')
             
             if not content:
-                raise LLMCallError("Empty content in response")
+                raise LLMClientError("Empty content in response")
             
             return content
         
         except (KeyError, IndexError) as e:
-            raise LLMCallError(f"Failed to parse response structure: {e}")
+            raise LLMClientError(f"Failed to parse response structure: {e}")
     
     def call_prompt(
         self,
@@ -222,7 +231,7 @@ class OpenRouterClient:
             LLM response content as string.
         
         Raises:
-            LLMCallError: If all retries fail.
+            LLMClientError: If all retries fail.
         """
         model = model or self.default_model
         max_tokens = max_tokens or self.max_tokens
@@ -256,7 +265,7 @@ class OpenRouterClient:
                     time.sleep(backoff_time)
                     return self.call_prompt(prompt, model, max_tokens, retry_count + 1)
                 
-                raise LLMCallError(
+                raise LLMClientError(
                     f"HTTP error: {response.status_code} - {error_details}",
                     retry_count=retry_count,
                     last_status_code=response.status_code
@@ -269,14 +278,14 @@ class OpenRouterClient:
                 backoff_time = RETRY_BACKOFF_FACTORS[retry_count]
                 time.sleep(backoff_time)
                 return self.call_prompt(prompt, model, max_tokens, retry_count + 1)
-            raise LLMCallError("Request timeout after all retries")
+            raise LLMClientError("Request timeout after all retries")
         
         except requests.exceptions.RequestException as e:
             if retry_count < MAX_RETRIES:
                 backoff_time = RETRY_BACKOFF_FACTORS[retry_count]
                 time.sleep(backoff_time)
                 return self.call_prompt(prompt, model, max_tokens, retry_count + 1)
-            raise LLMCallError(f"Request failed: {e}", retry_count=retry_count)
+            raise LLMClientError(f"Request failed: {e}", retry_count=retry_count)
     
     async def call_prompt_async(
         self,
@@ -330,11 +339,11 @@ class OpenRouterClient:
             LLM response content as string.
         
         Raises:
-            LLMCallError: If all retries fail.
+            LLMClientError: If all retries fail.
         """
         try:
             return self.call_prompt(prompt, model, max_tokens)
-        except LLMCallError as e:
+        except LLMClientError as e:
             # Try to save partial state
             if state_file:
                 try:
