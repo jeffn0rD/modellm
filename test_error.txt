@@ -1,0 +1,51 @@
+============================= test session starts =============================
+platform win32 -- Python 3.14.0, pytest-9.0.2, pluggy-1.6.0 -- C:\Python314\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\jeff0r\Dropbox\working\modellm
+configfile: pyproject.toml
+plugins: anyio-4.12.0, asyncio-1.3.0, cov-7.0.0, mock-3.15.1
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 1 item
+
+tests/test_prompt_pipeline/test_step_executor.py::TestStepExecutor::test_execute_step_with_validation FAILED [100%]
+
+================================== FAILURES ===================================
+_____________ TestStepExecutor.test_execute_step_with_validation ______________
+
+self = <tests.test_prompt_pipeline.test_step_executor.TestStepExecutor object at 0x000002B351D56250>
+executor = <prompt_pipeline.step_executor.StepExecutor object at 0x000002B351B6AF90>
+mock_prompt_manager = <Mock id='2969193330880'>
+tmp_path = WindowsPath('C:/Users/jeff0r/AppData/Local/Temp/pytest-of-jeff0r/pytest-102/test_execute_step_with_validat0')
+
+    @pytest.mark.asyncio
+    async def test_execute_step_with_validation(self, executor, mock_prompt_manager, tmp_path):
+        """Test that validation is triggered when enabled."""
+        mock_prompt_manager.get_step_config.return_value = {
+            "name": "test_step",
+            "prompt_file": "test.md",
+            "inputs": [{"label": "input1", "source": "cli", "compression": "none"}],
+            "outputs": [{"label": "test_output"}],
+            "validation": {"enabled": True},
+        }
+    
+        # Skip validation in executor
+        executor.skip_validation = False
+    
+        # Mock validation to fail
+        with patch.object(executor, '_validate_output') as mock_validate:
+            from prompt_pipeline.validation import ValidationResult
+            # Create a ValidationResult and add errors to it
+            result = ValidationResult()
+            result.add_error("Test validation error")
+            mock_validate.return_value = result
+    
+>           with pytest.raises(StepExecutionError) as exc_info:
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           Failed: DID NOT RAISE <class 'prompt_pipeline.exceptions.StepExecutionError'>
+
+tests\test_prompt_pipeline\test_step_executor.py:221: Failed
+---------------------------- Captured stdout call -----------------------------
+[36m| Waiting for response from test/model...[0m[32m[OK] Waiting for response from test/model...[0m
+=========================== short test summary info ===========================
+FAILED tests/test_prompt_pipeline/test_step_executor.py::TestStepExecutor::test_execute_step_with_validation - Failed: DID NOT RAISE <class 'prompt_pipeline.exceptions.StepExecutionError'>
+============================== 1 failed in 0.29s ==============================

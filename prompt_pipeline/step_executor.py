@@ -274,7 +274,7 @@ class StepExecutor:
                     output_path, output_type, data_entity, step_name
                 )
                 
-                if not validation_result.is_valid:
+                if not validation_result.is_valid():
                     # Output is already saved (as requested)
                     error_details = []
                     if validation_result.errors:
