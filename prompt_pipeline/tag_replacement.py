@@ -75,10 +75,10 @@ class TagReplacer:
         Returns:
             Set of tag names found in the prompt.
         """
+        # Use single-pass regex finditer for efficiency
         tags = set()
-        for match in self.TAG_PATTERN.findall(prompt):
-            # Strip whitespace and validate tag name
-            tag_name = match.strip()
+        for match in self.TAG_PATTERN.finditer(prompt):
+            tag_name = match.group(1).strip()
             if tag_name:
                 tags.add(tag_name)
         return tags
@@ -209,21 +209,15 @@ class TagReplacer:
             is_valid, missing_tags = self.validate_tags(replacements)
             if not is_valid:
                 raise MissingTagError(missing_tags[0])
-        
-        result = self.prompt
-        
-        for tag_name in self.required_tags:
-            # Get replacement value or use default
+
+        def replacer(match: re.Match) -> str:
+            """Callback function for regex substitution."""
+            tag_name = match.group(1).strip()
             replacement_value = replacements.get(tag_name, default_value)
-            
-            # Resolve the replacement value
-            resolved_content = self._resolve_replacement(tag_name, replacement_value)
-            
-            # Replace the tag in the prompt
-            tag_pattern = f'{{{{{tag_name}}}}}'
-            result = result.replace(tag_pattern, resolved_content)
-        
-        return result
+            return self._resolve_replacement(tag_name, replacement_value)
+
+        # Single-pass regex substitution
+        return self.TAG_PATTERN.sub(replacer, self.prompt)
     
     def replace_with_paths(
         self,
@@ -250,10 +244,10 @@ class TagReplacer:
             is_valid, missing_tags = self.validate_tags(replacements)
             if not is_valid:
                 raise MissingTagError(missing_tags[0])
-        
-        result = self.prompt
-        
-        for tag_name in self.required_tags:
+
+        def replacer(match: re.Match) -> str:
+            """Callback function for regex substitution."""
+            tag_name = match.group(1).strip()
             replacement_value = replacements.get(tag_name, "")
             
             # Convert to file path string
@@ -269,11 +263,10 @@ class TagReplacer:
             else:
                 path_str = str(replacement_value)
             
-            # Replace the tag
-            tag_pattern = f'{{{{{tag_name}}}}}'
-            result = result.replace(tag_pattern, path_str)
-        
-        return result
+            return path_str
+
+        # Single-pass regex substitution
+        return self.TAG_PATTERN.sub(replacer, self.prompt)
     
     def replace_with_content_or_paths(
         self,
@@ -297,14 +290,16 @@ class TagReplacer:
             is_valid, missing_tags = self.validate_tags(replacements)
             if not is_valid:
                 raise MissingTagError(missing_tags[0])
-        
-        result = self.prompt
-        
-        for tag_name in self.required_tags:
+
+        def replacer(match: re.Match) -> str:
+            """Callback function for regex substitution."""
+            tag_name = match.group(1).strip()
             replacement_value = replacements.get(tag_name, "")
             
             # Determine if we should use content or path
             use_path = False
+            path_str = ""
+            content_str = ""
             
             if isinstance(replacement_value, dict):
                 # Dictionary with 'path' key means use path, 'content' key means use content
@@ -336,12 +331,10 @@ class TagReplacer:
                 use_path = False
                 content_str = str(replacement_value)
             
-            # Replace the tag
-            tag_pattern = f'{{{{{tag_name}}}}}'
-            replacement = path_str if use_path else content_str
-            result = result.replace(tag_pattern, replacement)
-        
-        return result
+            return path_str if use_path else content_str
+
+        # Single-pass regex substitution
+        return self.TAG_PATTERN.sub(replacer, self.prompt)
 
 
 def parse_prompt_tags(prompt: str) -> Set[str]:

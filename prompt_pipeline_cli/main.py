@@ -26,7 +26,7 @@ from prompt_pipeline_cli.commands import (
     help="Verbosity level (0=quiet, 1=normal, 2=verbose, 3=debug)",
 )
 @click.pass_context
-def cli(ctx, config, verbosity):
+def cli(ctx: click.Context, config: str, verbosity: int) -> None:
     """Prompt Pipeline - Transform NL specs to TypeDB.
 
     A flexible pipeline for transforming natural language specifications
@@ -45,7 +45,7 @@ cli.add_command(import_cmd.import_data)
 cli.add_command(config.config)
 
 
-def main():
+def main() -> None:
     """Entry point for the CLI."""
     cli(obj={})
 

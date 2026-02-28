@@ -8,7 +8,7 @@ import yaml
 
 @click.group()
 @click.pass_context
-def config(ctx):
+def config(ctx: click.Context) -> None:
     """Manage pipeline configuration."""
     pass
 
@@ -25,7 +25,7 @@ def config(ctx):
     help="Show only a specific step",
 )
 @click.pass_context
-def show(ctx, format, step):
+def show(ctx: click.Context, format: str, step: str) -> None:
     """Show current configuration."""
     config_path = ctx.parent.params.get("config", "configuration/pipeline_config.yaml")
 
@@ -53,7 +53,7 @@ def show(ctx, format, step):
 
 @config.command("list-steps")
 @click.pass_context
-def list_steps(ctx):
+def list_steps(ctx: click.Context) -> None:
     """List all configured steps."""
     config_path = ctx.parent.params.get("config", "configuration/pipeline_config.yaml")
 
@@ -78,7 +78,7 @@ def list_steps(ctx):
 @config.command("get")
 @click.argument("key")
 @click.pass_context
-def get(ctx, key):
+def get(ctx: click.Context, key: str) -> None:
     """Get a configuration value."""
     config_path = ctx.parent.params.get("config", "configuration/pipeline_config.yaml")
 

@@ -66,7 +66,7 @@ class Spinner:
         self.is_spinning = False
         self.thread: Optional[threading.Thread] = None
     
-    def start(self):
+    def start(self) -> None:
         """Start the spinner."""
         if self.is_spinning:
             return
@@ -75,7 +75,7 @@ class Spinner:
         self.thread = threading.Thread(target=self._spin, daemon=True)
         self.thread.start()
     
-    def stop(self, success: bool = True):
+    def stop(self, success: bool = True) -> None:
         """Stop the spinner.
         
         Args:
@@ -97,7 +97,7 @@ class Spinner:
             # Fallback: print without colors
             print(f"\r{symbol} {self.message}")
     
-    def _spin(self):
+    def _spin(self) -> None:
         """Animation loop."""
         i = 0
         while self.is_spinning:

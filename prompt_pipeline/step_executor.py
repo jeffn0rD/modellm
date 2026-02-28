@@ -134,6 +134,66 @@ class StepExecutor:
         previous_outputs = previous_outputs or {}
         self._log(f"Executing step: {step_name}")
 
+        # Prepare step inputs
+        step_config, variables, compression_metrics = self._prepare_step_inputs(
+            step_name=step_name,
+            cli_inputs=cli_inputs,
+            exogenous_inputs=exogenous_inputs,
+            previous_outputs=previous_outputs,
+        )
+
+        # Load prompt with preamble and substitute variables
+        # Use get_prompt_with_variables which generates preamble and substitutes variables
+        filled_prompt = self.prompt_manager.get_prompt_with_variables(
+            step_name=step_name,
+            variables=variables,
+            validate=not self.force  # Skip validation if force mode
+        )
+        self._log(f"Prompt loaded with preamble and variables substituted")
+
+        # Call LLM
+        response = await self._call_llm_for_step(
+            step_name=step_name,
+            step_config=step_config,
+            filled_prompt=filled_prompt,
+            variables=variables,
+            compression_metrics=compression_metrics,
+        )
+
+        # Process outputs
+        output_paths = self._process_step_outputs(
+            step_name=step_name,
+            step_config=step_config,
+            response=response,
+        )
+
+        # Validate outputs
+        self._validate_step_outputs(
+            step_name=step_name,
+            step_config=step_config,
+            output_paths=output_paths,
+        )
+
+        return output_paths
+
+    def _prepare_step_inputs(
+        self,
+        step_name: str,
+        cli_inputs: Dict[str, str],
+        exogenous_inputs: Dict[str, Path],
+        previous_outputs: Dict[str, Path],
+    ) -> tuple[Dict[str, Any], Dict[str, Any], Dict[str, Any]]:
+        """Prepare step inputs including variables and compression metrics.
+
+        Args:
+            step_name: Name of the step.
+            cli_inputs: CLI input values.
+            exogenous_inputs: Exogenous input files.
+            previous_outputs: Outputs from previous steps.
+
+        Returns:
+            Tuple of (step_config, variables, compression_metrics)
+        """
         # Get step configuration
         step_config = self.prompt_manager.get_step_config(step_name)
         if not step_config:
@@ -165,15 +225,28 @@ class StepExecutor:
                     if tag not in variables:
                         variables[tag] = ""
 
-        # Load prompt with preamble and substitute variables
-        # Use get_prompt_with_variables which generates preamble and substitutes variables
-        filled_prompt = self.prompt_manager.get_prompt_with_variables(
-            step_name=step_name,
-            variables=variables,
-            validate=not self.force  # Skip validation if force mode
-        )
-        self._log(f"Prompt loaded with preamble and variables substituted")
+        return step_config, variables, compression_metrics
 
+    async def _call_llm_for_step(
+        self,
+        step_name: str,
+        step_config: Dict[str, Any],
+        filled_prompt: str,
+        variables: Dict[str, Any],
+        compression_metrics: Dict[str, Any],
+    ) -> str:
+        """Call LLM for step execution.
+
+        Args:
+            step_name: Name of the step.
+            step_config: Step configuration.
+            filled_prompt: Prompt with variables substituted.
+            variables: Variables used for substitution.
+            compression_metrics: Compression metrics for inputs.
+
+        Returns:
+            LLM response string.
+        """
         # Get model for this step
         model = self._get_model_for_step(step_name)
         self._log(f"Using model: {model}")
@@ -216,7 +289,25 @@ class StepExecutor:
             print_info(f"Response received ({len(response)} characters)")
         
         self._log(f"LLM response received ({len(response)} chars)")
+        
+        return response
 
+    def _process_step_outputs(
+        self,
+        step_name: str,
+        step_config: Dict[str, Any],
+        response: str,
+    ) -> Dict[str, Path]:
+        """Process and save step outputs.
+
+        Args:
+            step_name: Name of the step.
+            step_config: Step configuration.
+            response: LLM response string.
+
+        Returns:
+            Dictionary mapping output labels to output file paths.
+        """
         # Get output labels from step config
         output_configs = step_config.get("outputs", [])
         output_paths = {}
@@ -259,44 +350,64 @@ class StepExecutor:
             output_paths[output_label] = output_path
             self._log(f"Saved output '{output_label}' to {filename}")
 
-        # Validate output if not skipped
-        if not self.skip_validation and step_config.get('validation', {}).get('enabled', False):
-            self._log("Validating outputs...")
+        return output_paths
+
+    def _validate_step_outputs(
+        self,
+        step_name: str,
+        step_config: Dict[str, Any],
+        output_paths: Dict[str, Path],
+    ) -> None:
+        """Validate step outputs.
+
+        Args:
+            step_name: Name of the step.
+            step_config: Step configuration.
+            output_paths: Dictionary mapping output labels to output file paths.
+
+        Raises:
+            StepExecutionError: If validation fails.
+        """
+        if self.skip_validation or not step_config.get('validation', {}).get('enabled', False):
+            return
+
+        self._log("Validating outputs...")
+        
+        # Get output labels from step config
+        output_configs = step_config.get("outputs", [])
+        
+        # Validate each output
+        for output_config in output_configs:
+            output_label = output_config.get('label')
+            output_path = output_paths[output_label]
+            data_entity = self.prompt_manager.get_data_entity(output_label)
+            output_type = data_entity.get('type')
             
-            # Validate each output
-            for output_config in output_configs:
-                output_label = output_config.get('label')
-                output_path = output_paths[output_label]
-                data_entity = self.prompt_manager.get_data_entity(output_label)
-                output_type = data_entity.get('type')
+            validation_result = self._validate_output(
+                output_path, output_type, data_entity, step_name
+            )
+            
+            if not validation_result.is_valid():
+                # Output is already saved (as requested)
+                error_details = []
+                if validation_result.errors:
+                    error_details.append("Errors:")
+                    for error in validation_result.errors:
+                        error_details.append(f"  - {error}")
                 
-                validation_result = self._validate_output(
-                    output_path, output_type, data_entity, step_name
+                error_msg = f"Step '{step_name}' failed validation for output '{output_label}'\n" + "\n".join(error_details)
+                
+                print_error(
+                    f"✗ Validation failed for {output_label}!\n"
+                    f"  Output saved to: {output_path}\n"
+                    f"  Errors:\n" + "\n".join(validation_result.errors)
                 )
                 
-                if not validation_result.is_valid():
-                    # Output is already saved (as requested)
-                    error_details = []
-                    if validation_result.errors:
-                        error_details.append("Errors:")
-                        for error in validation_result.errors:
-                            error_details.append(f"  - {error}")
-                    
-                    error_msg = f"Step '{step_name}' failed validation for output '{output_label}'\n" + "\n".join(error_details)
-                    
-                    print_error(
-                        f"✗ Validation failed for {output_label}!\n"
-                        f"  Output saved to: {output_path}\n"
-                        f"  Errors:\n" + "\n".join(validation_result.errors)
-                    )
-                    
-                    raise StepExecutionError(
-                        error_msg,
-                        validation_result.errors,
-                        validation_result.warnings,
-                    )
-        
-        return output_paths
+                raise StepExecutionError(
+                    error_msg,
+                    validation_result.errors,
+                    validation_result.warnings,
+                )
 
     def _log(self, message: str) -> None:
         """Log message if verbose mode is enabled."""

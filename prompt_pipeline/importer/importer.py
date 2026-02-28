@@ -43,31 +43,31 @@ class Logger:
     def __init__(self, verbose: int = VerboseLevel.NORMAL):
         self.verbose = verbose
     
-    def error(self, msg: str):
+    def error(self, msg: str) -> None:
         """Print error message."""
         print(f"{Colors.RED}ERROR:{Colors.RESET} {msg}", file=sys.stderr)
     
-    def warning(self, msg: str):
+    def warning(self, msg: str) -> None:
         """Print warning message."""
         if self.verbose >= VerboseLevel.NORMAL:
             print(f"{Colors.YELLOW}WARNING:{Colors.RESET} {msg}")
     
-    def success(self, msg: str):
+    def success(self, msg: str) -> None:
         """Print success message."""
         if self.verbose >= VerboseLevel.NORMAL:
             print(f"{Colors.GREEN}SUCCESS:{Colors.RESET} {msg}")
     
-    def info(self, msg: str):
+    def info(self, msg: str) -> None:
         """Print info message."""
         if self.verbose >= VerboseLevel.VERBOSE:
             print(f"{Colors.BLUE}INFO:{Colors.RESET} {msg}")
     
-    def debug(self, msg: str):
+    def debug(self, msg: str) -> None:
         """Print debug message."""
         if self.verbose >= VerboseLevel.DEBUG:
             print(f"{Colors.DIM}DEBUG:{Colors.RESET} {msg}")
     
-    def section(self, title: str):
+    def section(self, title: str) -> None:
         """Print section header."""
         if self.verbose >= VerboseLevel.VERBOSE:
             print(f"\n{Colors.CYAN}{Colors.BOLD}{'='*50}{Colors.RESET}")

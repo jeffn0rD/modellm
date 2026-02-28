@@ -329,7 +329,7 @@ class PromptManager:
         steps_to_execute = []
         visited = set()
         
-        def add_step_and_deps(step_name: str):
+        def add_step_and_deps(step_name: str) -> None:
             if step_name in visited:
                 return
             visited.add(step_name)

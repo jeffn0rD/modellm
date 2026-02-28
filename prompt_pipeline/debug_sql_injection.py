@@ -5,7 +5,12 @@ from typedb_client3 import validate_credentials
 from typedb_client3 import TypeDBValidationError
 import re
 
-def debug_validation():
+def debug_validation() -> None:
+    """Debug the SQL injection validation patterns.
+    
+    This function tests various SQL injection patterns to ensure
+    they are properly detected by the validation logic.
+    """
     test_cases = [
         'admin"; --',
         "admin' OR '1'='1",

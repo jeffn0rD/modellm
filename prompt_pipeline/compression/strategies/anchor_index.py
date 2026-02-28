@@ -158,9 +158,9 @@ class AnchorIndexCompressionStrategy(CompressionStrategy):
             spec = yaml.safe_load(content)
             
             # Recursively find all anchors in the spec
-            def find_anchors_recursive(obj, section_context=None):
+            def find_anchors_recursive(obj: Any, section_context: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
                 """Recursively find all anchors in the object."""
-                found_anchors = []
+                found_anchors: List[Dict[str, Any]] = []
                 
                 if isinstance(obj, dict):
                     # Update section context if this is a section

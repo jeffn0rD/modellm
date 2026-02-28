@@ -53,17 +53,17 @@ from prompt_pipeline.typedb_integration import import_to_typedb
 )
 @click.pass_context
 def import_data(
-    ctx,
-    input_dir,
-    database,
-    wipe,
-    create,
-    host,
-    port,
-    username,
-    password,
-    schema,
-):
+    ctx: click.Context,
+    input_dir: str,
+    database: str,
+    wipe: bool,
+    create: bool,
+    host: str,
+    port: int,
+    username: str,
+    password: str,
+    schema: str,
+) -> None:
     """Import pipeline outputs to TypeDB.
 
     INPUT_DIR: Directory containing pipeline output files.

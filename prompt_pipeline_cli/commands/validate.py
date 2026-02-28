@@ -44,7 +44,7 @@ DEFAULT_CONFIG_PATH = Path("configuration/pipeline_config.yaml")
     help="Fail on warnings as well as errors",
 )
 @click.pass_context
-def validate(ctx, file, validation_type, schema_path, strict):
+def validate(ctx: click.Context, file: str, validation_type: str, schema_path: str, strict: bool) -> None:
     """Validate a pipeline output file.
 
     FILE: Path to the file to validate.
@@ -124,7 +124,7 @@ def _detect_type(file_path: Path) -> str:
         return "auto"
 
 
-def _get_validator(validation_type: str, schema_path: str = None):
+def _get_validator(validation_type: str, schema_path: str = None) -> Any:
     """Get validator instance for the specified type.
 
     Args:

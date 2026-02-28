@@ -196,24 +196,24 @@ def _collect_inputs_from_cli(
 )
 @click.pass_context
 def run_pipeline(
-    ctx,
-    input_file,
-    output_dir,
-    model_level,
-    skip_validation,
-    import_database,
-    wipe_database,
-    create_database,
-    dry_run,
-    show_prompt,
-    show_response,
-    show_both,
-    force,
-    nl_spec,
-):
+    ctx: click.Context,
+    input_file: List[str],
+    output_dir: str,
+    model_level: int,
+    skip_validation: bool,
+    import_database: str,
+    wipe_database: bool,
+    create_database: bool,
+    dry_run: bool,
+    show_prompt: bool,
+    show_response: bool,
+    show_both: bool,
+    force: bool,
+    nl_spec: str,
+) -> None:
     """Run the full pipeline from NL specification.
 
-    You can provide NL spec using --nl-spec (legacy) or --input-file nl_spec:filename
+    You can provide NL spec using --nl-spec (legacy) or --input-file nl_spec:<path>
     """
     config_path = ctx.obj.get("config", "configuration/pipeline_config.yaml")
     verbosity = ctx.obj.get("verbosity", 1)
