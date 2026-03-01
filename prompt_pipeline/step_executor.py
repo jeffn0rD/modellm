@@ -439,10 +439,20 @@ class StepExecutor:
         
         for input_spec in inputs_config:
             label = input_spec.get("label")
-            input_type = input_spec.get("type", "text")
+            input_type = input_spec.get("type")
             source = input_spec.get("source", "cli")
             compression = input_spec.get("compression", "full")
             compression_params = input_spec.get("compression_params", {})
+            
+            # Resolve input_type from data_entities if not explicitly set
+            if input_type is None:
+                # Try to get type from data_entities
+                data_entity = self.prompt_manager.get_data_entity(label)
+                if data_entity:
+                    input_type = data_entity.get("type", "text")
+                else:
+                    # Default to text if not found
+                    input_type = "text"
             
             # Resolve content based on source type
             content = self._resolve_input_content(
@@ -547,10 +557,10 @@ class StepExecutor:
             input_type: Expected input type (for validation).
 
         Returns:
-            File content as string.
+            File content as string (JSON if input_type is yaml).
 
         Raises:
-            StepExecutionError: If file not found or invalid.
+            StepExecutionError: If file not found or invalid, or if YAML conversion fails.
         """
         try:
             # Use shared file utility for loading
@@ -559,6 +569,21 @@ class StepExecutor:
                 encoding="utf-8",
                 allow_empty=False,
             )
+            
+            # Convert YAML to JSON if input_type is yaml
+            if input_type == "yaml":
+                from prompt_pipeline.compression.json_compression.yaml_utils import yaml_to_json_dict
+                try:
+                    # Convert YAML to Python object
+                    yaml_obj = yaml_to_json_dict(content)
+                    # Convert to JSON string
+                    content = json.dumps(yaml_obj, indent=2, ensure_ascii=False)
+                except ValueError as e:
+                    # Invalid YAML
+                    raise StepExecutionError(
+                        f"Failed to convert YAML to JSON for file {file_path}: {e}"
+                    )
+            
             return content
         except FileOperationError as e:
             # Convert FileOperationError to StepExecutionError for consistency
@@ -592,6 +617,14 @@ class StepExecutor:
                 "compression_ratio": 1.0,
                 "strategy": "none",
             }
+        
+        # Special handling for minimal_json strategy
+        if compression == "minimal_json":
+            return self._apply_minimal_json_compression(
+                content=content,
+                input_type=input_type,
+                label=label,
+            )
         
         # Apply compression using CompressionManager
         try:
@@ -649,6 +682,124 @@ class StepExecutor:
                 "compressed_length": len(content),
                 "compression_ratio": 1.0,
                 "strategy": "none",
+                "error": str(e),
+            }
+    
+    def _apply_minimal_json_compression(
+        self,
+        content: str,
+        input_type: str,
+        label: Optional[str] = None,
+    ) -> tuple[str, dict]:
+        """Apply minimal_json compression strategy.
+
+        This strategy routes content to JsonCompactStrategy for JSON compression.
+
+        Args:
+            content: Content to compress (should be JSON string).
+            input_type: Input type (json, yaml - yaml should already be converted to JSON).
+            label: Optional label for the input (for better logging).
+
+        Returns:
+            Tuple of (compressed_content, metrics_dict)
+        """
+        try:
+            # Ensure content is valid JSON
+            if input_type == "json":
+                # Content should already be JSON string
+                try:
+                    parsed = json.loads(content)
+                except json.JSONDecodeError as e:
+                    # If not valid JSON, return as-is with warning
+                    self._log(f"Warning: content for '{label}' is not valid JSON: {e}")
+                    return content, {
+                        "original_length": len(content),
+                        "compressed_length": len(content),
+                        "compression_ratio": 1.0,
+                        "strategy": "minimal_json",
+                        "error": "Invalid JSON - compression skipped",
+                    }
+            elif input_type == "yaml":
+                # YAML should have been converted to JSON in _load_file_content
+                # But let's check anyway
+                try:
+                    parsed = json.loads(content)
+                except json.JSONDecodeError:
+                    self._log(f"Warning: content for '{label}' is not valid JSON (should be JSON from YAML)")
+                    return content, {
+                        "original_length": len(content),
+                        "compressed_length": len(content),
+                        "compression_ratio": 1.0,
+                        "strategy": "minimal_json",
+                        "error": "Invalid JSON - compression skipped",
+                    }
+            else:
+                # For other types (md, text), minimal_json doesn't apply
+                # Return content as-is
+                self._log(f"Note: minimal_json strategy not applicable to '{input_type}' type for '{label}'")
+                return content, {
+                    "original_length": len(content),
+                    "compressed_length": len(content),
+                    "compression_ratio": 1.0,
+                    "strategy": "minimal_json",
+                }
+            
+            # Get compression config from data_entities if available
+            compression_config = None
+            if label and self.prompt_manager:
+                data_entity = self.prompt_manager.get_data_entity(label)
+                if data_entity:
+                    strategies = data_entity.get("compression_strategies", {})
+                    minimal_json_config = strategies.get("minimal_json", {})
+                    # Parse the config using the config parser
+                    from prompt_pipeline.compression.json_compression.config_parser import parse_json_compact_strategy_config
+                    compression_config, _ = parse_json_compact_strategy_config(
+                        data_entity, "minimal_json"
+                    )
+            
+            # Apply compression using JsonCompactStrategy
+            from prompt_pipeline.compression import CompressionManager
+            
+            manager = CompressionManager()
+            strategy = manager.get_strategy("json_compact")
+            
+            # Create compression context using CompressionManager's context
+            from prompt_pipeline.compression.strategies.base import CompressionContext
+            context = CompressionContext(
+                content_type=input_type,
+                label=label or "input",
+                level=2,
+            )
+            
+            # Apply compression
+            result = strategy.compress(content, context)
+            
+            # Build metrics
+            metrics = {
+                "original_length": result.original_length,
+                "compressed_length": result.compressed_length,
+                "compression_ratio": result.compression_ratio,
+                "strategy": "minimal_json",
+            }
+            
+            # Log compression metrics
+            if self.verbose:
+                self._log(
+                    f"Applied 'minimal_json' compression: "
+                    f"{result.original_length} -> {result.compressed_length} "
+                    f"({result.compression_ratio:.3f} ratio)"
+                )
+            
+            return result.content, metrics
+            
+        except Exception as e:
+            # If compression fails, log warning and return original content
+            self._log(f"Warning: minimal_json compression failed: {e}, using full content")
+            return content, {
+                "original_length": len(content),
+                "compressed_length": len(content),
+                "compression_ratio": 1.0,
+                "strategy": "minimal_json",
                 "error": str(e),
             }
 

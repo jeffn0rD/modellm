@@ -42,6 +42,20 @@ data_entities:
       heirachical:
         description: >
           A hierarchical representation of the specification that preserves the original structure and organization of the natural language specification. This format maintains the sections, subsections, and text blocks as they appear in the original document, allowing for a more intuitive understanding of the specification's flow and organization. It includes all the original text and structure from the natural language specification, organized into a structured YAML format. It serves as the foundational representation of the specification before any further processing or extraction of concepts.          
+      minimal_json:
+        description: >
+          YAML converted to JSON format. This is a compact representation that preserves the complete specification structure in JSON format, suitable for JSON compression strategies.
+  spec_compact:
+    type: yaml
+    filename: spec_compact.json
+    description: "Compressed specification in JSON format"
+    yaml_schema: schemas/spec_yaml_schema.json
+    compression_strategies:
+      none:
+        description: "JSON representation of the specification"
+      minimal_json:
+        description: "YAML converted to JSON format"
+
   spec_formal:
     type: md
     filename: spec_formal.md
@@ -62,6 +76,20 @@ data_entities:
         description: "Complete JSON concepts"
       concept_summary:
         description: "concept summary format (markdown tables grouped by entity type)"
+      minimal_json:
+        description: >
+          Compressed JSON representation of concepts. This format uses field code mapping and tabular arrays to reduce context size while preserving all conceptual information.
+
+  concepts_compact:
+    type: json
+    filename: concepts_compact.json
+    description: "Compressed concepts in JSON format"
+    schema: schemas/concepts.schema.json
+    compression_strategies:
+      none:
+        description: "JSON representation of concepts"
+      minimal_json:
+        description: "Compressed JSON representation of concepts"
 
   aggregations:
     type: json
@@ -73,6 +101,20 @@ data_entities:
         description: "Complete JSON aggregations"
       concept_summary:
         description: "concept summary format (markdown tables grouped by entity type)"
+      minimal_json:
+        description: >
+          Compressed JSON representation of aggregations. This format uses field code mapping and tabular arrays to reduce context size while preserving all aggregation information.
+
+  aggregations_compact:
+    type: json
+    filename: aggregations_compact.json
+    description: "Compressed aggregations in JSON format"
+    schema: schemas/aggregations.schema.json
+    compression_strategies:
+      none:
+        description: "JSON representation of aggregations"
+      minimal_json:
+        description: "Compressed JSON representation of aggregations"
 
   messages:
     type: json
@@ -84,6 +126,20 @@ data_entities:
         description: "Complete JSON messages"
       concept_summary:
         description: "concept summary format (markdown tables grouped by entity type)"
+      minimal_json:
+        description: >
+          Compressed JSON representation of messages. This format uses field code mapping and tabular arrays to reduce context size while preserving all message information.
+
+  messages_compact:
+    type: json
+    filename: messages_compact.json
+    description: "Compressed messages in JSON format"
+    schema: schemas/messages.schema.json
+    compression_strategies:
+      none:
+        description: "JSON representation of messages"
+      minimal_json:
+        description: "Compressed JSON representation of messages"
 
   message_aggregations:
     type: json
@@ -93,6 +149,20 @@ data_entities:
     compression_strategies:
       none:
         description: "Complete JSON message aggregations"
+      minimal_json:
+        description: >
+          Compressed JSON representation of message aggregations. This format uses field code mapping and tabular arrays to reduce context size while preserving all aggregation information.
+
+  message_aggregations_compact:
+    type: json
+    filename: messageAggregations_compact.json
+    description: "Compressed message aggregations in JSON format"
+    schema: schemas/messageAggregations.schema.json
+    compression_strategies:
+      none:
+        description: "JSON representation of message aggregations"
+      minimal_json:
+        description: "Compressed JSON representation of message aggregations"
 
   requirements:
     type: json
@@ -102,6 +172,20 @@ data_entities:
     compression_strategies:
       none:
         description: "Complete JSON requirements"
+      minimal_json:
+        description: >
+          Compressed JSON representation of requirements. This format uses field code mapping and tabular arrays to reduce context size while preserving all requirement information.
+
+  requirements_compact:
+    type: json
+    filename: requirements_compact.json
+    description: "Compressed requirements in JSON format"
+    schema: schemas/requirements.schema.json
+    compression_strategies:
+      none:
+        description: "JSON representation of requirements"
+      minimal_json:
+        description: "Compressed JSON representation of requirements"
 
 # ============================================
 # CLI INPUTS (unchanged)
@@ -149,7 +233,7 @@ steps:
     inputs:
       - label: spec
         source: label:spec
-        compression: anchor_index
+        compression: minimal_json
         color: green
     outputs:
       - label: spec_formal
@@ -183,9 +267,7 @@ steps:
     inputs:
       - label: spec
         source: label:spec
-        compression: hierarchical
-        compression_params:
-          level: 3  # 1=light, 2=medium, 3=aggressive
+        compression: minimal_json
         color: magenta
     outputs:
       - label: concepts
@@ -202,11 +284,11 @@ steps:
     inputs:
       - label: spec
         source: label:spec
-        compression: anchor_index
+        compression: minimal_json
         color: cyan
       - label: concepts
         source: label:concepts
-        compression: concept_summary
+        compression: minimal_json
         color: green
     outputs:
       - label: aggregations
@@ -223,15 +305,15 @@ steps:
     inputs:
       - label: spec
         source: label:spec
-        compression: anchor_index
+        compression: minimal_json
         color: cyan
       - label: concepts
         source: label:concepts
-        compression: concept_summary
+        compression: minimal_json
         color: green
       - label: aggregations
         source: label:aggregations
-        compression: concept_summary
+        compression: minimal_json
         color: yellow
     outputs:
       - label: messages
@@ -250,15 +332,15 @@ steps:
     inputs:
       - label: spec
         source: label:spec
-        compression: anchor_index
+        compression: minimal_json
         color: cyan
       - label: concepts
         source: label:concepts
-        compression: concept_summary
+        compression: minimal_json
         color: green
       - label: messages
         source: label:messages
-        compression: concept_summary
+        compression: minimal_json
         color: magenta
     outputs:
       - label: requirements
@@ -301,12 +383,3 @@ model_levels:
     1: qwen/qwen-2.5-72b
     2: xiaomi/mimo-v2-flash
     3: moonshotai/kimi-k2-0905
-    
-# free model for testing: qwen/qwen3-vl-30b-a3b-thinking
-# ============================================
-# DEV DEFAULTS (unchanged)
-# ============================================
-dev_defaults:
-  model_level: 1
-  verbosity: 2
-  skip_validation: false
