@@ -675,8 +675,13 @@ class StepExecutor:
             # Fallback to old format (single output_file)
             output_filename = step_config.get("output_file", "output.txt")
             output_path = self.output_dir / output_filename
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-            output_path.write_text(response, encoding="utf-8")
+            write_file_content(
+                file_path=output_path,
+                content=response,
+                encoding="utf-8",
+                create_parents=True,
+                atomic=True,
+            )
             output_paths["default"] = output_path
             return output_paths
         
@@ -693,9 +698,12 @@ class StepExecutor:
                             label = output_spec.get("label")
                             if key and filename and key in data:
                                 file_path = self.output_dir / filename
-                                file_path.parent.mkdir(parents=True, exist_ok=True)
-                                file_path.write_text(
-                                    json.dumps(data[key], indent=2), encoding="utf-8"
+                                write_file_content(
+                                    file_path=file_path,
+                                    content=json.dumps(data[key], indent=2),
+                                    encoding="utf-8",
+                                    create_parents=True,
+                                    atomic=True,
                                 )
                                 if label:
                                     output_paths[label] = file_path
@@ -729,8 +737,13 @@ class StepExecutor:
         label = output_spec.get("label")
         
         output_path = self.output_dir / filename
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        output_path.write_text(response, encoding="utf-8")
+        write_file_content(
+            file_path=output_path,
+            content=response,
+            encoding="utf-8",
+            create_parents=True,
+            atomic=True,
+        )
         
         if label:
             output_paths[label] = output_path
@@ -920,9 +933,16 @@ class StepExecutor:
                 # Response is not JSON, might be a non-JSON error message
                 # Save the raw response anyway (with .raw.json suffix for debugging)
                 raw_path = self.output_dir / f"{output_label}.raw.json"
-                raw_path.parent.mkdir(parents=True, exist_ok=True)
-                with open(raw_path, 'w', encoding='utf-8') as f:
-                    f.write(response)
+                try:
+                    write_file_content(
+                        file_path=raw_path,
+                        content=response,
+                        encoding="utf-8",
+                        create_parents=True,
+                        atomic=True,
+                    )
+                except FileOperationError as e:
+                    self._log(f"Failed to save raw response: {e}")
                 self._log(f"Response for '{output_label}' is not valid JSON, saved raw response to {raw_path}")
                 
                 # Re-raise with descriptive error
