@@ -36,6 +36,11 @@ from .yaml_utils import (
     yaml_to_json_dict,
     yaml_to_json_file,
 )
+from .config_parser import (
+    parse_yaml_config,
+    validate_config,
+    parse_json_compact_strategy_config,
+)
 
 __all__ = [
     "CompressionConfig",
@@ -51,4 +56,7 @@ __all__ = [
     "validate_yaml",
     "load_yaml_config",
     "yaml_to_json_file",
+    "parse_yaml_config",
+    "validate_config",
+    "parse_json_compact_strategy_config",
 ]

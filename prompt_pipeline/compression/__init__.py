@@ -16,10 +16,20 @@ from prompt_pipeline.compression.strategies.concept_summary import ConceptSummar
 from prompt_pipeline.compression.strategies.hierarchical import HierarchicalCompressionStrategy
 from prompt_pipeline.compression.strategies.schema_only import SchemaOnlyCompressionStrategy
 from prompt_pipeline.compression.strategies.differential import DifferentialCompressionStrategy
+from prompt_pipeline.compression.strategies.json_compact import JsonCompactStrategy
 from prompt_pipeline.compression.manager import (
     CompressionManager,
     CompressionConfig,
     CompressionMetrics,
+)
+from prompt_pipeline.compression.json_compression import (
+    compress_json,
+    decompress_json,
+    yaml_to_json_dict,
+    validate_yaml,
+    load_yaml_config,
+    yaml_to_json_file,
+    parse_json_compact_strategy_config,
 )
 
 __all__ = [
@@ -32,7 +42,15 @@ __all__ = [
     "HierarchicalCompressionStrategy",
     "SchemaOnlyCompressionStrategy",
     "DifferentialCompressionStrategy",
+    "JsonCompactStrategy",
     "CompressionManager",
     "CompressionConfig",
     "CompressionMetrics",
+    "compress_json",
+    "decompress_json",
+    "yaml_to_json_dict",
+    "validate_yaml",
+    "load_yaml_config",
+    "yaml_to_json_file",
+    "parse_json_compact_strategy_config",
 ]

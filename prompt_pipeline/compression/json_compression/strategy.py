@@ -117,6 +117,14 @@ class JsonCompactStrategy(CompressionStrategy):
         """
         return self.config
     
+    def get_supported_content_types(self) -> List[str]:
+        """Get the list of supported content types for this strategy.
+        
+        Returns:
+            List of supported content types (e.g., ["yaml", "json"])
+        """
+        return ["yaml", "json"]
+    
     @classmethod
     def from_config_dict(cls, config_dict: Dict[str, Any]) -> 'JsonCompactStrategy':
         """Create strategy from configuration dictionary.

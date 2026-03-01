@@ -19,6 +19,7 @@ from prompt_pipeline.compression.strategies.hierarchical import HierarchicalComp
 from prompt_pipeline.compression.strategies.schema_only import SchemaOnlyCompressionStrategy
 from prompt_pipeline.compression.strategies.differential import DifferentialCompressionStrategy
 from prompt_pipeline.compression.strategies.yaml_as_json import YamlAsJsonStrategy
+from prompt_pipeline.compression.strategies.json_compact import JsonCompactStrategy
 
 __all__ = [
     "CompressionStrategy",
@@ -29,4 +30,5 @@ __all__ = [
     "SchemaOnlyCompressionStrategy",
     "DifferentialCompressionStrategy",
     "YamlAsJsonStrategy",
+    "JsonCompactStrategy",
 ]

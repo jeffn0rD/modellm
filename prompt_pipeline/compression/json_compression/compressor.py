@@ -18,64 +18,6 @@ from .config import (
 )
 
 
-def compress_json(
-    data: Union[Dict[str, Any], List[Any]],
-    config: CompressionConfig,
-) -> Union[Dict[str, Any], List[Any]]:
-    """Compress JSON data using the specified configuration.
-    
-    This function applies compression strategies to JSON data including:
-    - Field filtering (include/exclude fields)
-    - Flattening nested structures
-    - Field code mapping (reducing field name sizes)
-    - Tabular array encoding (compressing array-of-objects)
-    
-    Args:
-        data: JSON data as a dictionary or list
-        config: Compression configuration
-        
-    Returns:
-        Compressed JSON data
-        
-    Raises:
-        ValueError: If the data or configuration is invalid
-    """
-    if not data:
-        return data
-    
-    if not isinstance(config, CompressionConfig):
-        raise ValueError("config must be a CompressionConfig instance")
-    
-    # Apply filtering
-    if config.filter_config:
-        data = _apply_filter(data, config.filter_config)
-    
-    # Apply flattening
-    if config.flatten_config and config.flatten_config.enabled:
-        data = _apply_flatten(data, config.flatten_config)
-    
-    # Apply key mapping
-    if config.key_mapping_config and config.key_mapping_config.enabled:
-        data, field_codes = _apply_key_mapping(data, config.key_mapping_config)
-        # Store field codes in result metadata
-        if isinstance(data, dict):
-            data["_field_codes"] = field_codes
-    
-    # Apply tabular encoding
-    if config.tabular_config and config.tabular_config.enabled:
-        data = _apply_tabular_encoding(data, config.tabular_config)
-    
-    # Add compression metadata
-    if isinstance(data, dict):
-        data["_compression_metadata"] = {
-            "strategy": config.strategy,
-            "preserve_types": config.preserve_types,
-            "compression_level": config.compression_level,
-        }
-    
-    return data
-
-
 def _apply_filter(
     data: Union[Dict[str, Any], List[Any]],
     filter_config: FilterConfig,
@@ -529,7 +471,7 @@ def _encode_data_with_field_codes(
         Encoded data with field codes as keys
     """
     if isinstance(data, dict):
-        result = {}
+        result: Dict[str, Any] = {}
         
         for key, value in data.items():
             # Skip special metadata fields
@@ -562,7 +504,8 @@ def _encode_data_with_field_codes(
                     if isinstance(encoded_value, dict):
                         # Check if any keys are different from original
                         if encoded_value != value:
-                            result[key] = encoded_value
+                            # Merge the encoded value into the result
+                            result.update(encoded_value)
                             nested_encoded = True
                 
                 # If not nested-encoded, keep the original key
@@ -626,6 +569,13 @@ def _encode_tabular_arrays(
             encoded, metadata = _encode_single_tabular_array(
                 value, path_to_code, key, config.tabular_config, sep
             )
+            
+            # Store in _tabular_arrays
+            if "_tabular_arrays" not in result:
+                result["_tabular_arrays"] = {}
+            result["_tabular_arrays"][key] = encoded
+            
+            # Also store the encoded version directly (for backward compatibility)
             result[key] = encoded
             
             # Store metadata
@@ -711,29 +661,47 @@ def _encode_single_tabular_array(
             columns, field_order, tabular_config.compression_ratio
         )
     
-    # Create metadata
-    metadata: Dict[str, Any] = {
-        "fields": field_order,
-        "columns": columns,
-    }
-    
     # Add key column mapping if specified
+    key_index_map: Dict[Any, int] = {}
+    key_column = None
     if tabular_config.key_column and tabular_config.key_column in field_code_map:
         key_code = field_code_map[tabular_config.key_column]
         key_column_idx = field_order.index(key_code) if key_code in field_order else -1
         
         if key_column_idx >= 0:
             key_values = columns[key_column_idx]
-            key_index_map: Dict[Any, int] = {}
             
             for idx, val in enumerate(key_values):
                 if val not in key_index_map:
                     key_index_map[val] = idx
             
-            metadata["key_index_map"] = key_index_map
-            metadata["key_column"] = key_code
+            key_column = key_code
     
-    return columns, metadata
+    # Create metadata
+    metadata: Dict[str, Any] = {
+        "fields": field_order,
+        "columns": columns,
+    }
+    
+    if key_index_map:
+        metadata["key_index_map"] = key_index_map
+    
+    if key_column:
+        metadata["key_column"] = key_column
+    
+    # Create encoded structure with 'columns' and 'fields' keys
+    encoded_structure: Dict[str, Any] = {
+        "columns": columns,
+        "fields": field_order,
+    }
+    
+    if key_index_map:
+        encoded_structure["key_index_map"] = key_index_map
+    
+    if key_column:
+        encoded_structure["key_column"] = key_column
+    
+    return encoded_structure, metadata
 
 
 def _compress_tabular_columns(
@@ -956,8 +924,8 @@ def encode_data(
     if not isinstance(data, (dict, list)):
         raise ValueError("Data must be a dictionary or list")
     
-    # Start with the data (already filtered and flattened)
-    encoded_data = data
+    # Start with a copy of the data to avoid modifying the original
+    encoded_data = data.copy() if isinstance(data, dict) else data[:]
     
     # Apply field code mapping
     if config.key_mapping_config and config.key_mapping_config.enabled and path_to_code:

@@ -22,6 +22,7 @@ from prompt_pipeline.compression.strategies import (
     DifferentialCompressionStrategy,
 )
 from prompt_pipeline.compression.strategies.yaml_as_json import YamlAsJsonStrategy
+from prompt_pipeline.compression.strategies.json_compact import JsonCompactStrategy
 
 
 @dataclass
@@ -122,6 +123,7 @@ class CompressionManager:
             SchemaOnlyCompressionStrategy(),
             DifferentialCompressionStrategy(),
             YamlAsJsonStrategy(),
+            JsonCompactStrategy(),
         ]
         
         for strategy in strategies:
