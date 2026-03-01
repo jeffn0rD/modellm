@@ -838,3 +838,200 @@ def _build_schema_object(
         schema["structure"] = structure
     
     return schema
+
+
+def init_compress_json(
+    data: Union[Dict[str, Any], List[Any]],
+    config: CompressionConfig,
+) -> Tuple[Union[Dict[str, Any], List[Any]], List[str], Dict[str, Any], str]:
+    """Initialize the compression process for JSON data.
+    
+    This function performs the initial steps of compression:
+    1. Determine the original root type
+    2. Apply filtering (if configured)
+    3. Apply flattening (if configured)
+    4. Collect logical field paths
+    5. Build field code mapping
+    6. Prepare metadata
+    
+    Args:
+        data: JSON data as a dictionary or list
+        config: Compression configuration
+        
+    Returns:
+        Tuple of (filtered_data, field_paths, path_to_code, original_root_type)
+        
+    Raises:
+        ValueError: If the data or configuration is invalid
+    """
+    if not data:
+        return data, [], {}, ""
+    
+    if not isinstance(config, CompressionConfig):
+        raise ValueError("config must be a CompressionConfig instance")
+    
+    # Determine original root type
+    if isinstance(data, dict):
+        original_root_type = "dict"
+    elif isinstance(data, list):
+        original_root_type = "list"
+    else:
+        raise ValueError("Data must be a dictionary or list")
+    
+    # Apply filtering
+    if config.filter_config:
+        data = _apply_filter(data, config.filter_config)
+    
+    # Apply flattening
+    if config.flatten_config and config.flatten_config.enabled:
+        data = _apply_flatten(data, config.flatten_config)
+    
+    # Collect logical field paths
+    field_paths = _collect_logical_fields(data, config)
+    
+    # Build field code mapping
+    path_to_code = _build_field_code_map(field_paths, config)
+    
+    return data, field_paths, path_to_code, original_root_type
+
+
+def build_encoding_map(
+    data: Union[Dict[str, Any], List[Any]],
+    config: CompressionConfig,
+) -> Dict[str, str]:
+    """Build encoding map for field code mapping.
+    
+    This function collects field paths from the data and builds a mapping
+    to field codes based on the compression configuration.
+    
+    Args:
+        data: JSON data as a dictionary or list
+        config: Compression configuration
+        
+    Returns:
+        Dictionary mapping field paths to field codes
+    """
+    # Apply filtering and flattening first to get the correct field paths
+    processed_data = data
+    
+    if config.filter_config:
+        processed_data = _apply_filter(processed_data, config.filter_config)
+    
+    if config.flatten_config and config.flatten_config.enabled:
+        processed_data = _apply_flatten(processed_data, config.flatten_config)
+    
+    # Collect field paths
+    field_paths = _collect_logical_fields(processed_data, config)
+    
+    # Build field code mapping
+    path_to_code = _build_field_code_map(field_paths, config)
+    
+    return path_to_code
+
+
+def encode_data(
+    data: Union[Dict[str, Any], List[Any]],
+    path_to_code: Dict[str, str],
+    config: CompressionConfig,
+    original_root_type: str,
+    sep: str = ".",
+) -> Tuple[Union[Dict[str, Any], List[Any]], Dict[str, Any]]:
+    """Encode data using field codes and optional tabular array encoding.
+    
+    This function encodes the data by:
+    1. Applying field code mapping
+    2. Applying tabular array encoding (if configured)
+    3. Building schema object for the compressed data
+    
+    Args:
+        data: JSON data to encode (should be filtered/flattened already)
+        path_to_code: Mapping from field paths to field codes
+        config: Compression configuration
+        original_root_type: Type of the original root object ("dict" or "list")
+        sep: Separator for nested paths
+        
+    Returns:
+        Tuple of (encoded_data, schema)
+    """
+    if not isinstance(data, (dict, list)):
+        raise ValueError("Data must be a dictionary or list")
+    
+    # Start with the data (already filtered and flattened)
+    encoded_data = data
+    
+    # Apply field code mapping
+    if config.key_mapping_config and config.key_mapping_config.enabled and path_to_code:
+        encoded_data = _encode_data_with_field_codes(encoded_data, path_to_code, "", sep)
+    
+    # Apply tabular array encoding
+    tabular_metadata: Dict[str, Any] = {}
+    if config.tabular_config and config.tabular_config.enabled:
+        encoded_data, tabular_metadata = _encode_tabular_arrays(
+            encoded_data, path_to_code, config, sep
+        )
+    
+    # Add compression metadata
+    if isinstance(encoded_data, dict):
+        encoded_data["_compression_metadata"] = {
+            "strategy": config.strategy,
+            "preserve_types": config.preserve_types,
+            "compression_level": config.compression_level,
+        }
+        
+        # Store field codes in result if key mapping was applied
+        if config.key_mapping_config and config.key_mapping_config.enabled and path_to_code:
+            encoded_data["_field_codes"] = path_to_code
+    
+    # Build schema object
+    schema = _build_schema_object(
+        original_root_type=original_root_type,
+        config=config,
+        path_to_code=path_to_code,
+        tabular_metadata=tabular_metadata,
+    )
+    
+    return encoded_data, schema
+
+
+def compress_json(
+    data: Union[Dict[str, Any], List[Any]],
+    config: CompressionConfig,
+) -> Union[Dict[str, Any], List[Any]]:
+    """Compress JSON data using the specified configuration.
+    
+    This function applies compression strategies to JSON data including:
+    - Field filtering (include/exclude fields)
+    - Flattening nested structures
+    - Field code mapping (reducing field name sizes)
+    - Tabular array encoding (compressing array-of-objects)
+    
+    Args:
+        data: JSON data as a dictionary or list
+        config: Compression configuration
+        
+    Returns:
+        Compressed JSON data
+        
+    Raises:
+        ValueError: If the data or configuration is invalid
+    """
+    if not data:
+        return data
+    
+    if not isinstance(config, CompressionConfig):
+        raise ValueError("config must be a CompressionConfig instance")
+    
+    # Step 1: Initialize compression (filter, flatten, collect fields, build map)
+    processed_data, field_paths, path_to_code, original_root_type = init_compress_json(data, config)
+    
+    # Step 2: Encode data using field codes and tabular arrays
+    encoded_data, schema = encode_data(
+        processed_data, path_to_code, config, original_root_type
+    )
+    
+    # Step 3: Add schema to result (optional, based on config)
+    if isinstance(encoded_data, dict):
+        # Store schema in a separate field
+        encoded_data["_schema"] = schema
+    
+    return encoded_data
