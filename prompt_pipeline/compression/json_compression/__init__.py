@@ -30,7 +30,12 @@ from .config import (
 from .compressor import compress_json
 from .decompressor import decompress_json
 from .strategy import CompressionStrategy, JsonCompactStrategy
-from .yaml_utils import yaml_to_json_dict
+from .yaml_utils import (
+    load_yaml_config,
+    validate_yaml,
+    yaml_to_json_dict,
+    yaml_to_json_file,
+)
 
 __all__ = [
     "CompressionConfig",
@@ -43,4 +48,7 @@ __all__ = [
     "compress_json",
     "decompress_json",
     "yaml_to_json_dict",
+    "validate_yaml",
+    "load_yaml_config",
+    "yaml_to_json_file",
 ]
