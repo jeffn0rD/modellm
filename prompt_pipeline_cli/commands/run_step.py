@@ -1309,6 +1309,7 @@ def run_step(
         prompt_manager=prompt_manager,
         output_dir=Path(output_dir),
         model_level=model_level,
+        model=model,
         skip_validation=skip_validation,
         verbose=verbose,
         show_prompt=show_prompt or show_both,

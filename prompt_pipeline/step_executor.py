@@ -76,6 +76,7 @@ class StepExecutor:
         prompt_manager: PromptManager,
         output_dir: Path,
         model_level: int = 1,
+        model: Optional[str] = None,
         skip_validation: bool = False,
         verbose: bool = False,
         show_prompt: bool = False,
@@ -90,6 +91,7 @@ class StepExecutor:
             prompt_manager: Prompt manager for loading prompts.
             output_dir: Directory for output files.
             model_level: Model level (1=cheapest, 2=balanced, 3=best).
+            model: Specific model name to use (overrides model_level and config).
             skip_validation: If True, skip output validation.
             verbose: If True, print detailed progress.
             show_prompt: If True, display prompt sent to LLM.
@@ -101,6 +103,7 @@ class StepExecutor:
         self.prompt_manager = prompt_manager
         self.output_dir = Path(output_dir)
         self.model_level = model_level
+        self.model = model
         self.skip_validation = skip_validation
         self.verbose = verbose
         self.show_prompt = show_prompt
@@ -938,6 +941,10 @@ class StepExecutor:
         Returns:
             Model name to use for this step.
         """
+        # Check if a specific model was provided (overrides everything)
+        if self.model:
+            return self.model
+        
         # Look up model from configuration
         model_levels = self.prompt_manager.steps_config.get("model_levels", {})
         step_models = model_levels.get(step_name, {})
@@ -1186,6 +1193,7 @@ async def run_step(
     exogenous_inputs: Optional[Dict[str, str]] = None,
     previous_outputs: Optional[Dict[str, str]] = None,
     model_level: int = 1,
+    model: Optional[str] = None,
     skip_validation: bool = False,
     verbose: bool = False,
     show_prompt: bool = False,
@@ -1202,6 +1210,7 @@ async def run_step(
         exogenous_inputs: Exogenous input files.
         previous_outputs: Outputs from previous steps.
         model_level: Model level (1-3).
+        model: Specific model name to use (overrides model_level and config).
         skip_validation: Skip validation.
         verbose: Print progress.
         show_prompt: Show prompt sent to LLM.
@@ -1227,6 +1236,7 @@ async def run_step(
         prompt_manager=prompt_manager,
         output_dir=output_dir,
         model_level=model_level,
+        model=model,
         skip_validation=skip_validation,
         verbose=verbose,
         show_prompt=show_prompt,

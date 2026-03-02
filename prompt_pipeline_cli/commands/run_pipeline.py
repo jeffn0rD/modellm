@@ -143,6 +143,11 @@ def _collect_inputs_from_cli(
     help="Model quality level (1=fast/cheap, 2=balanced, 3=best)",
 )
 @click.option(
+    "--model",
+    type=str,
+    help="Specific model name (overrides --model-level)",
+)
+@click.option(
     "--skip-validation",
     is_flag=True,
     help="Skip output validation",
@@ -200,6 +205,7 @@ def run_pipeline(
     input_file: List[str],
     output_dir: str,
     model_level: int,
+    model: str,
     skip_validation: bool,
     import_database: str,
     wipe_database: bool,
@@ -299,6 +305,7 @@ def run_pipeline(
         prompt_manager=prompt_manager,
         output_dir=Path(output_dir),
         model_level=model_level,
+        model=model,
         skip_validation=skip_validation,
         verbose=verbose,
         show_prompt=show_prompt or show_both,
