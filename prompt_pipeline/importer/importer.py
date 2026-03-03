@@ -449,25 +449,50 @@ class TypeDBImporter:
         self.logger.success("Import completed")
     
     def _create_spec_document(self, yaml_path: Path, spec: Dict[str, Any]) -> None:
-        """Create a spec-document entity."""
+        """Create a spec-document entity using QueryBuilder."""
         spec_id = spec.get('id', 'SPEC1')
         title = self._escape_string(spec.get('title', ''))
         version = spec.get('version', '0.1')
         description = self._escape_string(spec.get('description', ''))
+        filename = str(yaml_path)
+        foldername = str(yaml_path.parent)
         
-        query = f'''
-            insert 
-                $folder isa fs-folder, has foldername "{yaml_path.parent}";
-                $doc isa spec-document,
-                  has spec-doc-id "{spec_id}",
-                  has title "{title}",
-                  has version "{version}",
-                  has status "draft",
-                  has description "{description}",
-                  has filename "{yaml_path}";
-                filesystem(folder: $folder, entry: $doc);
-        '''
-        self.client.execute_query(self.database, query, TransactionType.WRITE)
+        # Use _insert_entity_with_check for proper existence check and recreation
+        attributes = {
+            'spec-doc-id': spec_id,
+            'title': title,
+            'version': version,
+            'status': 'draft',
+            'description': description,
+            'filename': filename
+        }
+        
+        success = self._insert_entity_with_check(
+            'spec-document',
+            'spec-doc-id',
+            spec_id,
+            attributes
+        )
+        
+        if success:
+            # Create folder and filesystem relation separately (if needed)
+            self._ensure_fs_folder(yaml_path.parent)
+        
+        if not success:
+            self.logger.warning(f"Failed to create spec-document: {spec_id}")
+    
+    def _ensure_fs_folder(self, folder_path: Path) -> None:
+        """Ensure an fs-folder entity exists."""
+        foldername = str(folder_path)
+        
+        if not self.entity_exists('fs-folder', 'foldername', foldername):
+            attributes = {'foldername': foldername}
+            query = self._build_entity_query('fs-folder', attributes)
+            try:
+                self.client.execute_query(self.database, query, TransactionType.WRITE)
+                self.logger.debug(f"Created fs-folder: {foldername}")
+            except Exception as e:
+                self.logger.debug(f"Could not create fs-folder '{foldername}': {e}")
     
     def _process_section(
         self,
@@ -957,7 +982,7 @@ class TypeDBImporter:
             pass
     
     def _import_aggregations_json(self, json_path: Path, force_update: bool) -> None:
-        """Import aggregations.json (ActionAggregate)."""
+        """Import aggregations.json (ActionAggregate) using QueryBuilder."""
         with open(json_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
         
@@ -965,26 +990,29 @@ class TypeDBImporter:
             agg_id = agg.get('id')
             label = self._transform_label(agg.get('label', ''))
             description = self._escape_string(agg.get('description', ''))
-            constituent_ids = agg.get('constituents', [])
             
-            if force_update or not self.entity_exists('action-aggregate', 'action-agg-id', agg_id):
-                query = f'''
-                    insert $aa isa action-aggregate,
-                        has action-agg-id "{agg_id}",
-                        has id-label "{label}",
-                        has description "{description}";
-                '''
-                try:
-                    self.client.execute_query(self.database, query, TransactionType.WRITE)
-                    self.stats['aggregations'] += 1
-                    self.logger.debug(f"Created action-aggregate: {agg_id}")
-                except Exception as e:
-                    self.logger.warning(f"Could not create aggregation '{agg_id}': {e}")
+            # Use _insert_entity_with_check for proper existence check and recreation
+            attributes = {
+                'action-agg-id': agg_id,
+                'id-label': label,
+                'description': description
+            }
+            
+            success = self._insert_entity_with_check(
+                'action-aggregate',
+                'action-agg-id',
+                agg_id,
+                attributes
+            )
+            
+            if success:
+                self.stats['aggregations'] += 1
+                self.logger.debug(f"Created action-aggregate: {agg_id}")
         
         self.logger.info(f"Imported {len(data)} action aggregates")
     
     def _import_messages_json(self, json_path: Path, force_update: bool) -> None:
-        """Import messages.json."""
+        """Import messages.json using QueryBuilder."""
         with open(json_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
         
@@ -992,26 +1020,29 @@ class TypeDBImporter:
             msg_id = msg.get('id')
             label = self._transform_label(msg.get('label', ''))
             description = self._escape_string(msg.get('description', ''))
-            constraints = msg.get('constraints', [])
             
-            if force_update or not self.entity_exists('message', 'message-id', msg_id):
-                query = f'''
-                    insert $m isa message,
-                        has message-id "{msg_id}",
-                        has id-label "{label}",
-                        has description "{description}";
-                '''
-                try:
-                    self.client.execute_query(self.database, query, TransactionType.WRITE)
-                    self.stats['messages'] += 1
-                    self.logger.debug(f"Created message: {msg_id}")
-                except Exception as e:
-                    self.logger.warning(f"Could not create message '{msg_id}': {e}")
+            # Use _insert_entity_with_check for proper existence check and recreation
+            attributes = {
+                'message-id': msg_id,
+                'id-label': label,
+                'description': description
+            }
+            
+            success = self._insert_entity_with_check(
+                'message',
+                'message-id',
+                msg_id,
+                attributes
+            )
+            
+            if success:
+                self.stats['messages'] += 1
+                self.logger.debug(f"Created message: {msg_id}")
         
         self.logger.info(f"Imported {len(data)} messages")
     
     def _import_message_aggregations_json(self, json_path: Path, force_update: bool) -> None:
-        """Import messageAggregations.json."""
+        """Import messageAggregations.json using QueryBuilder."""
         with open(json_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
         
@@ -1020,24 +1051,28 @@ class TypeDBImporter:
             label = self._transform_label(agg.get('label', ''))
             description = self._escape_string(agg.get('description', ''))
             
-            if force_update or not self.entity_exists('message-aggregate', 'message-agg-id', agg_id):
-                query = f'''
-                    insert $ma isa message-aggregate,
-                        has message-agg-id "{agg_id}",
-                        has id-label "{label}",
-                        has description "{description}";
-                '''
-                try:
-                    self.client.execute_query(self.database, query, TransactionType.WRITE)
-                    self.stats['aggregations'] += 1
-                    self.logger.debug(f"Created message-aggregate: {agg_id}")
-                except Exception as e:
-                    self.logger.warning(f"Could not create message aggregate '{agg_id}': {e}")
+            # Use _insert_entity_with_check for proper existence check and recreation
+            attributes = {
+                'message-agg-id': agg_id,
+                'id-label': label,
+                'description': description
+            }
+            
+            success = self._insert_entity_with_check(
+                'message-aggregate',
+                'message-agg-id',
+                agg_id,
+                attributes
+            )
+            
+            if success:
+                self.stats['aggregations'] += 1
+                self.logger.debug(f"Created message-aggregate: {agg_id}")
         
         self.logger.info(f"Imported {len(data)} message aggregates")
     
     def _import_requirements_json(self, json_path: Path, force_update: bool) -> None:
-        """Import requirements.json."""
+        """Import requirements.json using QueryBuilder."""
         with open(json_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
         
@@ -1046,19 +1081,23 @@ class TypeDBImporter:
             label = self._transform_label(req.get('label', ''))
             description = self._escape_string(req.get('description', ''))
             
-            if force_update or not self.entity_exists('requirement', 'requirement-id', req_id):
-                query = f'''
-                    insert $r isa requirement,
-                        has requirement-id "{req_id}",
-                        has id-label "{label}",
-                        has description "{description}";
-                '''
-                try:
-                    self.client.execute_query(self.database, query, TransactionType.WRITE)
-                    self.stats['requirements'] += 1
-                    self.logger.debug(f"Created requirement: {req_id}")
-                except Exception as e:
-                    self.logger.warning(f"Could not create requirement '{req_id}': {e}")
+            # Use _insert_entity_with_check for proper existence check and recreation
+            attributes = {
+                'requirement-id': req_id,
+                'id-label': label,
+                'description': description
+            }
+            
+            success = self._insert_entity_with_check(
+                'requirement',
+                'requirement-id',
+                req_id,
+                attributes
+            )
+            
+            if success:
+                self.stats['requirements'] += 1
+                self.logger.debug(f"Created requirement: {req_id}")
         
         self.logger.info(f"Imported {len(data)} requirements")
 
