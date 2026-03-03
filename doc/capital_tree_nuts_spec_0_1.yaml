@@ -1,0 +1,667 @@
+specification:
+  id: SPEC1
+  title: "Capital Tree Nuts Contract Management System"
+  version: "0.1.0"
+  description: >
+    A web-based application to manage, track, and execute purchase and sale contracts for Capital Tree Nuts.
+  metadata:
+    source_style: "informal executive-style requirements"
+    intended_use: "stepwise refinement toward formal/domain model"
+    anchor_id_pattern: "AN<number>"
+    section_numbering: "hierarchical (1, 1.1, 1.2, ...)"
+    concept_assignment_rule: >
+      An Anchor can be related to more than one Concept, but a Concept should
+      be related to only one Anchor.
+  sections:
+    - section_id: S1
+      section_number: "1"
+      order: 1
+      title: "Executive Summary"
+      label: "EXECUTIVE_SUMMARY"
+      text_blocks:
+        - anchor_id: AN1
+          label: "SYSTEM_PURPOSE_AND_OVERVIEW"
+          type: "goal"
+          semantic_cues:
+            - contract_management
+            - role_based_access
+            - docusign_integration
+          text: >
+            A web-based application to manage, track, and execute purchase and sale contracts for Capital Tree Nuts. The system provides role-based access for Customers, Employees, and Administrators. It serves as a centralized dashboard for contract lifecycle management, including matching purchases to sales, and integrates with DocuSign for external contract execution.
+          concepts:
+            - concept_id: C1
+              name: "Purchase_contract"
+              description: "A formal agreement representing a purchase made by the company."
+            - concept_id: C2
+              name: "Sale_contract"
+              description: "A formal agreement representing a sale made to a customer."
+            - concept_id: C3
+              name: "Customer"
+              description: "An external user role representing a client or vendor."
+            - concept_id: C4
+              name: "Employee"
+              description: "An internal user role representing a staff member managing contracts."
+            - concept_id: C5
+              name: "Administrator"
+              description: "A high-level internal user role with system-wide access."
+            - concept_id: C6
+              name: "Contract_lifecycle"
+              description: "The various stages a contract progresses through from creation to execution."
+            - concept_id: C7
+              name: "Docusign_integration"
+              description: "External service connection used for executing contracts securely."
+      sections: []
+
+    - section_id: S2
+      section_number: "2"
+      order: 2
+      title: "Architecture & Technology Stack"
+      label: "ARCHITECTURE_AND_TECH_STACK"
+      text_blocks:
+        - anchor_id: AN2
+          label: "FRONTEND_HOSTING_ENV"
+          type: "constraint"
+          semantic_cues:
+            - frontend_hosting
+            - infrastructure
+            - cloud_deployment
+          text: >
+            **Frontend Hosting:** Cloudflare Pages (`dashboard.capitaltreenuts.com` / `dev.capitaltreenuts.com`)
+          concepts:
+            - concept_id: C8
+              name: "Cloudflare_pages"
+              description: "The hosting provider for the frontend application."
+        - anchor_id: AN3
+          label: "FRONTEND_FRAMEWORK_STACK"
+          type: "constraint"
+          semantic_cues:
+            - frontend_framework
+            - ui_components
+            - routing_layout
+          text: >
+            **Frontend Framework:** Astro (Routing/Layout) + Svelte 5 (Reactivity) + Shadcn-Svelte (UI Components)
+          concepts:
+            - concept_id: C9
+              name: "Astro_framework"
+              description: "The framework used for frontend routing and layout."
+            - concept_id: C10
+              name: "Svelte_5"
+              description: "The framework used for frontend reactivity."
+            - concept_id: C11
+              name: "Shadcn_svelte"
+              description: "The library used for frontend UI components."
+        - anchor_id: AN4
+          label: "BACKEND_HOSTING_ENV"
+          type: "constraint"
+          semantic_cues:
+            - backend_hosting
+            - infrastructure
+            - api_deployment
+          text: >
+            **Backend Hosting:** Railway (`api.dashboard...` / `api.dev...`)
+          concepts:
+            - concept_id: C12
+              name: "Railway_hosting"
+              description: "The hosting provider for the backend API."
+        - anchor_id: AN5
+          label: "BACKEND_FRAMEWORK_STACK"
+          type: "constraint"
+          semantic_cues:
+            - backend_framework
+            - api_development
+            - node_js
+          text: >
+            **Backend Framework:** Node.js / Fastify
+          concepts:
+            - concept_id: C13
+              name: "Node_js"
+              description: "The runtime environment for the backend."
+            - concept_id: C14
+              name: "Fastify"
+              description: "The web framework used for the backend API."
+        - anchor_id: AN6
+          label: "DATABASE_AND_STORAGE_TECH"
+          type: "constraint"
+          semantic_cues:
+            - database_management
+            - object_storage
+            - relational_data
+          text: >
+            **Database & Storage:** Supabase (PostgreSQL + Object Storage)
+          concepts:
+            - concept_id: C15
+              name: "Supabase"
+              description: "The primary platform for database and storage."
+            - concept_id: C16
+              name: "PostgreSQL"
+              description: "The relational database system used."
+            - concept_id: C17
+              name: "Object_storage"
+              description: "The system used for storing files and documents."
+        - anchor_id: AN7
+          label: "AUTHENTICATION_TECH"
+          type: "constraint"
+          semantic_cues:
+            - user_authentication
+            - security
+            - identity_management
+          text: >
+            **Authentication:** Supabase Auth (Email/Password)
+          concepts:
+            - concept_id: C18
+              name: "Supabase_auth"
+              description: "The service handling user authentication."
+        - anchor_id: AN8
+          label: "EXTERNAL_INTEGRATIONS_TECH"
+          type: "constraint"
+          semantic_cues:
+            - api_integration
+            - contract_execution
+            - third_party_services
+          text: >
+            **External Integrations:** DocuSign API (Contract execution/status tracking)
+          concepts:
+            - concept_id: C19
+              name: "Docusign_api"
+              description: "The external API used for contract execution and tracking."
+        - anchor_id: AN9
+          label: "VERSION_CONTROL_TECH"
+          type: "constraint"
+          semantic_cues:
+            - version_control
+            - monorepo
+            - source_code_management
+          text: >
+            **Version Control:** GitHub (Monorepo structure)
+          concepts:
+            - concept_id: C20
+              name: "Github_monorepo"
+              description: "The version control repository structure."
+      sections: []
+
+    - section_id: S3
+      section_number: "3"
+      order: 3
+      title: "Phase 0: Foundation & Authentication"
+      label: "PHASE_0_FOUNDATION"
+      text_blocks:
+        - anchor_id: AN10
+          label: "PHASE_0_GOAL"
+          type: "goal"
+          semantic_cues:
+            - phase_0_goals
+            - foundation_setup
+            - ci_cd_pipelines
+          text: >
+            **Goal:** Establish the repository, CI/CD pipelines, basic UI scaffolding, user authentication, and the foundational auditing system.
+          concepts:
+            - concept_id: C21
+              name: "CI_CD_pipeline"
+              description: "Automated processes for continuous integration and deployment."
+            - concept_id: C22
+              name: "UI_scaffolding"
+              description: "The foundational layout and structure of the user interface."
+            - concept_id: C23
+              name: "Auditing_system"
+              description: "The foundational system for tracking user actions and system events."
+      sections:
+        - section_id: S4
+          section_number: "3.1"
+          order: 1
+          title: "Infrastructure & Repository Setup"
+          label: "INFRASTRUCTURE_REPO_SETUP"
+          text_blocks:
+            - anchor_id: AN11
+              label: "REPO_STRUCTURE_SETUP"
+              type: "constraint"
+              semantic_cues:
+                - repository_setup
+                - monorepo_structure
+                - code_organization
+              text: >
+                **Repo Structure:** Initialize a GitHub monorepo containing `/frontend` and `/backend` directories.
+              concepts:
+                - concept_id: C24
+                  name: "Frontend_directory"
+                  description: "The repository folder containing the client-side application."
+                - concept_id: C25
+                  name: "Backend_directory"
+                  description: "The repository folder containing the server-side application."
+            - anchor_id: AN12
+              label: "ENVIRONMENT_PROVISIONING"
+              type: "constraint"
+              semantic_cues:
+                - environment_configuration
+                - deployment
+                - database_provisioning
+              text: >
+                **Environments:**
+                *   Configure `dev` branch to deploy to `dev.capitaltreenuts.com` (Cloudflare) and `api.dev.capitaltreenuts.com` (Railway).
+                *   Provision a `dev` Supabase project.
+              concepts:
+                - concept_id: C26
+                  name: "Dev_environment"
+                  description: "The development environment for testing and staging."
+                - concept_id: C27
+                  name: "Dev_database"
+                  description: "The Supabase project provisioned specifically for the development environment."
+            - anchor_id: AN13
+              label: "CORS_CONFIGURATION"
+              type: "constraint"
+              semantic_cues:
+                - cors_configuration
+                - api_security
+                - network_policies
+              text: >
+                **CORS:** Configure Fastify to accept requests strictly from the designated frontend domains.
+              concepts:
+                - concept_id: C28
+                  name: "Cors_policy"
+                  description: "Security policy restricting API access to specific frontend domains."
+          sections: []
+
+        - section_id: S5
+          section_number: "3.2"
+          order: 2
+          title: "Authentication & Authorization System"
+          label: "AUTH_AND_AUTHZ_SYSTEM"
+          text_blocks:
+            - anchor_id: AN14
+              label: "SUPABASE_AUTH_IMPLEMENTATION"
+              type: "capability"
+              semantic_cues:
+                - email_authentication
+                - user_registration
+                - login_flow
+              text: >
+                **Supabase Auth:** Implement standard Email/Password registration and login.
+              concepts:
+                - concept_id: C29
+                  name: "Email_registration"
+                  description: "The process of creating a new account using an email and password."
+                - concept_id: C30
+                  name: "Email_login"
+                  description: "The process of authenticating an existing user via email and password."
+            - anchor_id: AN15
+              label: "ROLE_MANAGEMENT_IMPLEMENTATION"
+              type: "capability"
+              semantic_cues:
+                - role_management
+                - authorization
+                - user_permissions
+              text: >
+                **Role Management:**
+                *   Create a `user_roles` table in Supabase (or utilize Supabase Custom Claims) to assign roles: `Admin`, `Employee`, `Customer`.
+                *   Default new registrations to a pending/unassigned state or `Customer` role (pending client clarification).
+              concepts:
+                - concept_id: C31
+                  name: "User_role"
+                  description: "A designated permission level assigned to a user."
+                - concept_id: C32
+                  name: "Admin_role"
+                  description: "The role granting full administrative access."
+                - concept_id: C33
+                  name: "Employee_role"
+                  description: "The role granting internal staff access."
+                - concept_id: C34
+                  name: "Customer_role"
+                  description: "The role granting external client access."
+                - concept_id: C35
+                  name: "Pending_role_state"
+                  description: "The default state of a newly registered user before a specific role is confirmed."
+            - anchor_id: AN16
+              label: "FRONTEND_UI_ROUTING"
+              type: "capability"
+              semantic_cues:
+                - ui_layout
+                - routing
+                - protected_routes
+                - frontend_navigation
+              text: >
+                **Frontend UI (Svelte/Shadcn):**
+                *   Implement a blank, branded layout shell (Header, Sidebar, Main Content Area).
+                *   Create `/login`, `/register`, and `/forgot-password` routes.
+                *   Create a protected `/dashboard` route that requires an active session to view.
+              concepts:
+                - concept_id: C36
+                  name: "App_layout_shell"
+                  description: "The main structural UI components including header and sidebar."
+                - concept_id: C37
+                  name: "Login_route"
+                  description: "The frontend page for user authentication."
+                - concept_id: C38
+                  name: "Register_route"
+                  description: "The frontend page for user account creation."
+                - concept_id: C39
+                  name: "Forgot_password_route"
+                  description: "The frontend page for password recovery."
+                - concept_id: C40
+                  name: "Dashboard_route"
+                  description: "The main protected area of the application for authenticated users."
+                - concept_id: C41
+                  name: "Active_session"
+                  description: "A valid, authenticated state required to access protected routes."
+            - anchor_id: AN17
+              label: "BACKEND_API_PROTECTION"
+              type: "constraint"
+              semantic_cues:
+                - jwt_verification
+                - api_protection
+                - middleware_security
+              text: >
+                **Backend Protection:** Implement Fastify middleware to verify Supabase JWTs on all API routes.
+              concepts:
+                - concept_id: C42
+                  name: "Jwt_verification"
+                  description: "The process of validating JSON Web Tokens to ensure request authenticity."
+                - concept_id: C43
+                  name: "Protected_api_route"
+                  description: "A backend endpoint that requires valid authentication to access."
+          sections: []
+
+        - section_id: S6
+          section_number: "3.3"
+          order: 3
+          title: "Auditing & Logging Architecture"
+          label: "AUDITING_LOGGING_ARCH"
+          text_blocks:
+            - anchor_id: AN18
+              label: "APPLICATION_LOGGING"
+              type: "constraint"
+              semantic_cues:
+                - application_logging
+                - error_handling
+                - structured_logs
+              text: >
+                **Application Logging (Backend):** Implement `pino` in Fastify for high-performance, structured JSON logging of all API requests and errors.
+              concepts:
+                - concept_id: C44
+                  name: "Structured_json_log"
+                  description: "Log entries formatted as JSON for easy parsing and analysis."
+                - concept_id: C45
+                  name: "Api_request_log"
+                  description: "A record of an incoming HTTP request to the backend."
+                - concept_id: C46
+                  name: "Error_log"
+                  description: "A record of an application failure or exception."
+            - anchor_id: AN19
+              label: "BUSINESS_EVENT_AUDITING"
+              type: "capability"
+              semantic_cues:
+                - audit_trail
+                - event_logging
+                - database_schema
+                - state_changes
+              text: >
+                **Business Event Auditing (Database):**
+                *   Create an `audit_logs` table in Supabase.
+                *   **Schema:** `id`, `timestamp`, `actor_id` (User UUID), `action` (e.g., 'USER_LOGIN', 'CONTRACT_CREATED'), `entity_type` (e.g., 'Auth', 'Contract'), `entity_id`, `metadata` (JSONB for before/after state).
+                *   Implement a Fastify service/utility to easily write to this table whenever a state-changing action occurs.
+              concepts:
+                - concept_id: C47
+                  name: "Audit_log_table"
+                  description: "The database table storing historical records of business events."
+                - concept_id: C48
+                  name: "Audit_actor_id"
+                  description: "The identifier of the user who performed the audited action."
+                - concept_id: C49
+                  name: "Audit_action"
+                  description: "The specific type of event or operation that occurred."
+                - concept_id: C50
+                  name: "Audit_entity_type"
+                  description: "The category of the domain object affected by the action."
+                - concept_id: C51
+                  name: "Audit_metadata"
+                  description: "Additional JSON data capturing the state before and after the action."
+                - concept_id: C52
+                  name: "Audit_logging_service"
+                  description: "A backend utility responsible for recording audit events."
+                - concept_id: C53
+                  name: "State_changing_action"
+                  description: "Any operation that modifies data and requires an audit trail."
+          sections: []
+
+    - section_id: S7
+      section_number: "4"
+      order: 4
+      title: "Detail Refinement & Client Inquiry (Pending Approval)"
+      label: "DETAIL_REFINEMENT_INQUIRY"
+      text_blocks:
+        - anchor_id: AN20
+          label: "PENDING_APPROVAL_INTRO"
+          type: "other"
+          semantic_cues:
+            - client_clarification
+            - phase_1_prep
+            - requirements_gathering
+          text: >
+            *The following items require clarification from the client/management before data modeling and Phase 1 (Contracts) can begin.*
+          concepts:
+            - concept_id: C54
+              name: "Phase_1_contracts"
+              description: "The upcoming project phase focused on core contract functionality."
+      sections:
+        - section_id: S8
+          section_number: "4.1"
+          order: 1
+          title: "Contract Data Model"
+          label: "CONTRACT_DATA_MODEL_INQUIRY"
+          text_blocks:
+            - anchor_id: AN21
+              label: "CONTRACT_FIELDS_INQUIRY"
+              type: "other"
+              semantic_cues:
+                - data_modeling
+                - contract_attributes
+                - domain_entities
+              text: >
+                **Contract Fields:** What specific data points define a contract? *(e.g., Commodity type, weight/quantity, price, delivery dates, terms).*
+              concepts:
+                - concept_id: C55
+                  name: "Contract_commodity_type"
+                  description: "The specific type of nut or product being traded."
+                - concept_id: C56
+                  name: "Contract_weight_quantity"
+                  description: "The amount or volume specified in the contract."
+                - concept_id: C57
+                  name: "Contract_price"
+                  description: "The agreed financial value or rate in the contract."
+                - concept_id: C58
+                  name: "Contract_delivery_date"
+                  description: "The expected date for product delivery."
+                - concept_id: C59
+                  name: "Contract_terms"
+                  description: "The legal and logistical conditions of the agreement."
+            - anchor_id: AN22
+              label: "PURCHASE_VS_SALE_INQUIRY"
+              type: "other"
+              semantic_cues:
+                - data_structures
+                - contract_types
+                - schema_design
+              text: >
+                **Purchase vs. Sale:** Do Purchase contracts and Sale contracts share the exact same fields, or do they require different data structures?
+              concepts:
+                - concept_id: C60
+                  name: "Purchase_contract_structure"
+                  description: "The specific data schema required for a purchase contract."
+                - concept_id: C61
+                  name: "Sale_contract_structure"
+                  description: "The specific data schema required for a sale contract."
+            - anchor_id: AN23
+              label: "CONTRACT_MATCHING_INQUIRY"
+              type: "other"
+              semantic_cues:
+                - business_logic
+                - contract_matching
+                - fulfillment_rules
+              text: >
+                **The "Closing/Matching" Mechanism:** How are purchases attached to sales?
+                *   Is it 1-to-1 (One purchase fulfills one sale)?
+                *   Is it 1-to-Many (One large purchase is split to fulfill multiple smaller sales)?
+              concepts:
+                - concept_id: C62
+                  name: "Contract_matching_mechanism"
+                  description: "The business logic used to link purchases to sales."
+                - concept_id: C63
+                  name: "One_to_one_match"
+                  description: "A matching scenario where a single purchase fulfills exactly one sale."
+                - concept_id: C64
+                  name: "One_to_many_match"
+                  description: "A matching scenario where a single purchase is divided across multiple sales."
+          sections: []
+
+        - section_id: S9
+          section_number: "4.2"
+          order: 2
+          title: "DocuSign Integration"
+          label: "DOCUSIGN_INTEGRATION_INQUIRY"
+          text_blocks:
+            - anchor_id: AN24
+              label: "DOCUSIGN_TRIGGER_INQUIRY"
+              type: "other"
+              semantic_cues:
+                - workflow_trigger
+                - docusign_integration
+                - status_updates
+              text: >
+                **Trigger Point:** At what stage is a contract sent to DocuSign? *(e.g., Created by employee -> Sent to Customer via DocuSign -> Customer signs -> Status updates to 'Active').*
+              concepts:
+                - concept_id: C65
+                  name: "Docusign_trigger_point"
+                  description: "The specific workflow event that initiates sending a contract for signature."
+                - concept_id: C66
+                  name: "Contract_active_status"
+                  description: "The state of a contract once it has been fully signed and executed."
+            - anchor_id: AN25
+              label: "DOCUMENT_GENERATION_INQUIRY"
+              type: "other"
+              semantic_cues:
+                - document_generation
+                - file_management
+                - pdf_handling
+              text: >
+                **Document Generation:** Will the system generate the PDF to send to DocuSign, or are users uploading pre-made PDFs to send?
+              concepts:
+                - concept_id: C67
+                  name: "System_generated_pdf"
+                  description: "A contract document automatically created by the application."
+                - concept_id: C68
+                  name: "User_uploaded_pdf"
+                  description: "A pre-existing contract document manually uploaded by a user."
+            - anchor_id: AN26
+              label: "SIGNERS_INQUIRY"
+              type: "other"
+              semantic_cues:
+                - signature_workflow
+                - counter_signatures
+                - approval_process
+              text: >
+                **Signers:** Who needs to sign? Just the customer, or does an internal employee/admin need to counter-sign?
+              concepts:
+                - concept_id: C69
+                  name: "Customer_signer"
+                  description: "The external party required to sign the contract."
+                - concept_id: C70
+                  name: "Internal_counter_signer"
+                  description: "An employee or admin required to sign the contract on behalf of the company."
+          sections: []
+
+        - section_id: S10
+          section_number: "4.3"
+          order: 3
+          title: "User Roles & Workflows"
+          label: "USER_ROLES_WORKFLOWS_INQUIRY"
+          text_blocks:
+            - anchor_id: AN27
+              label: "CUSTOMER_ENTITY_INQUIRY"
+              type: "other"
+              semantic_cues:
+                - user_entity_modeling
+                - customer_accounts
+                - company_hierarchy
+              text: >
+                **Customer Entity:** Is a "Customer" an individual person, or a "Company" that might have multiple employee logins associated with it?
+              concepts:
+                - concept_id: C71
+                  name: "Individual_customer"
+                  description: "A customer entity representing a single person."
+                - concept_id: C72
+                  name: "Company_customer"
+                  description: "A customer entity representing a business organization."
+                - concept_id: C73
+                  name: "Company_employee_login"
+                  description: "A user account belonging to an individual working for a Company Customer."
+            - anchor_id: AN28
+              label: "CUSTOMER_ONBOARDING_INQUIRY"
+              type: "other"
+              semantic_cues:
+                - user_onboarding
+                - registration_flow
+                - invitation_system
+              text: >
+                **Customer Onboarding:** Can customers register themselves freely, or must an Admin/Employee invite them to the platform?
+              concepts:
+                - concept_id: C74
+                  name: "Self_registration"
+                  description: "A workflow allowing users to create their own accounts without an invite."
+                - concept_id: C75
+                  name: "Admin_invite"
+                  description: "A workflow where an internal user must explicitly grant access to a new customer."
+            - anchor_id: AN29
+              label: "EMPLOYEE_VISIBILITY_INQUIRY"
+              type: "other"
+              semantic_cues:
+                - data_visibility
+                - access_control
+                - record_ownership
+              text: >
+                **Visibility:** Can Employees see and edit *all* contracts, or only ones specifically assigned to them?
+              concepts:
+                - concept_id: C76
+                  name: "Global_contract_visibility"
+                  description: "Permission allowing an employee to view and edit any contract in the system."
+                - concept_id: C77
+                  name: "Assigned_contract_visibility"
+                  description: "Permission restricting an employee to view and edit only contracts they own or are assigned to."
+            - anchor_id: AN30
+              label: "DASHBOARD_CONTENT_INQUIRY"
+              type: "other"
+              semantic_cues:
+                - dashboard_ui
+                - user_experience
+                - key_metrics
+              text: >
+                **Dashboards:** What are the top 2-3 things a Customer needs to see immediately upon logging in? What about an Employee?
+              concepts:
+                - concept_id: C78
+                  name: "Customer_dashboard_view"
+                  description: "The primary information and metrics displayed to a customer upon login."
+                - concept_id: C79
+                  name: "Employee_dashboard_view"
+                  description: "The primary information and metrics displayed to an employee upon login."
+          sections: []
+
+        - section_id: S11
+          section_number: "4.4"
+          order: 4
+          title: "Auditing Specifics"
+          label: "AUDITING_SPECIFICS_INQUIRY"
+          text_blocks:
+            - anchor_id: AN31
+              label: "AUDIT_SCOPE_INQUIRY"
+              type: "other"
+              semantic_cues:
+                - audit_scope
+                - event_sourcing
+                - lifecycle_tracking
+              text: >
+                **Audit Scope:** Does the client require strict "Event Sourcing" (tracking every single keystroke/field change on a contract), or is tracking major lifecycle events (Created, Sent for Signature, Signed, Closed, Deleted) sufficient?
+              concepts:
+                - concept_id: C80
+                  name: "Event_sourcing"
+                  description: "A highly granular auditing approach tracking every individual field change."
+                - concept_id: C81
+                  name: "Lifecycle_event_tracking"
+                  description: "A broader auditing approach tracking only major state transitions of an entity."
+          sections: []

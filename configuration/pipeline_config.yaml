@@ -13,7 +13,28 @@ data_entities:
   spec:
     type: yaml
     filename: spec_1.yaml
-    description: "A formal software application specification. "
+    description: |
+      A formal software application specification that transforms natural language requirements into structured YAML format.
+      
+      JSON Structure:
+      | Field | Type | Purpose |
+      |-------|------|---------|
+      | specification.id | string | Unique identifier (e.g., SPEC1) |
+      | specification.title | string | Descriptive title of the application |
+      | specification.version | string | Version identifier |
+      | specification.description | string | Summary of the specification |
+      | sections[] | array | Hierarchical document structure |
+      | sections[].section_id | string | Unique section identifier (S1, S2, etc.) |
+      | sections[].title | string | Section heading |
+      | sections[].text_blocks[] | array | Atomic requirement units |
+      | text_blocks[].anchor_id | string | Unique identifier (AN1, AN2, etc.) |
+      | text_blocks[].text | string | Original requirements text |
+      | text_blocks[].concepts[] | array | Candidate domain concepts |
+      | concepts[].concept_id | string | Concept identifier (C1, C2, etc.) |
+      | concepts[].name | string | Domain concept name |
+      | concepts[].description | string | Concept explanation |
+      
+      Function: Organizes informal requirements into structured sections with anchored text blocks and candidate concepts for domain modeling.
     yaml_schema: schemas/spec_yaml_schema.json
     compression_strategies:
       none:
@@ -69,7 +90,22 @@ data_entities:
   concepts:
     type: json
     filename: concepts.json
-    description: "Extracted concepts from specification"
+    description: |
+      A technology-agnostic domain concept model containing Actors, Actions, and DataEntities extracted from the specification.
+      
+      JSON Structure:
+      | Field | Type | Purpose |
+      |-------|------|---------|
+      | type | string | Concept type: "Actor", "Action", or "DataEntity" |
+      | id | string | Unique identifier (A1, A2, ACT1, ACT2, DE1, DE2, etc.) |
+      | label | string | Short name matching /^[A-Z_][a-zA-Z0-9_.]*$/ |
+      | categories[] | array | Classification tags: "core", "future", "persistence", "sync", "excluded" |
+      | description | string | Detailed explanation of the concept |
+      | justification | string | Reasoning for why this concept was extracted |
+      | anchors[] | array | Source specification anchor IDs (AN1, AN2, etc.) |
+      | sourceConceptIds[] | array | Original concept hints from step 1 (C1, C2, etc.) |
+      
+      Function: Provides the foundational domain model with technology-agnostic actors, operations, and data entities for software architecture modeling.
     schema: schemas/concepts.schema.json
     compression_strategies:
       none:
@@ -94,7 +130,21 @@ data_entities:
   aggregations:
     type: json
     filename: aggregations.json
-    description: "Aggregated concept relationships"
+    description: |
+      Logical groupings of concepts that capture lifecycles, interaction flows, service responsibilities, and feature sets for domain modeling.
+      
+      JSON Structure:
+      | Field | Type | Purpose |
+      |-------|------|---------|
+      | id | string | Unique aggregation identifier (AG1, AG2, etc.) |
+      | label | string | Descriptive name of the aggregation |
+      | category | string | Classification: "lifecycle", "view", "service", "data-model", "feature", "future" |
+      | members[] | array | List of concept IDs (A*, ACT*, DE*) and nested aggregation IDs |
+      | description | string | Explanation of the aggregation's purpose |
+      | justification | string | Reasoning for grouping these concepts |
+      | anchors[] | array | Source specification anchor IDs supporting this aggregation |
+      
+      Function: Organizes concepts into meaningful workflows, lifecycles, and feature sets that represent the domain structure and interactions.
     schema: schemas/aggregations.schema.json
     compression_strategies:
       none:
@@ -119,7 +169,25 @@ data_entities:
   messages:
     type: json
     filename: messages.json
-    description: "Message definitions"
+    description: |
+      Concrete interactions between producer and consumer Actors, defining the communication patterns for the system architecture.
+      
+      JSON Structure:
+      | Field | Type | Purpose |
+      |-------|------|---------|
+      | id | string | Unique message identifier (MSG1, MSG2, etc.) |
+      | label | string | Descriptive name of the message |
+      | category | string | Message type: "command", "request", "response", "event" |
+      | description | string | Detailed explanation of the interaction |
+      | producer | string | Source actor ID (A1, A2, etc.) |
+      | consumer | string | Target actor ID (A1, A2, etc.) |
+      | payload[] | array | Data elements carried by the message |
+      | payload[].label | string | Payload field name |
+      | payload[].refConceptId | string | Reference to DataEntity concept or null |
+      | constraints[] | array | Validation and behavioral rules |
+      | anchors[] | array | Source specification anchor IDs |
+      
+      Function: Defines the complete set of actor-to-actor communications, data flows, and system interactions for the software architecture.
     schema: schemas/messages.schema.json
     compression_strategies:
       none:
@@ -144,7 +212,23 @@ data_entities:
   message_aggregations:
     type: json
     filename: messageAggregations.json
-    description: "Message aggregation definitions"
+    description: |
+      Workflows represented as ordered sequences of messages that implement the logical aggregations from the domain model.
+      
+      JSON Structure:
+      | Field | Type | Purpose |
+      |-------|------|---------|
+      | id | string | Unique aggregation identifier (MAG1, MAG2, etc.) |
+      | label | string | Descriptive name of the workflow |
+      | category | string | Classification: "lifecycle", "view", "service", "future" |
+      | description | string | Explanation of the workflow purpose |
+      | sequences[][] | array | Alternative execution paths through the workflow |
+      | sequences[][].id | string | Message ID reference (MSG1, MSG2, etc.) |
+      | sequences[][].label | string | Step description |
+      | justification | string | Reasoning for this workflow design |
+      | anchors[] | array | Source specification anchor IDs |
+      
+      Function: Defines complete interaction workflows showing message sequences that implement domain operations and business processes.
     schema: schemas/messageAggregations.schema.json
     compression_strategies:
       none:
@@ -167,7 +251,26 @@ data_entities:
   requirements:
     type: json
     filename: requirements.json
-    description: "Final requirements output"
+    description: |
+      Structured functional, non-functional, and future requirements extracted from the specification and linked to domain concepts and messages.
+      
+      JSON Structure:
+      | Field | Type | Purpose |
+      |-------|------|---------|
+      | id | string | Unique requirement identifier (FR-1, NFR-1, UI-1, FR-FUT-1, EX-1) |
+      | type | string | Requirement type: "functional", "nonfunctional", "ui", "future-functional", "excluded" |
+      | status | string | Requirement status (if applicable) |
+      | label | string | Short descriptive name |
+      | category | string | Domain classification: "task", "category", "view", "persistence", "analytics", "sync", "ui", "privacy" |
+      | description | string | Detailed requirement statement |
+      | priority | string | Importance level: "must", "should", "could" |
+      | sectionHint | string | Section identifier for organization |
+      | anchors[] | array | Source specification anchor IDs (AN1, AN2, etc.) |
+      | relatedConcepts[] | array | Linked actor, action, and data entity IDs |
+      | relatedMessages[] | array | Associated message IDs for implementation |
+      | notes | string | Additional implementation notes |
+      
+      Function: Provides the complete set of testable, traceable requirements that define what the software system must accomplish, linked to their domain model origins.
     schema: schemas/requirements.schema.json
     compression_strategies:
       none:
@@ -233,7 +336,7 @@ steps:
     inputs:
       - label: spec
         source: label:spec
-        compression: minimal_json
+        compression: none
         color: green
     outputs:
       - label: spec_formal
@@ -267,7 +370,7 @@ steps:
     inputs:
       - label: spec
         source: label:spec
-        compression: minimal_json
+        compression: none
         color: magenta
     outputs:
       - label: concepts
@@ -284,11 +387,11 @@ steps:
     inputs:
       - label: spec
         source: label:spec
-        compression: minimal_json
+        compression: none
         color: cyan
       - label: concepts
         source: label:concepts
-        compression: minimal_json
+        compression: none
         color: green
     outputs:
       - label: aggregations
@@ -305,15 +408,15 @@ steps:
     inputs:
       - label: spec
         source: label:spec
-        compression: minimal_json
+        compression: none
         color: cyan
       - label: concepts
         source: label:concepts
-        compression: minimal_json
+        compression: none
         color: green
       - label: aggregations
         source: label:aggregations
-        compression: minimal_json
+        compression: none
         color: yellow
     outputs:
       - label: messages
@@ -332,15 +435,15 @@ steps:
     inputs:
       - label: spec
         source: label:spec
-        compression: minimal_json
+        compression: none
         color: cyan
       - label: concepts
         source: label:concepts
-        compression: minimal_json
+        compression: none
         color: green
       - label: messages
         source: label:messages
-        compression: minimal_json
+        compression: none
         color: magenta
     outputs:
       - label: requirements

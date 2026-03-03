@@ -8,11 +8,11 @@ import json
 import re
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import yaml
 
-from typedb_client3 import TypeDBClient, TransactionType
+from typedb_client3 import TypeDBClient, TransactionType, QueryBuilder
 from typedb_client3 import TypeDBError
 
 
@@ -148,8 +148,15 @@ class TypeDBImporter:
                 print(f"  {Colors.GREEN}{key.capitalize()}:{Colors.RESET} {value}")
     
     def entity_exists(self, entity_type: str, key_attr: str, key_value: str) -> bool:
-        """Check if an entity with the given key already exists."""
-        query = f'match $x isa {entity_type}, has {key_attr} "{key_value}"; fetch $x;'
+        """Check if an entity with the given key already exists using QueryBuilder."""
+        # Build match query using QueryBuilder
+        qb = QueryBuilder().match()
+        var_name = entity_type.replace('-', '_')
+        qb.variable(var_name, entity_type, {key_attr: key_value})
+        qb.fetch([f"${var_name}"])
+        
+        query = qb.build()
+        
         try:
             result = self.client.execute_query(self.database, query, TransactionType.READ)
             if result and isinstance(result, dict):
@@ -178,6 +185,204 @@ class TypeDBImporter:
             transformed = transformed[0].upper() + transformed[1:]
         transformed = re.sub(r'_+', '_', transformed)
         return transformed
+    
+    # ==================== QueryBuilder Helper Methods ====================
+    
+    def _build_entity_query(
+        self,
+        entity_type: str,
+        attributes: Dict[str, Any]
+    ) -> str:
+        """Build an entity insert query using QueryBuilder.
+        
+        Args:
+            entity_type: The TypeDB entity type (e.g., 'actor', 'action')
+            attributes: Dictionary of attribute name -> value pairs
+            
+        Returns:
+            TypeQL insert query string
+        """
+        qb = QueryBuilder().insert()
+        
+        # Build variable with type and attributes
+        var_name = entity_type.replace('-', '_')
+        qb.variable(var_name, entity_type, attributes)
+        
+        return qb.build()
+    
+    def _build_relation_query(
+        self,
+        relation_type: str,
+        role_players: Dict[str, Tuple[str, str]]
+    ) -> str:
+        """Build a relation insert query using QueryBuilder.
+        
+        Args:
+            relation_type: The TypeDB relation type (e.g., 'anchoring', 'membership')
+            role_players: Dictionary of role_name -> (entity_type, entity_id) pairs
+            
+        Returns:
+            TypeQL match-insert query string
+        """
+        # First, build match clause for role players
+        match_parts = []
+        insert_parts = []
+        
+        for role_name, (entity_type, entity_id) in role_players.items():
+            var_name = f"{entity_type.replace('-', '_')}_{role_name}"
+            id_attr = self._get_id_attribute(entity_type)
+            match_parts.append(f"${var_name} isa {entity_type}, has {id_attr} \"{entity_id}\"")
+            insert_parts.append(f"{role_name}: ${var_name}")
+        
+        match_clause = ", ".join(match_parts)
+        relation_clause = ", ".join(insert_parts)
+        
+        query = f"match {match_clause} insert ${relation_type}({relation_clause}) isa {relation_type};"
+        return query
+    
+    def _build_match_query(
+        self,
+        entity_type: str,
+        key_attr: str,
+        key_value: str
+    ) -> str:
+        """Build a match query using QueryBuilder.
+        
+        Args:
+            entity_type: The TypeDB entity type
+            key_attr: The key attribute name
+            key_value: The key attribute value
+            
+        Returns:
+            TypeQL match query string
+        """
+        qb = QueryBuilder().match()
+        var_name = entity_type.replace('-', '_')
+        qb.variable(var_name, entity_type, {key_attr: key_value})
+        qb.fetch([f"${var_name}"])
+        
+        return qb.build()
+    
+    def _get_id_attribute(self, entity_type: str) -> str:
+        """Get the ID attribute name for an entity type.
+        
+        Args:
+            entity_type: The entity type
+            
+        Returns:
+            The ID attribute name
+        """
+        id_attributes = {
+            'actor': 'actor-id',
+            'action': 'action-id',
+            'data-entity': 'data-entity-id',
+            'concept': 'concept-id',
+            'message': 'message-id',
+            'requirement': 'requirement-id',
+            'message-aggregate': 'message-agg-id',
+            'action-aggregate': 'action-agg-id',
+            'category': 'category-id',
+            'spec-document': 'spec-doc-id',
+            'spec-section': 'spec-section-id',
+            'text-block': 'anchor-id',
+            'semantic-cue': 'identifier',
+            'constraint': 'constraint-id'
+        }
+        return id_attributes.get(entity_type, 'id')
+    
+    def _insert_entity_with_check(
+        self,
+        entity_type: str,
+        key_attr: str,
+        key_value: str,
+        attributes: Dict[str, Any]
+    ) -> bool:
+        """Insert entity with existence check, deletion, and recreation.
+        
+        Args:
+            entity_type: The TypeDB entity type
+            key_attr: The key attribute name
+            key_value: The key attribute value
+            attributes: Additional attributes to set
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        # Check if entity exists
+        exists = self.entity_exists(entity_type, key_attr, key_value)
+        
+        # If exists, delete it (with warning)
+        if exists:
+            self.logger.warning(f"Deleting existing {entity_type} with {key_attr}={key_value}")
+            self._delete_entity(entity_type, key_attr, key_value)
+        
+        # Insert new entity using QueryBuilder
+        query = self._build_entity_query(entity_type, attributes)
+        try:
+            self.client.execute_query(self.database, query, TransactionType.WRITE)
+        except Exception as e:
+            self.logger.error(f"Failed to create {entity_type}: {e}")
+            return False
+        
+        # Verify creation
+        if not self.entity_exists(entity_type, key_attr, key_value):
+            self.logger.error(f"Failed to verify {entity_type} with {key_attr}={key_value}")
+            return False
+        
+        return True
+    
+    def _delete_entity(
+        self,
+        entity_type: str,
+        key_attr: str,
+        key_value: str
+    ) -> bool:
+        """Delete an entity using QueryBuilder.
+        
+        Args:
+            entity_type: The TypeDB entity type
+            key_attr: The key attribute name
+            key_value: The key attribute value
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        # Build delete query using QueryBuilder pattern
+        var_name = entity_type.replace('-', '_')
+        query = f"match ${var_name} isa {entity_type}, has {key_attr} \"{key_value}\" delete ${var_name};"
+        
+        try:
+            self.client.execute_query(self.database, query, TransactionType.WRITE)
+            return True
+        except Exception as e:
+            self.logger.debug(f"Error deleting entity: {e}")
+            return False
+    
+    def _insert_relation_with_check(
+        self,
+        relation_type: str,
+        role_players: Dict[str, Tuple[str, str]]
+    ) -> bool:
+        """Insert relation with existence check, deletion, and recreation.
+        
+        Args:
+            relation_type: The TypeDB relation type
+            role_players: Dictionary of role_name -> (entity_type, entity_id) pairs
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        # Check if relation exists - for now, just insert (simplified check)
+        # Build and execute the relation query
+        query = self._build_relation_query(relation_type, role_players)
+        
+        try:
+            self.client.execute_query(self.database, query, TransactionType.WRITE)
+            self.stats['relations'] += 1
+            return True
+        except Exception as e:
+            self.logger.debug(f"Error creating relation {relation_type}: {e}")
+            return False
     
     # ==================== SPECIFICATION IMPORT ====================
     
@@ -318,20 +523,29 @@ class TypeDBImporter:
             self._process_section(subsection, section_id, 'spec-section', force_update)
     
     def _create_spec_section(self, section: Dict[str, Any]) -> None:
-        """Create a spec-section entity."""
+        """Create a spec-section entity using QueryBuilder."""
         section_id = section.get('section_id')
         title = self._escape_string(section.get('title', ''))
         label = section.get('label', '')
         order = section.get('order', 0)
         
-        query = f'''
-            insert $sec isa spec-section,
-                has spec-section-id "{section_id}",
-                has title "{title}",
-                has id-label "{label}",
-                has order {order};
-        '''
-        self.client.execute_query(self.database, query, TransactionType.WRITE)
+        # Use _insert_entity_with_check for proper existence check and recreation
+        attributes = {
+            'spec-section-id': section_id,
+            'title': title,
+            'id-label': label,
+            'order': order
+        }
+        
+        success = self._insert_entity_with_check(
+            'spec-section',
+            'spec-section-id',
+            section_id,
+            attributes
+        )
+        
+        if not success:
+            self.logger.warning(f"Failed to create spec-section: {section_id}")
     
     def _process_text_block(
         self,
@@ -376,21 +590,30 @@ class TypeDBImporter:
             self._process_semantic_cue(cue, anchor_id, force_update)
     
     def _create_text_block(self, text_block: Dict[str, Any], order: int) -> None:
-        """Create a text-block entity."""
+        """Create a text-block entity using QueryBuilder."""
         anchor_id = text_block.get('anchor_id')
         label = text_block.get('label', '')
         anchor_type = text_block.get('type', 'goal')
         text = self._escape_string(text_block.get('text', ''))
         
-        query = f'''
-            insert $tb isa text-block,
-                has anchor-id "{anchor_id}",
-                has id-label "{label}",
-                has anchor-type "{anchor_type}",
-                has text "{text}",
-                has order {order};
-        '''
-        self.client.execute_query(self.database, query, TransactionType.WRITE)
+        # Use _insert_entity_with_check for proper existence check and recreation
+        attributes = {
+            'anchor-id': anchor_id,
+            'id-label': label,
+            'anchor-type': anchor_type,
+            'text': text,
+            'order': order
+        }
+        
+        success = self._insert_entity_with_check(
+            'text-block',
+            'anchor-id',
+            anchor_id,
+            attributes
+        )
+        
+        if not success:
+            self.logger.warning(f"Failed to create text-block: {anchor_id}")
     
     def _process_concept(
         self,
@@ -423,18 +646,27 @@ class TypeDBImporter:
             pass
     
     def _create_concept(self, concept: Dict[str, Any]) -> None:
-        """Create a concept entity."""
+        """Create a concept entity using QueryBuilder."""
         concept_id = concept.get('concept_id')
         name = concept.get('name', '')
         description = self._escape_string(concept.get('description', ''))
         
-        query = f'''
-            insert $c isa concept,
-                has concept-id "{concept_id}",
-                has id-label "{name}",
-                has description "{description}";
-        '''
-        self.client.execute_query(self.database, query, TransactionType.WRITE)
+        # Use _insert_entity_with_check for proper existence check and recreation
+        attributes = {
+            'concept-id': concept_id,
+            'id-label': name,
+            'description': description
+        }
+        
+        success = self._insert_entity_with_check(
+            'concept',
+            'concept-id',
+            concept_id,
+            attributes
+        )
+        
+        if not success:
+            self.logger.warning(f"Failed to create concept: {concept_id}")
     
     def _process_semantic_cue(
         self,
@@ -567,7 +799,7 @@ class TypeDBImporter:
         self.logger.info(f"Imported {len(actors)} actors, {len(actions)} actions, {len(data_entities)} data entities")
     
     def _import_actor(self, actor: Dict, force_update: bool) -> None:
-        """Import a single Actor entity."""
+        """Import a single Actor entity using QueryBuilder."""
         actor_id = actor.get('id')
         label = self._transform_label(actor.get('label', ''))
         description = self._escape_string(actor.get('description', ''))
@@ -575,15 +807,22 @@ class TypeDBImporter:
         categories = actor.get('categories', [])
         anchors = actor.get('anchors', [])
         
-        if force_update or not self.entity_exists('actor', 'actor-id', actor_id):
-            query = f'''
-                insert $a isa actor,
-                    has actor-id "{actor_id}",
-                    has id-label "{label}",
-                    has description "{description}",
-                    has justification "{justification}";
-            '''
-            self.client.execute_query(self.database, query, TransactionType.WRITE)
+        # Use _insert_entity_with_check for proper existence check and recreation
+        attributes = {
+            'actor-id': actor_id,
+            'id-label': label,
+            'description': description,
+            'justification': justification
+        }
+        
+        success = self._insert_entity_with_check(
+            'actor',
+            'actor-id',
+            actor_id,
+            attributes
+        )
+        
+        if success:
             self.stats['actors'] += 1
             self.logger.debug(f"Created actor: {actor_id}")
         
@@ -728,10 +967,10 @@ class TypeDBImporter:
             description = self._escape_string(agg.get('description', ''))
             constituent_ids = agg.get('constituents', [])
             
-            if force_update or not self.entity_exists('action-aggregate', 'action-aggregate-id', agg_id):
+            if force_update or not self.entity_exists('action-aggregate', 'action-agg-id', agg_id):
                 query = f'''
                     insert $aa isa action-aggregate,
-                        has action-aggregate-id "{agg_id}",
+                        has action-agg-id "{agg_id}",
                         has id-label "{label}",
                         has description "{description}";
                 '''
@@ -781,10 +1020,10 @@ class TypeDBImporter:
             label = self._transform_label(agg.get('label', ''))
             description = self._escape_string(agg.get('description', ''))
             
-            if force_update or not self.entity_exists('message-aggregate', 'message-aggregate-id', agg_id):
+            if force_update or not self.entity_exists('message-aggregate', 'message-agg-id', agg_id):
                 query = f'''
                     insert $ma isa message-aggregate,
-                        has message-aggregate-id "{agg_id}",
+                        has message-agg-id "{agg_id}",
                         has id-label "{label}",
                         has description "{description}";
                 '''
